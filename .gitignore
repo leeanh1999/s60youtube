@@ -8,6 +8,9 @@ node_modules/
 # File da chuyen ma, sinh ra luc chay
 cache/
 
+# Thu muc du lieu khi chay bang Docker (chua ca cookies.txt)
+data/
+
 # IDE
 .idea/
 .vscode/

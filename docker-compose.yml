@@ -1,0 +1,33 @@
+# Dan nguyen file nay vao Container Manager > Du an (Project) tren Synology.
+# Muon tu build tren NAS thi bo dong "image" va bo chu thich dong "build".
+
+services:
+  s60youtube:
+    image: ghcr.io/leeanh1999/s60youtube:latest
+    # build: .
+    container_name: s60youtube
+    restart: unless-stopped
+
+    ports:
+      # Trai la cong tren NAS. Neu 8080 da bi dung thi doi sang 8081:8080.
+      - "8080:8080"
+
+    volumes:
+      # Giu cookie dang nhap va file da chuyen ma qua cac lan khoi dong lai.
+      - ./data:/data
+
+    environment:
+      - TZ=Asia/Ho_Chi_Minh
+      - YT_HL=vi
+      - YT_GL=VN
+      # NAS thuong yeu CPU, chuyen ma mot video mot luc la vua.
+      - MAX_JOBS=1
+      # yt-dlp cu se hong khi YouTube doi API; tu cap nhat luc khoi dong.
+      - YTDLP_AUTO_UPDATE=1
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3

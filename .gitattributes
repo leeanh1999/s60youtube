@@ -1,0 +1,5 @@
+# Script chay trong Linux phai la LF, neu la CRLF thi Alpine bao
+# "no such file or directory" rat kho doan.
+*.sh text eol=lf
+Dockerfile text eol=lf
+docker-entrypoint.sh text eol=lf

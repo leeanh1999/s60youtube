@@ -27,7 +27,45 @@ npm install
 python -m pip install --upgrade yt-dlp
 ```
 
-## Chạy
+## Chạy bằng Docker trên NAS Synology
+
+Đây là chỗ chạy hợp nhất: NAS bật 24/7, nằm sẵn trong mạng LAN, và giữ được HTTP
+thường mà máy Symbian cần. Ảnh dựng sẵn cho cả `amd64` (Synology chạy Intel) lẫn
+`arm64`, nên NAS chỉ việc tải về, không phải tự build.
+
+1. Trong DSM mở **Container Manager** → **Dự án (Project)** → **Tạo**.
+2. Đặt tên `s60youtube`, chọn một thư mục trên NAS, chọn "Tạo docker-compose.yml".
+3. Dán nội dung file [`docker-compose.yml`](docker-compose.yml) của repo này vào.
+4. Bấm tiếp và chạy. Lần đầu NAS tải ảnh về mất vài phút.
+
+Sau đó vào `http://<ip-cua-nas>:8080/` từ máy Nokia.
+
+Thích dòng lệnh thì SSH vào NAS rồi:
+
+```bash
+mkdir -p /volume1/docker/s60youtube && cd /volume1/docker/s60youtube
+curl -O https://raw.githubusercontent.com/leeanh1999/s60youtube/main/docker-compose.yml
+sudo docker compose up -d
+```
+
+Vài điểm cần biết:
+
+- Cookie đăng nhập và file đã chuyển mã nằm trong `./data` cạnh file compose, nên
+  cập nhật hay dựng lại container đều không mất.
+- Cổng 8080 nếu trùng thứ khác trên NAS thì đổi thành `"8081:8080"`.
+- `YTDLP_AUTO_UPDATE=1` cho container tự cập nhật yt-dlp mỗi lần khởi động.
+  YouTube đổi API liên tục, yt-dlp cũ là hỏng ngay, nên cứ để bật.
+- NAS đời yếu chuyển mã khá chậm. Cứ để `MAX_JOBS=1`, và ưu tiên mức 320x240.
+- **Đừng mở cổng này ra Internet.** Trong `data/cookies.txt` là phiên đăng nhập
+  Google của bạn, ai vào được trang cũng dùng được tài khoản đó.
+
+Cập nhật lên bản mới:
+
+```bash
+sudo docker compose pull && sudo docker compose up -d
+```
+
+## Chạy thẳng trên máy tính
 
 ```bash
 npm start
@@ -120,11 +158,14 @@ Biến môi trường:
 | Biến | Mặc định | Ý nghĩa |
 | --- | --- | --- |
 | `PORT` | `8080` | Cổng máy chủ |
+| `DATA_DIR` | thư mục dự án | Nơi chứa `cookies.txt` và `cache/` (Docker đặt `/data`) |
 | `YT_HL` / `YT_GL` | `vi` / `VN` | Ngôn ngữ và vùng kết quả |
 | `PAGE_SIZE` | `12` | Số kết quả mỗi trang |
 | `MAX_JOBS` | `1` | Số video chuyển mã cùng lúc |
-| `YT_COOKIES_FILE` | `./cookies.txt` | Đường dẫn cookie |
+| `YT_COOKIES_FILE` | `<DATA_DIR>/cookies.txt` | Đường dẫn cookie |
 | `YT_COOKIES_BROWSER` | trống | Đọc cookie thẳng từ trình duyệt |
+| `FFMPEG_PATH` | tự dò | Chỉ thẳng tới ffmpeg (Docker đặt `/usr/bin/ffmpeg`) |
+| `YTDLP_AUTO_UPDATE` | trống | Đặt `1` để container tự cập nhật yt-dlp lúc khởi động |
 
 ## Khi gặp trục trặc
 
