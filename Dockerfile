@@ -11,11 +11,18 @@ RUN apk add --no-cache \
       ca-certificates \
  && pip install --no-cache-dir --break-system-packages --upgrade yt-dlp
 
+# CI truyen vao de trang Gioi thieu bao duoc dang chay ban nao —
+# co the doi chieu sau khi cap nhat tren NAS.
+ARG BUILD_VERSION=dev
+ARG BUILD_DATE=
+
 ENV NODE_ENV=production \
     PORT=8080 \
     HOST=0.0.0.0 \
     DATA_DIR=/data \
-    FFMPEG_PATH=/usr/bin/ffmpeg
+    FFMPEG_PATH=/usr/bin/ffmpeg \
+    BUILD_VERSION=${BUILD_VERSION} \
+    BUILD_DATE=${BUILD_DATE}
 
 WORKDIR /app
 

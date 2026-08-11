@@ -83,11 +83,33 @@ Chip ARM mã hoá video chậm hơn hẳn máy tính. Vì vậy file compose đ�
 | 3 | **176x144 / 320x240** | Chậm — video 4 phút có thể mất vài phút |
 | 4 | 640x360 | Rất chậm trên ARM, chỉ nên dùng nếu NAS chạy Intel |
 
-Cập nhật lên bản mới:
+### Cập nhật lên bản mới
+
+Bằng SSH (chắc ăn nhất, chạy trong thư mục chứa `docker-compose.yml`):
 
 ```bash
 sudo docker compose pull && sudo docker compose up -d
 ```
+
+Chỉ `pull` thôi là chưa đủ — nó tải ảnh mới về nhưng container cũ vẫn chạy.
+Phải có `up -d` thì mới thay container.
+
+Bằng giao diện DSM:
+
+1. **Container Manager** → **Sổ đăng ký (Registry)** → tìm
+   `ghcr.io/leeanh1999/s60youtube` → tải về thẻ `latest` để lấy ảnh mới nhất.
+2. Sang **Dự án (Project)** → chọn `s60youtube` → **Thao tác** → **Xây dựng lại
+   (Rebuild)**. Container sẽ được dựng lại từ ảnh vừa tải.
+
+Tên menu có thể khác chút ít tuỳ phiên bản DSM.
+
+Cookie đăng nhập và file đã chuyển mã nằm trong `./data` nên cập nhật không mất.
+
+**Kiểm tra đã lên bản mới chưa:** vào mục **Giới thiệu** trên máy Nokia. Dòng
+"Bản đang chạy" là mã commit của ảnh, "Dựng lúc" là thời điểm dựng, và có cả
+phiên bản yt-dlp. Đối chiếu với
+[commit mới nhất](https://github.com/leeanh1999/s60youtube/commits/main) là biết
+ngay. Nếu số không đổi thì ảnh chưa được thay.
 
 ## Chạy thẳng trên máy tính
 

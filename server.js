@@ -515,6 +515,9 @@ app.get('/about', (req, res) => {
       ffmpegOk: media.isAvailable(),
       cookiesOk: ytdlp.hasCookies(),
       address: `${req.headers.host || 'may-chu'}`,
+      build: config.BUILD_VERSION,
+      buildDate: config.BUILD_DATE,
+      ytdlpVersion: ytdlp.version(),
     })
   );
 });
@@ -547,6 +550,10 @@ setInterval(() => media.cleanup(), 30 * 60 * 1000).unref();
 
 app.listen(config.PORT, config.HOST, () => {
   console.log('YouTube cho Symbian — may chu da chay');
+  console.log(
+    `  ban    : ${config.BUILD_VERSION}${config.BUILD_DATE ? ` (${config.BUILD_DATE})` : ''}`
+  );
+  console.log(`  yt-dlp : ${ytdlp.version()}`);
   console.log(`  ffmpeg : ${media.isAvailable() ? media.FFMPEG : 'chua co'}`);
   console.log(`  cookie : ${ytdlp.hasCookies() ? 'da cau hinh' : 'chua co'}`);
   console.log('  Nhap dia chi nay tren dien thoai:');

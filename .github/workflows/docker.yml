@@ -26,12 +26,21 @@ jobs:
       - uses: docker/setup-buildx-action@v3
 
       # Build rieng ban amd64 truoc de chay thu that su, roi moi phat hanh.
+      - name: Thong tin ban dung
+        id: info
+        run: |
+          echo "version=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          echo "date=$(date -u '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_OUTPUT"
+
       - name: Build de kiem thu
         uses: docker/build-push-action@v6
         with:
           context: .
           load: true
           tags: s60youtube:test
+          build-args: |
+            BUILD_VERSION=${{ steps.info.outputs.version }}
+            BUILD_DATE=${{ steps.info.outputs.date }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -57,6 +66,13 @@ jobs:
         run: |
           BASE=http://127.0.0.1:8080 node tools/smoke.js
           BASE=http://127.0.0.1:8080 node tools/test-login.js
+
+      - name: Trang Gioi thieu phai bao dung ban dang chay
+        run: |
+          curl -fsS http://127.0.0.1:8080/about > about.html
+          grep -q "${{ steps.info.outputs.version }}" about.html
+          grep -q "yt-dlp" about.html
+          echo "Trang Gioi thieu bao ban ${{ steps.info.outputs.version }}"
 
       - name: Kiem tra du lieu nam trong volume
         run: |
@@ -95,5 +111,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_VERSION=${{ steps.info.outputs.version }}
+            BUILD_DATE=${{ steps.info.outputs.date }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
