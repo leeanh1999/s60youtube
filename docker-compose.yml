@@ -9,8 +9,8 @@ services:
     restart: unless-stopped
 
     ports:
-      # Trai la cong tren NAS. Neu 8080 da bi dung thi doi sang 8081:8080.
-      - "8080:8080"
+      # Trai la cong mo tren NAS, phai la cong ben trong container (de nguyen).
+      - "9080:8080"
 
     volumes:
       # Giu cookie dang nhap va file da chuyen ma qua cac lan khoi dong lai.
@@ -22,10 +22,14 @@ services:
       - YT_GL=VN
       # NAS thuong yeu CPU, chuyen ma mot video mot luc la vua.
       - MAX_JOBS=1
+      # NAS chip ARM (Realtek RTD1296/RTD1619B) ma hoa rat cham.
+      # Doi sang ultrafast de nhanh hon nhieu, doi lai file to hon mot chut.
+      - FFMPEG_PRESET=ultrafast
       # yt-dlp cu se hong khi YouTube doi API; tu cap nhat luc khoi dong.
       - YTDLP_AUTO_UPDATE=1
 
     healthcheck:
+      # Kiem tra ben trong container nen van la 8080, khong doi theo cong ngoai.
       test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1:8080/"]
       interval: 30s
       timeout: 5s

@@ -38,7 +38,7 @@ thường mà máy Symbian cần. Ảnh dựng sẵn cho cả `amd64` (Synology 
 3. Dán nội dung file [`docker-compose.yml`](docker-compose.yml) của repo này vào.
 4. Bấm tiếp và chạy. Lần đầu NAS tải ảnh về mất vài phút.
 
-Sau đó vào `http://<ip-cua-nas>:8080/` từ máy Nokia.
+Sau đó vào `http://<ip-cua-nas>:9080/` từ máy Nokia.
 
 Thích dòng lệnh thì SSH vào NAS rồi:
 
@@ -52,12 +52,36 @@ Vài điểm cần biết:
 
 - Cookie đăng nhập và file đã chuyển mã nằm trong `./data` cạnh file compose, nên
   cập nhật hay dựng lại container đều không mất.
-- Cổng 8080 nếu trùng thứ khác trên NAS thì đổi thành `"8081:8080"`.
+- Cổng mở ra ngoài là **9080**. Muốn đổi thì sửa số bên trái trong `ports`, số
+  bên phải (`8080`) là cổng bên trong container, cứ để nguyên.
 - `YTDLP_AUTO_UPDATE=1` cho container tự cập nhật yt-dlp mỗi lần khởi động.
   YouTube đổi API liên tục, yt-dlp cũ là hỏng ngay, nên cứ để bật.
-- NAS đời yếu chuyển mã khá chậm. Cứ để `MAX_JOBS=1`, và ưu tiên mức 320x240.
 - **Đừng mở cổng này ra Internet.** Trong `data/cookies.txt` là phiên đăng nhập
   Google của bạn, ai vào được trang cũng dùng được tài khoản đó.
+
+### NAS chip ARM (Realtek)
+
+Trước hết kiểm tra hai thứ, vì không phải NAS ARM nào cũng chạy được:
+
+1. **Có Container Manager không.** Vào Package Center tìm "Container Manager".
+   Dòng `j` giá rẻ (DS220j, DS420j, DS223j…) Synology không cho cài Docker. Nếu
+   không tìm thấy gói thì NAS đó không chạy được cách này.
+2. **Kiến trúc CPU.** SSH vào NAS rồi gõ `uname -m`:
+   - `aarch64` — đúng ảnh `arm64` đã dựng sẵn, tải về chạy luôn.
+   - `armv7l` — ảnh hiện tại chưa có bản 32-bit, cần build thêm.
+
+Mọi chip Realtek mà Synology dùng (RTD1293, RTD1296, RTD1619B) đều là ARMv8
+64-bit nên gần như chắc chắn ra `aarch64`.
+
+Chip ARM mã hoá video chậm hơn hẳn máy tính. Vì vậy file compose đặt sẵn
+`FFMPEG_PRESET=ultrafast`, và trên máy ARM nên ưu tiên theo thứ tự:
+
+| Ưu tiên | Lựa chọn | Vì sao |
+| --- | --- | --- |
+| 1 | **Phát ngay** | Chỉ chuyển tiếp luồng, NAS không phải mã hoá gì |
+| 2 | **Chỉ tiếng (.m4a)** | Mã hoá âm thanh rất nhẹ, xong trong vài giây |
+| 3 | **176x144 / 320x240** | Chậm — video 4 phút có thể mất vài phút |
+| 4 | 640x360 | Rất chậm trên ARM, chỉ nên dùng nếu NAS chạy Intel |
 
 Cập nhật lên bản mới:
 
@@ -162,6 +186,7 @@ Biến môi trường:
 | `YT_HL` / `YT_GL` | `vi` / `VN` | Ngôn ngữ và vùng kết quả |
 | `PAGE_SIZE` | `12` | Số kết quả mỗi trang |
 | `MAX_JOBS` | `1` | Số video chuyển mã cùng lúc |
+| `FFMPEG_PRESET` | `veryfast` | Tốc độ mã hoá x264; máy ARM yếu nên đặt `ultrafast` |
 | `YT_COOKIES_FILE` | `<DATA_DIR>/cookies.txt` | Đường dẫn cookie |
 | `YT_COOKIES_BROWSER` | trống | Đọc cookie thẳng từ trình duyệt |
 | `FFMPEG_PATH` | tự dò | Chỉ thẳng tới ffmpeg (Docker đặt `/usr/bin/ffmpeg`) |
@@ -182,8 +207,9 @@ hết hạn — xuất lại `cookies.txt`.
 **"Không kết nối được tới YouTube."** Máy chủ không ra được mạng. Nếu mạng công ty
 chặn YouTube thì phải bật VPN trên máy tính (điện thoại thì không cần).
 
-**Chuyển mã quá chậm.** Chọn mức thấp hơn, hoặc nghe bản "Chỉ tiếng". Ngoài ra có
-thể tăng `MAX_JOBS` nếu máy tính khoẻ.
+**Chuyển mã quá chậm.** Chọn mức thấp hơn, hoặc nghe bản "Chỉ tiếng". Trên NAS
+ARM thì đặt `FFMPEG_PRESET=ultrafast`. Ngược lại nếu máy khoẻ có thể tăng
+`MAX_JOBS` và hạ xuống `FFMPEG_PRESET=fast` cho file gọn hơn.
 
 **Tải về không phát được.** Vài đời máy chỉ mở file sau khi lưu vào thẻ nhớ. Chọn
 "Lưu" rồi mở bằng trình phát sẵn có của máy.
