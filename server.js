@@ -51,10 +51,16 @@ function sendPage(res, html, status = 200) {
 function friendlyError(err) {
   const message = String(err?.message || err);
   if (/Sign in to confirm|not a bot|LOGIN_REQUIRED|cookies/i.test(message)) {
-    return 'YouTube đang đòi đăng nhập từ máy chủ này. Hãy đặt file cookies.txt vào thư mục dự án (xem README) rồi thử lại.';
+    return 'YouTube đang đòi đăng nhập từ máy chủ này. Vào mục Đăng nhập để nối lại tài khoản (cookie cũ có thể đã hết hạn).';
   }
   if (/Video unavailable|Private video|removed/i.test(message)) {
     return 'Video này không xem được (riêng tư, bị gỡ hoặc chặn theo khu vực).';
+  }
+  if (/KHONG_CO_DINH_DANG|Requested format is not available|No video formats/i.test(message)) {
+    return 'YouTube không trả về luồng nào tải thẳng được cho video này. Thử video khác; nếu video nào cũng lỗi thì yt-dlp đã cũ, hãy khởi động lại container để nó tự cập nhật.';
+  }
+  if (/members-only|join this channel|Premieres in|This live event/i.test(message)) {
+    return 'Video này chỉ dành cho thành viên kênh, hoặc là buổi phát trực tiếp chưa bắt đầu.';
   }
   if (/timed out|ETIMEDOUT|ECONNRESET|fetch failed|Connection aborted/i.test(message)) {
     return 'Không kết nối được tới YouTube. Kiểm tra mạng hoặc VPN của máy chủ.';
@@ -172,6 +178,9 @@ app.get('/watch', async (req, res) => {
     const raw = infoResult.value;
     info = { ...raw, direct: ytdlp.pickProgressive(raw.formats, 360) };
   } else {
+    // Giu nguyen van loi trong log de con lan ra nguyen nhan, con man hinh
+    // dien thoai thi chi hien cau tieng Viet ngan gon.
+    console.warn(`[watch ${videoId}] ${infoResult.reason?.message || infoResult.reason}`);
     error = friendlyError(infoResult.reason);
   }
 
