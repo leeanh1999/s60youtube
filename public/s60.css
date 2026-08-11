@@ -1,0 +1,220 @@
+/* CSS 2.1 thuan de trinh duyet Symbian doi cu doc duoc.
+   Khong dung flexbox, grid, bo goc hay bien CSS. */
+
+body {
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+  color: #000000;
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+}
+
+a {
+  color: #0033cc;
+  text-decoration: underline;
+}
+
+h1 {
+  font-size: 15px;
+  margin: 6px 4px 2px 4px;
+}
+
+h2 {
+  font-size: 13px;
+  margin: 8px 4px 2px 4px;
+  padding: 2px 4px;
+  background: #eeeeee;
+  border-left: 3px solid #cc0000;
+}
+
+.bar {
+  background: #cc0000;
+  padding: 4px;
+}
+
+.bar .brand {
+  color: #ffffff;
+  font-weight: bold;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.bar .back {
+  color: #ffffff;
+  float: right;
+  font-size: 12px;
+}
+
+.search {
+  margin: 4px;
+  padding: 0;
+}
+
+.search input {
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.list {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+}
+
+.list tr {
+  border-bottom: 1px solid #dddddd;
+}
+
+.list td {
+  padding: 3px;
+  vertical-align: top;
+}
+
+.list td.th {
+  width: 80px;
+}
+
+.list td.th img {
+  border: 0;
+  display: block;
+}
+
+.list td.tx a {
+  font-weight: bold;
+}
+
+.k {
+  background: #eeeeee;
+  border: 1px solid #cccccc;
+  padding: 0 3px;
+  font-size: 11px;
+  color: #555555;
+}
+
+.m {
+  color: #666666;
+  font-size: 11px;
+  margin-top: 1px;
+}
+
+.opts {
+  margin: 4px;
+  padding-left: 16px;
+}
+
+.opts li {
+  margin-bottom: 6px;
+}
+
+a.go {
+  display: block;
+  background: #eeffee;
+  border: 1px solid #339933;
+  padding: 5px;
+  font-weight: bold;
+  text-decoration: none;
+  color: #006600;
+}
+
+.desc {
+  margin: 6px 4px;
+  padding: 4px;
+  background: #f7f7f7;
+  border: 1px solid #e0e0e0;
+  font-size: 12px;
+}
+
+.warn {
+  margin: 4px;
+  padding: 4px;
+  background: #fffbe6;
+  border: 1px solid #e6c700;
+  font-size: 12px;
+}
+
+.err {
+  margin: 4px;
+  padding: 4px;
+  background: #ffeeee;
+  border: 1px solid #cc0000;
+  font-size: 12px;
+}
+
+.empty {
+  margin: 8px 4px;
+  color: #666666;
+}
+
+.more {
+  margin: 6px 4px;
+  text-align: center;
+}
+
+.stat {
+  margin: 4px;
+  font-weight: bold;
+}
+
+.pbar {
+  margin: 4px;
+  height: 12px;
+  border: 1px solid #999999;
+  background: #ffffff;
+}
+
+.pfill {
+  height: 12px;
+  background: #cc0000;
+  font-size: 1px;
+  overflow: hidden;
+}
+
+.code {
+  margin: 6px 4px;
+  padding: 8px 4px;
+  background: #f2f2f2;
+  border: 2px solid #cc0000;
+  text-align: center;
+  font-family: monospace;
+  font-size: 24px;
+  font-weight: bold;
+  letter-spacing: 3px;
+}
+
+.url {
+  margin: 4px;
+  padding: 4px;
+  background: #f7f7f7;
+  border: 1px solid #dddddd;
+  font-family: monospace;
+  font-size: 12px;
+  text-align: center;
+  word-wrap: break-word;
+}
+
+.qr {
+  margin: 6px 4px;
+  text-align: center;
+}
+
+.qr img {
+  border: 4px solid #ffffff;
+}
+
+.ok {
+  margin: 4px;
+  padding: 4px;
+  background: #eeffee;
+  border: 1px solid #339933;
+  font-size: 12px;
+}
+
+.nav {
+  margin: 8px 0 0 0;
+  padding: 5px 4px;
+  background: #eeeeee;
+  border-top: 1px solid #cccccc;
+  font-size: 12px;
+  text-align: center;
+}

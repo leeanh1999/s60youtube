@@ -1,0 +1,26 @@
+# Cookie dang nhap YouTube — TUYET DOI khong dua len repo
+cookies.txt
+*.cookies.txt
+
+# Phu thuoc
+node_modules/
+
+# File da chuyen ma, sinh ra luc chay
+cache/
+
+# IDE
+.idea/
+.vscode/
+
+# He dieu hanh
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Nhat ky
+*.log
+npm-debug.log*
+
+# Bien moi truong
+.env
+.env.local

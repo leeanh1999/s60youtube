@@ -1,0 +1,150 @@
+/* Trang nay chi mo tren may tinh / dien thoai doi moi,
+   nen thoai mai dung CSS hien dai. */
+
+:root {
+  color-scheme: light dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 24px 16px;
+  background: #f4f5f7;
+  color: #1a1a1a;
+  font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.card {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 28px;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 2px 18px rgba(0, 0, 0, 0.09);
+}
+
+h1 {
+  margin: 0 0 12px;
+  font-size: 22px;
+  color: #cc0000;
+}
+
+p {
+  margin: 0 0 14px;
+}
+
+.steps {
+  margin: 0 0 22px;
+  padding-left: 22px;
+}
+
+.steps li {
+  margin-bottom: 8px;
+}
+
+label {
+  display: block;
+  margin-bottom: 18px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+input[type="text"],
+input[type="file"],
+textarea {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px;
+  border: 1px solid #c8ccd2;
+  border-radius: 8px;
+  font-weight: 400;
+  font-size: 14px;
+  background: #fff;
+  color: inherit;
+}
+
+input[type="text"] {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 20px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+textarea {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px;
+  resize: vertical;
+}
+
+input:focus,
+textarea:focus {
+  outline: 2px solid #cc0000;
+  outline-offset: 1px;
+  border-color: #cc0000;
+}
+
+button {
+  width: 100%;
+  padding: 13px;
+  border: 0;
+  border-radius: 8px;
+  background: #cc0000;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #a80000;
+}
+
+code {
+  padding: 1px 5px;
+  background: #eef0f3;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.error {
+  padding: 11px 13px;
+  background: #fdecec;
+  border: 1px solid #e0a0a0;
+  border-radius: 8px;
+  color: #8b1a1a;
+}
+
+.hint {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #e8eaed;
+  color: #6b7076;
+  font-size: 13px;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #16181c;
+    color: #e6e7e9;
+  }
+  .card {
+    background: #212429;
+    box-shadow: none;
+  }
+  input[type="text"],
+  input[type="file"],
+  textarea {
+    background: #1a1c20;
+    border-color: #3a3f46;
+  }
+  code {
+    background: #2c3036;
+  }
+  .hint {
+    border-top-color: #32363c;
+  }
+}
