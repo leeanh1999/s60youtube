@@ -67,10 +67,32 @@ jobs:
           BASE=http://127.0.0.1:8080 node tools/smoke.js
           BASE=http://127.0.0.1:8080 node tools/test-login.js
 
+      # Phep do 'position: fixed' chi lo sai tren dien thoai, nen thu bang may
+      # gia: dan dung, dan gia, va hai kieu do khong duoc cua Opera Mobile 12.
+      - name: Kiem thu phep do dan thanh
+        run: node tools/test-pin.js
+
       # Chay trong container de kiem luon ffmpeg cua anh: no phai co libx264
       # va muxer ipod thi hai muc chuyen ma moi ra duoc file.
       - name: Kiem thu chuyen ma
         run: docker exec test node /app/tools/test-convert.js
+
+      # Bieu tuong do may chu to tu hinh SVG ra PNG. Hinh nao viet sai thi chi
+      # hong dung luc co trang goi toi no, nen to thu ca bo o day.
+      - name: To thu toan bo bieu tuong
+        run: |
+          docker exec test node -e "
+          const icons = require('/app/lib/icons');
+          let bytes = 0;
+          for (const name of Object.keys(icons.SHAPES)) {
+            for (const tint of Object.keys(icons.TINTS)) {
+              const png = icons.png(name + '-' + tint + '.png');
+              if (!png || png.length < 100) throw new Error('hong hinh ' + name + '-' + tint);
+              bytes += png.length;
+            }
+          }
+          console.log('to duoc ca bo bieu tuong,', bytes, 'byte');
+          "
 
       - name: Trang Gioi thieu phai bao dung ban dang chay
         run: |

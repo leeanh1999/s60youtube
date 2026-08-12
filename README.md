@@ -394,23 +394,59 @@ bằng `em` nên đổi cỡ chữ là chúng to nhỏ theo, giữ đúng tỉ l
 số kết quả mỗi trang. Tất cả lưu bằng cookie trên máy.
 
 Trình duyệt Symbian^3 trở lên (Nokia Browser 7.x/8.x, nền WebKit 533–535) đọc
-được HTML5, SVG đặt
-thẳng trong trang, CSS3 cơ bản và JavaScript — nên biểu tượng trên trang là hình
-vẽ SVG chứ không phải ký tự đặc biệt (font máy thiếu ký tự là hiện ra ô vuông,
-còn SVG lỗi thì chỉ là khoảng trống).
+được HTML5, CSS3 cơ bản và JavaScript. **Riêng SVG thì không**: bản WebKit ấy
+được dựng không kèm bộ vẽ SVG, nên đặt `<svg>` thẳng vào trang thì nó không báo
+lỗi gì mà cũng không vẽ gì — trên máy thật mọi chỗ có biểu tượng chỉ còn là
+khoảng trống. Opera Mobile 12 vẽ được, nhưng không thể để trình duyệt chính của
+máy thành ra trang trơ.
+
+Nên biểu tượng **vẽ sẵn bằng SVG mà gửi ra máy là ảnh PNG**: `lib/icons.js` giữ
+24 hình dưới dạng một dòng chữ `<path>` (dạng dễ sửa nhất, đọc ra được), còn
+`lib/raster.js` tô chúng thành PNG ngay trên máy chủ — phân tích đường, cắt cung
+tròn thành đoạn thẳng, tô theo dòng quét với bốn dòng mẫu mỗi điểm ảnh cho rìa
+mịn, rồi tự đóng file PNG bằng `zlib` có sẵn của Node. Không thêm thư viện ảnh
+nào, và không phải vẽ tay 24 hình bằng từng điểm ảnh. Đây cũng là lý do không
+dùng ký tự đặc biệt (▶ ★ ♪) thay hình: font máy thiếu ký tự là hiện ra ô vuông,
+còn ảnh thì máy Symbian đời nào cũng mở được.
+
+Ảnh tô ở cỡ **32 điểm**, tức mọi chỗ dùng đều là thu nhỏ lại — kích thước vẫn đo
+bằng `em` nên đổi cỡ chữ là hình to nhỏ theo, mà máy nào thu nhỏ thô đến đâu cũng
+còn ra hình (phóng to lên thì hình bẹt ngay). Chỗ dùng cần hình to nhất là bốn ô
+chân trang: 1,05 lần cỡ chữ gốc, tức 27 điểm khi chọn chữ *Rất lớn*.
+
+Bản SVG cũ tô bằng `currentColor` nên tự ăn theo màu chữ của nơi đặt nó; ảnh thì
+không, **màu phải nằm trong tên file**: `/i/warn-amber.png`, `/i/home-gray.png`.
+Bảng `TINTS` trong `lib/icons.js` có bảy màu và phải đúng y màu chữ trong
+`s60.css`. Mỗi ảnh chừng 300 byte, tô một lần rồi giữ trong bộ nhớ máy chủ (cả
+bộ 24 hình × 7 màu chưa tới 60KB), và địa chỉ mang sẵn mã của cả bộ hình nên
+điện thoại giữ được cả tháng trong bộ đệm: sửa hình là mã đổi, máy tải lại đúng
+một lần.
 
 Thanh đỏ trên đầu và thanh bốn ô ở chân trang **dán vào khung nhìn**, cuộn thế
 nào cũng còn đó. Chỗ này không dám tin `position: fixed`: nhiều bản WebKit đời
 Symbian nhận thuộc tính đó rồi xử lý như `absolute` — thanh dán vào trang chứ
 không vào khung nhìn, cuộn xuống là nó trôi mất, tính ra còn tệ hơn không dán.
-Nên `s60.js` **đo thật**: đặt một ô tí hon dán sát đỉnh, cuộn đi hai điểm rồi xem
-toạ độ của nó so với khung nhìn có đổi không, đo xong trả lại chỗ cũ ngay. Đúng
-thì mới đặt lớp `fixnav` vào `<body>`, chừa sẵn khoảng trống ở đỉnh và ở cuối
-trang cho khỏi che chữ, và thu hai thanh gọn lại (E6 chỉ cao 480 điểm, hai thanh
-ăn chừng 80 điểm là vừa). Đo sai thì bỏ qua, hai thanh nằm trong dòng chảy như
-cũ. Kết quả đo nhớ trong `localStorage` nên các trang sau không phải cuộn thử
-lại. Phím lên/xuống cũng biết chừa: khối vừa nhảy tới mà nằm khuất sau thanh nào
-thì trang cuộn thêm đúng phần bị che.
+Nên `s60.js` **đo thật**: đặt hai ô tí hon sát đỉnh, một `fixed` một `absolute`,
+cuộn đi bốn điểm rồi xem toạ độ của chúng so với khung nhìn, đo xong trả lại chỗ
+cũ ngay. Ô `absolute` là **thước đo của chính phép đo**: nó phải trôi lên đúng
+bốn điểm; đúng thì ô `fixed` không nhích nghĩa là máy dán thật.
+
+Ô `absolute` không trôi thì phép đo không nói lên điều gì cả — và đó chính là
+**Opera Mobile 12**: nó cuộn bên trong một khung nhìn riêng, nên số cuộn của
+`window` và toạ độ `getBoundingClientRect` không ăn khớp nhau. Trước đây "đo
+không được" bị coi là "không dán được", thành ra trên Opera hai thanh trôi mất
+theo trang. Giờ gặp thế thì nghe theo lời máy khai (`getComputedStyle` báo
+`fixed`) mà dán — Opera Mobile 12 dán đúng. Cách này giữ nguyên phần quan trọng:
+máy nào *đo được* mà đo ra sai thì vẫn không dán.
+
+Đo đúng thì mới đặt lớp `fixnav` vào `<body>`, chừa sẵn khoảng trống ở đỉnh và ở
+cuối trang cho khỏi che chữ, và thu hai thanh gọn lại (E6 chỉ cao 480 điểm, hai
+thanh ăn chừng 80 điểm là vừa). Đo sai thì bỏ qua, hai thanh nằm trong dòng chảy
+như cũ. Kết quả đo nhớ trong `localStorage` nên các trang sau không phải cuộn thử
+lại — tên khoá mang số 2, vì kết quả sai của bản đo cũ còn nằm trong máy người
+dùng, đổi tên khoá là máy đo lại một lần bằng cách đo mới. Phím lên/xuống cũng
+biết chừa: khối vừa nhảy tới mà nằm khuất sau thanh nào thì trang cuộn thêm đúng
+phần bị che.
 
 Kính lúp **nằm trong hàng nhảy của phím lên/xuống**, dù nó đã có phím tắt `*`
 riêng. Trước có bỏ nó ra ngoài hàng cho khỏi tốn một lần bấm ở mỗi trang, nhưng
@@ -481,11 +517,17 @@ Ba phần trên nằm trong `public/s60.js`; tắt JavaScript đi thì trang v�
 E6 đi Wi-Fi 802.11b/g và vẽ trang bằng chip 680MHz, nên byte nào cũng đắt. Bốn chỗ
 tiết kiệm:
 
-**Nén gzip.** Trang chính 7,1KB còn 2,2KB; trang kết quả tìm 8,9KB còn 2,3KB;
-`s60.css` với `s60.js` cộng lại 36KB còn 11KB. Nokia Browser tự khai
+**Nén gzip.** Trang chính 4,3KB còn 1,4KB; trang kết quả tìm 7,6KB còn 1,9KB;
+`s60.css` với `s60.js` cộng lại 38KB còn 12KB. Nokia Browser tự khai
 `Accept-Encoding: gzip` và giải đúng, nhưng máy chủ chỉ nén khi máy có khai — máy
 nào không nói thì vẫn nhận bản trần. Hai file tĩnh nén một lần rồi giữ luôn bản nén
 trong bộ nhớ, vì địa chỉ của chúng đã mang `?v=<mã nội dung>`: đổi file là đổi mã.
+
+**Biểu tượng ra khỏi HTML.** Hồi còn đặt `<svg>` thẳng trong trang, riêng hình vẽ
+đã chiếm gần 3KB của mỗi lần tải trang, lần nào cũng phải tải lại vì nó là một
+phần của HTML. Giờ là ảnh PNG chừng 300 byte một hình: lần đầu vào trang máy gọi
+thêm chừng mười mấy lần cho hết bộ hình cần dùng, rồi giữ cả tháng trong bộ đệm
+nên các trang sau không tốn byte nào cho biểu tượng nữa.
 
 **Ảnh thu nhỏ thu về đúng bề ngang cần hiện.** Ảnh `mqdefault` của YouTube rộng
 320 điểm, còn khung ảnh trên trang chỉ rộng chừng 160 — máy đang tải gấp bốn số
@@ -603,19 +645,34 @@ này tự hết: bản mới là địa chỉ mới, máy tải lại đúng m�
 thì trang HTML cũng đang bị đệm ở đâu đó — xoá bộ đệm trình duyệt, hoặc xem lại
 reverse proxy có tự đệm HTML không.
 
+**Trình duyệt gốc của máy không hiện biểu tượng nào, chỗ nào có hình cũng là
+khoảng trống.** Máy chủ đang chạy bản cũ, bản còn đặt `<svg>` thẳng vào trang —
+trình duyệt Symbian không có bộ vẽ SVG nên nó bỏ qua im lặng. Cập nhật máy chủ:
+bản mới gửi biểu tượng dưới dạng ảnh PNG. Kiểm nhanh bằng cách mở
+`http://<máy chủ>:8080/i/home-red.png` trên điện thoại — phải thấy hình ngôi nhà
+màu đỏ.
+
+**Mở bằng Opera Mobile 12 thì thanh trên và chân trang trôi mất khi cuộn.** Cũng
+là bản cũ: phép đo `position: fixed` của nó đo Opera ra kết quả sai nên bỏ luôn
+việc dán. Cập nhật máy chủ là xong, và không phải xoá gì trong điện thoại — kết
+quả đo cũ nằm dưới một tên khoá khác, bản mới tự đo lại một lần.
+
 ## Kiểm thử nhanh
 
 ```bash
 node tools/smoke.js
 node tools/test-login.js
 node tools/test-convert.js
+node tools/test-pin.js
 node tools/preview.js
 ```
 
 `smoke.js` gọi các trang bằng User-Agent của Nokia N8 và cảnh báo nếu trang quá
 nặng, dùng CSS mà Belle không hiểu (flex, grid, biến CSS), có script chèn thẳng
-vào HTML, hoặc `s60.js` lỡ viết bằng cú pháp ES6 — WebKit 535 gặp một chữ
-`const` là chết cả file mà chết im lặng.
+vào HTML, có `<svg>` đặt thẳng trong trang (trình duyệt gốc không vẽ được, xem
+mục [Cài đặt riêng](#cài-đặt-riêng)), hoặc `s60.js` lỡ viết bằng cú pháp ES6 —
+WebKit 535 gặp một chữ `const` là chết cả file mà chết im lặng. Nó cũng gọi thử
+một biểu tượng để chắc máy chủ còn tô được ảnh PNG.
 
 `preview.js` dựng HTML của mọi trang ra thư mục `preview/` để xem trên máy tính,
 không cần chạy máy chủ hay gọi YouTube. Mở `preview/sizes.html` là thấy các
@@ -629,8 +686,13 @@ dựng hai "máy Nokia" song song để chắc chắn cookie máy này không d�
 kia, và dựng thêm một "máy vừa bị trình duyệt xoá cookie" để thử địa chỉ ghi nhớ.
 `test-convert.js` dựng một đoạn phim mẫu, dọn nó qua HTTP giống như YouTube vẫn
 dọn luồng, rồi cho ffmpeg chạy y hệt lúc chạy thật — kiểm được cả độ phân giải,
-profile H.264 Baseline lẫn vị trí khối `moov`. Hai bài đầu cần máy chủ đang
-chạy; bài thứ ba thì không.
+profile H.264 Baseline lẫn vị trí khối `moov`.
+
+`test-pin.js` chạy chính `public/s60.js` trên năm chiếc "máy giả": máy dán thật,
+máy nhận `fixed` rồi xử lý như `absolute`, máy không biết `fixed`, và hai kiểu
+"đo không được" của Opera Mobile 12. Chỗ này không thể thử bằng mắt trên máy tính
+vì trình duyệt nào trên máy tính cũng dán đúng, nên mọi lỗi chỉ lộ ra trên điện
+thoại. Hai bài đầu cần máy chủ đang chạy; hai bài sau thì không.
 
 ## Ghi chú
 

@@ -10,6 +10,7 @@
 const fs = require('fs');
 const path = require('path');
 
+const icons = require('../lib/icons');
 const render = require('../lib/render');
 
 const prefs = { thumbs: true, pageSize: 10, textSize: 'l' };
@@ -136,11 +137,25 @@ fs.writeFileSync(
     ' text-anchor="middle">320 x 180</text></svg>'
 );
 
+// Bieu tuong la anh PNG do may chu to ra; ban xem thu khong co may chu nao nen
+// to san ra file, dung nhung hinh ma cac trang nay that su goi toi.
+const iconDir = path.join(outDir, 'i');
+fs.mkdirSync(iconDir, { recursive: true });
+const wanted = new Set();
+for (const html of Object.values(pages)) {
+  for (const hit of html.matchAll(/\/i\/([a-z]+-[a-z]+\.png)/g)) wanted.add(hit[1]);
+}
+for (const file of wanted) {
+  fs.writeFileSync(path.join(iconDir, file), icons.png(file));
+}
+console.log(`i/  ${wanted.size} bieu tuong PNG`);
+
 for (const [name, html] of Object.entries(pages)) {
   // Trang that lay tai nguyen tu goc dia chi; ban xem thu nam trong mot thu
   // muc nen phai doi sang duong dan tuong doi.
   const local = html
     .replace(/"\/s60\.(css|js)(?:\?[^"]*)?"/g, '"s60.$1"')
+    .replace(/"\/i\/([^"?]+)(?:\?[^"]*)?"/g, '"i/$1"')
     .replace(/"\/thumb\/[^"]*"/g, '"thumb.svg"');
   fs.writeFileSync(path.join(outDir, name), local);
   console.log(`${name}  ${html.length} byte`);

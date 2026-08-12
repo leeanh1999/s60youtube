@@ -29,37 +29,74 @@
   // Hai thanh da dan chua; chua dan thi chung nam trong dong chay nhu thuong.
   var pinned = false;
 
+  /** Mot o ti hon dat sat dinh, chi de do. Khong chiem cho nao trong trang. */
+  function probe(how) {
+    var box = document.createElement('div');
+    box.style.position = how;
+    box.style.top = '0';
+    box.style.left = '0';
+    box.style.width = '1px';
+    box.style.height = '1px';
+    document.body.appendChild(box);
+    return box;
+  }
+
+  function topOf(box) {
+    return box.getBoundingClientRect().top;
+  }
+
+  /**
+   * May co NHAN thuoc tinh 'fixed' khong. Chi la loi may khai, chua noi duoc no
+   * lam dung hay khong — nhung khi khong do duoc gi thi loi khai con hon khong.
+   */
+  function knowsFixed(box) {
+    if (!window.getComputedStyle) return false;
+    var style = window.getComputedStyle(box, null);
+    return !!style && style.position === 'fixed';
+  }
+
   /**
    * Co dan that hay khong. Phai do chu khong the tin: nhieu ban WebKit doi
    * Symbian nhan 'position: fixed' roi xu ly nhu 'absolute' — thanh dan vao
    * trang chu khong vao khung nhin, cuon xuong la no troi mat len tren. Bat
    * bua thi mat luon chan trang, tinh ra con te hon la khong dan.
    *
-   * Cach do: dat mot o ti hon dan sat dinh, cuon di vai diem roi xem toa do
-   * cua no so voi khung nhin co doi khong. Dan dung thi khong doi.
+   * Cach do: dat hai o ti hon sat dinh, mot 'fixed' mot 'absolute', cuon di vai
+   * diem roi xem toa do cua chung so voi khung nhin. O 'absolute' PHAI troi len
+   * dung so diem vua cuon — no la thuoc do cua chinh phep do. Thuoc do dung roi
+   * thi o 'fixed' khong nhich nghia la may dan that.
+   *
+   * O 'absolute' khong troi thi phep do khong noi len dieu gi ca, va day chinh
+   * la Opera Mobile 12: no cuon ben trong mot khung nhin rieng nen so cuon cua
+   * window va toa do getBoundingClientRect khong an khop nhau. Truoc kia cho
+   * "do khong duoc" bi coi la "khong dan duoc", nen tren Opera hai thanh troi
+   * mat theo trang. Gio gap the thi nghe theo loi may khai: no bao hieu 'fixed'
+   * la cho dan, vi Opera Mobile 12 dan dung.
    */
   function pinWorks() {
-    var probe = document.createElement('div');
-    if (!probe.getBoundingClientRect || !window.scrollTo) return false;
+    if (!window.scrollTo || !document.createElement('div').getBoundingClientRect) return false;
 
-    probe.style.position = 'fixed';
-    probe.style.top = '0';
-    probe.style.left = '0';
-    probe.style.width = '1px';
-    probe.style.height = '1px';
-    document.body.appendChild(probe);
+    var glued = probe('fixed');
+    var loose = probe('absolute');
 
     var was = scrolled();
-    var before = probe.getBoundingClientRect().top;
-    window.scrollTo(0, was + 2);
+    var gluedBefore = topOf(glued);
+    var looseBefore = topOf(loose);
+    window.scrollTo(0, was + 4);
     var moved = scrolled() - was;
-    var after = probe.getBoundingClientRect().top;
+    var gluedAfter = topOf(glued);
+    var looseAfter = topOf(loose);
     window.scrollTo(0, was);
-    document.body.removeChild(probe);
 
-    if (moved <= 0) return false;
-    var slip = after - before;
-    return slip < 1 && slip > -1;
+    // Cuon 4 diem thi o 'absolute' phai len 4 diem; lech qua 2 diem la khong tin
+    // duoc (may cuon bang khung nhin rieng, hoac cuon co da).
+    var trusted = moved > 0 && Math.abs(looseAfter - looseBefore + moved) < 2;
+    var slip = gluedAfter - gluedBefore;
+    var ok = trusted ? slip < 1 && slip > -1 : knowsFixed(glued);
+
+    document.body.removeChild(glued);
+    document.body.removeChild(loose);
+    return ok;
   }
 
   function scrolled() {
@@ -90,10 +127,16 @@
   /**
    * Ket qua do nho lai theo tung may, de moi trang sau do khong phai cuon thu
    * lai lan nua. May tat luu tru thi do lai moi lan, cung khong sao.
+   *
+   * Ten khoa mang so 2: ban do dau tien tra lai "khong dan duoc" tren Opera
+   * Mobile 12, va ket qua sai do da nam trong may nguoi dung. Doi ten khoa la
+   * may do lai mot lan bang cach do moi.
    */
+  var MEMORY = 's60-pin2';
+
   function recall() {
     try {
-      return window.localStorage.getItem('s60-pin');
+      return window.localStorage.getItem(MEMORY);
     } catch (err) {
       return null;
     }
@@ -101,7 +144,7 @@
 
   function memorize(ok) {
     try {
-      window.localStorage.setItem('s60-pin', ok ? '1' : '0');
+      window.localStorage.setItem(MEMORY, ok ? '1' : '0');
     } catch (err) {
       /* Che do rieng tu hoac may tat luu tru: lan sau do lai, khong sao. */
     }

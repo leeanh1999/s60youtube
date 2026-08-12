@@ -14,6 +14,7 @@ const PATHS = process.argv.slice(2).length
       '/settings',
       '/s60.css',
       '/s60.js',
+      '/i/home-red.png',
       '/khong-co-trang',
     ];
 
@@ -22,10 +23,18 @@ const PATHS = process.argv.slice(2).length
  * thu do khong con la loi. Con lai la nhung thu no that su khong hieu, va can
  * nang cua trang.
  */
-function check(path, body) {
+function check(path, body, type) {
   // Bo chu thich truoc khi do, tranh bao dong gia.
   const code = body.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '');
   const problems = [];
+
+  // Bieu tuong: may chu phai to duoc hinh ra PNG. Hong cho nay thi tren may
+  // that moi cho co bieu tuong chi con la khoang trong.
+  if (path.endsWith('.png')) {
+    if (!/^image\/png/.test(String(type))) problems.push(`khong phai anh PNG (${type})`);
+    else if (body.length < 100) problems.push('anh rong');
+    return problems;
+  }
 
   if (path.endsWith('.js')) {
     // Ban WebKit 535 chi chay ES5: mot chu 'const' la ca file chet, ma no chet
@@ -42,6 +51,9 @@ function check(path, body) {
     if (/display:\s*(flex|grid)|position:\s*sticky|var\(--/i.test(code)) {
       problems.push('co CSS ma Belle khong hieu');
     }
+    // Trinh duyet goc cua Symbian khong co bo ve SVG: dat <svg> thang vao trang
+    // thi no khong bao loi gi ma cung khong ve gi. Bieu tuong phai la anh PNG.
+    if (/<svg\b/i.test(code)) problems.push('co SVG dat thang trong trang');
     // Phan them bang JavaScript phai nam trong file rieng: trang van phai
     // dung duoc khi may tat script hoac tai file loi.
     if (/<script(?![^>]*\bsrc=)/i.test(code)) problems.push('co script noi tuyen');
@@ -59,7 +71,7 @@ function check(path, body) {
       const res = await fetch(BASE + p, { headers: { 'User-Agent': UA } });
       const body = await res.text();
       const links = (body.match(/watch\?v=/g) || []).length;
-      const problems = check(p, body);
+      const problems = check(p, body, res.headers.get('content-type'));
       found += problems.length;
       console.log(
         `[${p}] HTTP ${res.status} ${res.headers.get('content-type')} ` +

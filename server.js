@@ -11,6 +11,7 @@ const { Readable } = require('stream');
 const config = require('./lib/config');
 const { TtlCache } = require('./lib/cache');
 const cookies = require('./lib/cookies');
+const icons = require('./lib/icons');
 const innertube = require('./lib/innertube');
 const pairing = require('./lib/pairing');
 const ytdlp = require('./lib/ytdlp');
@@ -209,6 +210,26 @@ app.get('/*', (req, res, next) => {
     .set('Content-Encoding', 'gzip')
     .set('Cache-Control', 'public, max-age=2592000')
     .set('Vary', 'Accept-Encoding')
+    .send(body);
+});
+
+/**
+ * Bieu tuong: may chu to hinh SVG ra anh PNG roi giu trong bo nho (xem
+ * lib/icons.js). Trinh duyet goc cua Symbian khong co bo ve SVG nen dat <svg>
+ * thang trong trang la mat hinh; anh PNG thi may nao cung mo duoc.
+ *
+ * Ten file mang san ten hinh va ten mau, con dia chi mang thay ma cua ca bo
+ * hinh — doi hinh la doi dia chi, nen cho may giu that lau trong bo dem.
+ */
+app.get('/i/:file', (req, res) => {
+  const body = icons.png(req.params.file);
+  if (!body) {
+    res.status(404).end();
+    return;
+  }
+  res
+    .set('Content-Type', 'image/png')
+    .set('Cache-Control', 'public, max-age=2592000')
     .send(body);
 });
 

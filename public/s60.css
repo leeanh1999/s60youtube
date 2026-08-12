@@ -39,12 +39,19 @@ a {
   -webkit-tap-highlight-color: rgba(204, 0, 0, 0.28);
 }
 
-/* Bieu tuong SVG: cao xap xi chu cai hoa cua dong chu ben canh, khong cao hon.
-   To hon mot chut la no doi cho, nhin nhu bang hieu chu khong nhu nhan muc. */
+/* Bieu tuong la anh PNG do may chu to san tung mau (trinh duyet goc cua Symbian
+   khong co bo ve SVG). Mau nam trong ten file anh, nen o day chi con viec do co:
+   cao xap xi chu cai hoa cua dong chu ben canh, khong cao hon — to hon mot chut
+   la no doi cho, nhin nhu bang hieu chu khong nhu nhan muc.
+
+   Do bang em nen doi co chu trong Cai dat la hinh to nho theo. Anh to san 32
+   diem, tuc moi cho dung deu la thu nho lai: may nao thu nho tho den dau cung
+   con ra hinh, con phong to len thi hinh bet ngay. */
 .ic {
   width: 0.92em;
   height: 0.92em;
   vertical-align: -0.11em;
+  border: 0;
 }
 
 h1 {
@@ -57,7 +64,6 @@ h1 .ic {
   width: 0.88em;
   height: 0.88em;
   margin-right: 6px;
-  color: #c00000;
 }
 
 /* Tieu de muc: mot vach do ben trai thay cho ca dai nen xam. */
@@ -74,7 +80,6 @@ h2 .ic {
   width: 0.95em;
   height: 0.95em;
   margin-right: 6px;
-  color: #c00000;
 }
 
 #main {
@@ -207,7 +212,6 @@ h2 .ic {
   width: 0.9em;
   height: 0.9em;
   margin-right: 5px;
-  color: #8a9099;
 }
 
 .head .facts {
@@ -220,7 +224,6 @@ h2 .ic {
   width: 0.9em;
   height: 0.9em;
   margin-right: 4px;
-  color: #8a9099;
 }
 
 .head .facts span {
@@ -519,7 +522,6 @@ a.go .ic {
   width: 1.05em;
   height: 1.05em;
   margin: 0.12em 8px 0 0;
-  color: #c00000;
 }
 
 .opts li a .k {
@@ -583,26 +585,14 @@ a.go .ic {
   border-color: #e0bf00;
 }
 
-.warn .ic {
-  color: #a88600;
-}
-
 .err {
   background: #ffeceb;
   border-color: #c00000;
 }
 
-.err .ic {
-  color: #c00000;
-}
-
 .ok {
   background: #ecfaec;
   border-color: #2f9e2f;
-}
-
-.ok .ic {
-  color: #2f9e2f;
 }
 
 .empty {
