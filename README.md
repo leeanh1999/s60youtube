@@ -400,11 +400,12 @@ nhập (phím `*` cũng mở được, phím `C` đóng lại). Làm vậy vì b
 nhất trên hai màn này: một ô nhập chiếm gần hết dòng đầu mà chín trong mười lần vào
 trang là để xem, không phải để gõ.
 
-Trong khung thì ngược lại, hai nút **Tìm kiếm** và **Đóng** đều là chữ, cùng cao
-cùng cỡ, chỉ khác màu: đỏ đậm cho việc chính, xám cho đường lui. Một bên chữ một
-bên hình nhỏ thì nhìn ra hai thứ khác loại, mà chỗ này không có thanh trên chật
-chội để phải tiết kiệm bề ngang: ngay cả ở cỡ chữ Rất lớn trên màn 360 điểm, ô nhập
-vẫn còn 211 điểm.
+Trong khung thì ngược lại, nút gửi là chữ **Tìm kiếm** — chỗ này không chật như
+thanh trên nên không phải tiết kiệm bề ngang: ngay cả ở cỡ chữ Rất lớn trên màn 360
+điểm, ô nhập vẫn còn 211 điểm. Nút đóng là **một mũi nhọn quay lên**, vì khung tìm
+từ trên tụt xuống thì đóng là nó thu lên lại, hình chỉ đúng về chỗ nó sẽ biến vào.
+Hai nút cao đúng bằng nhau (hình 1,2em cộng đệm 0,45em hai đầu là 2,1em, bằng chiều
+cao định cho ô nhập), chỉ khác màu: đỏ đậm cho việc chính, xám cho đường lui.
 
 Khung bật ra **không đòi máy phải dán được thanh**: dán được thì nó là `fixed` nằm
 ngay dưới thanh, không dán được thì `s60.js` đặt nó bằng `absolute` vào đúng đỉnh

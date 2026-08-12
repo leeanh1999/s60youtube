@@ -881,25 +881,31 @@ body.fixnav .nav a .ic {
   border-bottom: 2px solid #8c0000;
 }
 
-/* Hai nut trong khung phai cung mot kieu: cung cao, cung co chu, va deu la chu
-   tran khong hinh — mot ben chu mot ben hinh nho thi nhin ra hai thu khac loai.
-   Chi khac mau: Tim kiem la viec chinh nen do dam, Dong la duong lui nen xam. */
+/* Nut dong la mot mui nhon quay len: khung tim tu tren tut xuong, dong la no thu
+   len lai, nen hinh chi huong dung ve cho no se bien vao.
+
+   Cao bang nut Tim kiem ben tren cho hai nut cung mot co: hinh 1,2em cong dem
+   0,45em hai dau la 2,1em, dung bang chieu cao dinh cho o nhap va nut. */
 #pop .popb {
   margin: 6px 6px 0 6px;
   text-align: right;
+  line-height: 0;
 }
 
 #pop .popx {
   display: inline-block;
-  height: 2.1em;
-  line-height: 2.1em;
-  padding: 0 0.9em;
-  font-size: 1em;
+  padding: 0.45em 0.9em;
   color: #33383d;
   background: #e4e8ec;
   border: 1px solid #b9bfc6;
   border-radius: 5px;
   -webkit-border-radius: 5px;
+}
+
+#pop .popx .ic {
+  display: block;
+  width: 1.2em;
+  height: 1.2em;
 }
 
 /* ---------- man hep: N8 va ho 640x360 khi xem doc ---------- */
