@@ -339,9 +339,22 @@ Trình duyệt Symbian^3 trở lên (Nokia Browser 7.x/8.x, nền WebKit 533–5
 được HTML5, SVG đặt
 thẳng trong trang, CSS3 cơ bản và JavaScript — nên biểu tượng trên trang là hình
 vẽ SVG chứ không phải ký tự đặc biệt (font máy thiếu ký tự là hiện ra ô vuông,
-còn SVG lỗi thì chỉ là khoảng trống). Phần nhảy khối bằng phím nằm trong
-`public/s60.js`; tắt JavaScript đi thì trang vẫn dùng được đủ như cũ, chỉ mất
-đúng cái tiện đó.
+còn SVG lỗi thì chỉ là khoảng trống).
+
+Thanh bốn ô ở chân trang **dán xuống đáy màn hình**, cuộn thế nào cũng còn đó.
+Chỗ này không dám tin `position: fixed`: nhiều bản WebKit đời Symbian nhận thuộc
+tính đó rồi xử lý như `absolute` — thanh dán vào trang chứ không vào khung nhìn,
+cuộn xuống là nó trôi mất lên trên, tính ra còn tệ hơn không dán. Nên `s60.js`
+**đo thật**: đặt một ô tí hon dán sát đỉnh, cuộn đi hai điểm rồi xem toạ độ của
+nó so với khung nhìn có đổi không, đo xong trả lại chỗ cũ ngay. Đúng thì mới đặt
+lớp `fixnav` vào `<body>`, chừa sẵn khoảng trống ở cuối trang cho khỏi che chữ,
+và thu thanh gọn lại (E6 chỉ cao 480 điểm nên thanh ăn 42 điểm là vừa). Đo sai
+thì bỏ qua, thanh nằm cuối trang như cũ. Kết quả đo nhớ trong `localStorage` nên
+các trang sau không phải cuộn thử lại. Phím lên/xuống cũng biết chừa: khối vừa
+nhảy tới mà nằm sau thanh thì trang cuộn thêm đúng phần bị che.
+
+Cả hai phần trên nằm trong `public/s60.js`; tắt JavaScript đi thì trang vẫn dùng
+được đủ như cũ, chỉ mất đúng hai cái tiện đó.
 
 Biến môi trường:
 

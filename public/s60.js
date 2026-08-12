@@ -1,18 +1,154 @@
-/* Dieu huong bang phim cho Nokia E6.
+/* Hai phan them cho trang, deu la phan them: khong co JavaScript thi trang van
+ * chay day du, chi mat dung hai tien do.
  *
- * Mac dinh trinh duyet Symbian day mot con tro nho chay tu do tren trang: bam
- * xuong mot cai la con tro nhich vai diem anh, muon qua duoc mot video phai
- * bam chuc lan. O day chan phim len/xuong lai, chuyen thanh "nhay sang muc ke
- * tiep": moi the video la mot the <a> duy nhat nen mot lan bam = mot video.
+ *  1. Dan chan trang xuong day khung nhin (neu may lam duoc that).
+ *  2. Phim len/xuong nhay sang khoi video ke tiep.
  *
- * Chi la phan them: khong co JavaScript thi trang van chay nhu cu, con phim
- * so 0-9 van la accesskey do chinh trinh duyet lo.
- *
- * Viet bang ES3 (var, khong arrow, khong querySelectorAll bat buoc) cho hop
- * voi may cu.
+ * Viet bang ES3 (var, khong arrow, khong template string) cho hop voi may cu:
+ * WebKit 533 gap mot chu 'const' la chet ca file, ma chet im lang.
  */
 (function () {
-  if (!document.addEventListener || !document.getElementsByTagName) return;
+  if (!document.getElementsByTagName) return;
+
+  /* ---------- 1. chan trang dan day khung nhin ---------- */
+
+  // Thanh dang dan; con null nghia la van nam cuoi trang nhu thuong.
+  var pinned = null;
+
+  /**
+   * Co dan that hay khong. Phai do chu khong the tin: nhieu ban WebKit doi
+   * Symbian nhan 'position: fixed' roi xu ly nhu 'absolute' — thanh dan vao
+   * trang chu khong vao khung nhin, cuon xuong la no troi mat len tren. Bat
+   * bua thi mat luon chan trang, tinh ra con te hon la khong dan.
+   *
+   * Cach do: dat mot o ti hon dan sat dinh, cuon di vai diem roi xem toa do
+   * cua no so voi khung nhin co doi khong. Dan dung thi khong doi.
+   */
+  function pinWorks() {
+    var probe = document.createElement('div');
+    if (!probe.getBoundingClientRect || !window.scrollTo) return false;
+
+    probe.style.position = 'fixed';
+    probe.style.top = '0';
+    probe.style.left = '0';
+    probe.style.width = '1px';
+    probe.style.height = '1px';
+    document.body.appendChild(probe);
+
+    var was = scrolled();
+    var before = probe.getBoundingClientRect().top;
+    window.scrollTo(0, was + 2);
+    var moved = scrolled() - was;
+    var after = probe.getBoundingClientRect().top;
+    window.scrollTo(0, was);
+    document.body.removeChild(probe);
+
+    if (moved <= 0) return false;
+    var slip = after - before;
+    return slip < 1 && slip > -1;
+  }
+
+  function scrolled() {
+    if (typeof window.pageYOffset === 'number') return window.pageYOffset;
+    return document.documentElement.scrollTop || document.body.scrollTop || 0;
+  }
+
+  function scrollable() {
+    var doc = document.documentElement;
+    var height = Math.max(doc.scrollHeight, document.body.scrollHeight);
+    return height > doc.clientHeight + 2;
+  }
+
+  /**
+   * Trang ngan hon man hinh thi khong cuon duoc, ma khong cuon thi khong do
+   * duoc. Keo tam cho no dai ra vai diem roi tra lai ngay trong cung mot nhip:
+   * may chua kip ve lai nen nguoi dung khong thay gi nhay.
+   */
+  function measurePin() {
+    if (scrollable()) return pinWorks();
+    var was = document.body.style.minHeight;
+    document.body.style.minHeight = document.documentElement.clientHeight + 40 + 'px';
+    var ok = pinWorks();
+    document.body.style.minHeight = was;
+    return ok;
+  }
+
+  /**
+   * Ket qua do nho lai theo tung may, de moi trang sau do khong phai cuon thu
+   * lai lan nua. May tat luu tru thi do lai moi lan, cung khong sao.
+   */
+  function recall() {
+    try {
+      return window.localStorage.getItem('s60-pin');
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function memorize(ok) {
+    try {
+      window.localStorage.setItem('s60-pin', ok ? '1' : '0');
+    } catch (err) {
+      /* Che do rieng tu hoac may tat luu tru: lan sau do lai, khong sao. */
+    }
+  }
+
+  /** Thanh dan che mat phan duoi trang, nen chua san cho no o cuoi. */
+  function spare(nav) {
+    document.body.style.paddingBottom = nav.offsetHeight + 'px';
+  }
+
+  function pin(nav) {
+    document.body.className += ' fixnav';
+    spare(nav);
+    pinned = nav;
+
+    // Do ngay sau khi doi lop thi con vai diem sai: hinh SVG trong thanh chua
+    // kip nhan co moi. Do lai mot nhip sau la dung han.
+    if (window.setTimeout) {
+      window.setTimeout(function () {
+        spare(nav);
+      }, 0);
+    }
+
+    // N8 xoay ngang la doi ca be ngang lan chieu cao thanh, phai do lai.
+    if (window.addEventListener) {
+      window.addEventListener(
+        'resize',
+        function () {
+          spare(nav);
+        },
+        false
+      );
+    }
+  }
+
+  function setUpNav() {
+    if (!document.body) return;
+    var tables = document.getElementsByTagName('table');
+    var nav = null;
+    for (var i = 0; i < tables.length; i++) {
+      if ((' ' + tables[i].className + ' ').indexOf(' nav ') > -1) nav = tables[i];
+    }
+    if (!nav) return;
+
+    var known = recall();
+    if (known === '1') {
+      pin(nav);
+      return;
+    }
+    if (known === '0') return;
+
+    var ok = measurePin();
+    memorize(ok);
+    if (ok) pin(nav);
+  }
+
+  setUpNav();
+
+  /* ---------- 2. dieu huong bang phim ---------- */
+
+  if (!document.addEventListener) return;
 
   // Trang Cai dat co o chon: trong the <select> thi len/xuong la doi gia tri,
   // gianh lay phim se lam nguoi dung khong sua duoc gi. Nhung trang do khong co
@@ -56,6 +192,17 @@
     return -1;
   }
 
+  /**
+   * Thanh dan nam de len phan duoi khung nhin, nen khoi vua nhay toi co the
+   * nam ngay duoi no: cuon them dung phan bi che.
+   */
+  function clearNav(el) {
+    if (!pinned || !el.getBoundingClientRect || !window.scrollBy) return;
+    var room = document.documentElement.clientHeight - pinned.offsetHeight;
+    var over = el.getBoundingClientRect().bottom - room;
+    if (over > 0) window.scrollBy(0, Math.ceil(over));
+  }
+
   /** Tra ve true khi da nhay duoc; false thi de trinh duyet cuon nhu thuong. */
   function step(direction) {
     var list = stops();
@@ -78,6 +225,7 @@
         // can, nho vay danh sach khong giat len giat xuong.
         if (el.scrollIntoViewIfNeeded) el.scrollIntoViewIfNeeded();
         else if (el.scrollIntoView) el.scrollIntoView(direction < 0);
+        clearNav(el);
         return true;
       }
       next += direction;

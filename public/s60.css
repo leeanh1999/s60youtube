@@ -764,6 +764,34 @@ a.go .ic {
   font-weight: bold;
 }
 
+/* Dan chan trang xuong day khung nhin. Lop 'fixnav' do s60.js dat vao, va chi
+   dat sau khi da do duoc rang may dan dung: nhieu ban WebKit doi Symbian nhan
+   'position: fixed' roi xu ly nhu 'absolute', cuon xuong la thanh troi mat.
+   Khong do dat thi bo qua ca khoi nay, thanh nam cuoi trang nhu cu.
+
+   Nen phai kin va co vien tren: chu ben duoi truot qua ngay sau lung no. */
+body.fixnav .nav {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  margin: 0;
+  background: #f4f6f8;
+  border-top: 1px solid #a9b0b7;
+}
+
+/* Da dan thi thanh an cho suot ca man hinh chu khong chi luc cuon toi cuoi, nen
+   thu no gon lai — E6 chi cao 480 diem, moi diem deu dat. */
+body.fixnav .nav a {
+  padding: 4px 2px;
+}
+
+body.fixnav .nav a .ic {
+  width: 1.25em;
+  height: 1.25em;
+  margin-bottom: 1px;
+}
+
 /* ---------- man hep: N8 va ho 640x360 khi xem doc ---------- */
 
 /* Chi con 360 diem be ngang, nhung diem cua N8 to hon diem cua E6 (210 so voi
