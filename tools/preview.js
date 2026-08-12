@@ -125,4 +125,39 @@ for (const [name, html] of Object.entries(pages)) {
   fs.writeFileSync(path.join(outDir, name), local);
   console.log(`${name}  ${html.length} byte`);
 }
+
+/**
+ * Trang doi chieu hai khuon man hinh. Phai long vao <iframe> chu khong the thu
+ * cua so trinh duyet: Chrome va Edge tren Windows khong cho cua so hep hon
+ * chung 500 diem, thu nua thi no van ve o 492 diem roi cat bot — nhin ra y nhu
+ * trang bi tran, ma media query thi chua he duoc ap. Trong iframe thi be ngang
+ * la be ngang that.
+ */
+const SCREENS = [
+  ['Nokia N8 — 360 x 640 (xem doc)', 360, 640],
+  ['Nokia E6 — 640 x 480 (nam ngang)', 640, 480],
+];
+const shown = ['home.html', 'search.html', 'watch.html', 'settings.html'];
+fs.writeFileSync(
+  path.join(outDir, 'sizes.html'),
+  `<!DOCTYPE html>
+<html lang="vi"><head><meta charset="utf-8" /><title>Hai khuon man hinh</title>
+<style>
+body { margin: 0; background: #4a4f55; font: 13px Arial, sans-serif; color: #fff }
+h2 { margin: 0; padding: 6px 8px; font-size: 14px }
+p { margin: 0; padding: 0 8px 4px 8px; font-size: 12px; color: #d7dbdf }
+iframe { border: 0; display: block; background: #fff; float: left; margin: 0 8px 8px 0 }
+.row { overflow: hidden; padding-left: 8px }
+</style></head><body>
+${SCREENS.map(
+  ([label, w, h]) => `<h2>${label}</h2>
+<p>${shown.join(' · ')}</p>
+<div class="row">
+${shown.map((f) => `<iframe src="${f}" width="${w}" height="${h}"></iframe>`).join('\n')}
+</div>`
+).join('\n')}
+</body></html>`
+);
+console.log(`sizes.html  doi chieu 360x640 va 640x480`);
+
 console.log(`\nDa ghi vao ${outDir}`);

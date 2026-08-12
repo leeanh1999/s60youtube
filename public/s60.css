@@ -1,12 +1,16 @@
-/* Giao dien cho Nokia E6 (Symbian Belle, Nokia Browser 8.x).
-   Ban WebKit nay hieu CSS3 co ban: bo goc, do trong suot, chon theo :focus.
-   Van tranh nhung thu nang tay cho con chip 680MHz: khong bong do, khong
-   chuyen mau, khong hoat hinh — cuon danh sach moi muot.
+/* Giao dien cho Symbian^3 / Anna / Belle (Nokia Browser 7.x va 8.x).
+   Ban WebKit nay hieu CSS3 co ban: bo goc, do trong suot, chon theo :focus,
+   va cau @media. Van tranh nhung thu nang tay cho con chip 680MHz: khong bong
+   do, khong chuyen mau, khong hoat hinh — cuon danh sach moi muot.
 
-   Man hinh E6 nam ngang: 640 diem be ngang, 480 diem chieu cao, tren duong
-   cheo 2,46 inch — khoang 325 diem moi inch, tuc be ngang that chi chung 5cm.
-   Bo cuc mot cot the tu tren xuong, trong tung the thi chia doi: anh ben trai,
-   chu ben phai. */
+   Hai khuon man hinh phai vua:
+     E6  640x480 nam ngang, 2,46 inch — khoang 325 diem moi inch.
+     N8  360x640 xem doc, 3,5 inch — khoang 210 diem moi inch.
+   Phan chinh cua file nay do cho E6. Man hep hon 480 diem (N8, C7, X7, E7 khi
+   xem doc) lay them nhanh @media o cuoi file.
+
+   Bo cuc chung cho ca hai: mot cot the tu tren xuong, trong tung the thi chia
+   doi — anh ben trai, chu ben phai. */
 
 /* Co chu goc. Moi kich thuoc khac deu do bang em nen doi mot dong o day la
    doi ca trang, ke ca be ngang cua anh thu nho. Man hinh day diem anh ma be
@@ -758,4 +762,88 @@ a.go .ic {
   background: #ffffff;
   color: #c00000;
   font-weight: bold;
+}
+
+/* ---------- man hep: N8 va ho 640x360 khi xem doc ---------- */
+
+/* Chi con 360 diem be ngang, nhung diem cua N8 to hon diem cua E6 (210 so voi
+   325 diem moi inch) nen chu 16px o day con lon hon chu 20px tren E6. Ha co
+   chu, thu khung anh va bot le — de danh cho ben phai du cho ba dong chu.
+   Bu lai man cao 640 diem: the co cao hon mot chut van thay duoc bon the.
+
+   Trinh duyet nao khong hieu @media thi bo qua ca khoi, tro ve khuon E6: chu
+   to va anh to, van doc duoc chu khong be trang. */
+@media screen and (max-width: 480px) {
+  body {
+    font-size: 16px;
+  }
+
+  body.t-m {
+    font-size: 14px;
+  }
+
+  body.t-xl {
+    font-size: 20px;
+  }
+
+  /* Le 6px moi ben tren man 360 la mat 3% be ngang cho khoang trong. */
+  .head,
+  .search,
+  .feed li,
+  .player,
+  .opts li,
+  .opts li.m,
+  .desc,
+  .warn,
+  .err,
+  .ok,
+  .more,
+  .code,
+  .url,
+  .qr,
+  .form .row {
+    margin-left: 4px;
+    margin-right: 4px;
+  }
+
+  .bar {
+    padding: 6px;
+  }
+
+  h2 {
+    margin-left: 4px;
+    margin-right: 4px;
+  }
+
+  /* Anh 6,4em (chung 102 diem) van du ro mat nguoi va chu tren anh bia. */
+  .card {
+    min-height: 3.6em;
+    padding: 0.3em 0.35em 0.3em 7.3em;
+  }
+
+  .card .th {
+    left: 0.35em;
+    top: 0.3em;
+    width: 6.4em;
+    height: 3.6em;
+  }
+
+  .feed.nothumb .card {
+    padding-left: 0.35em;
+  }
+
+  /* Bon o chan trang chia 360 diem: bo bot dem de chu khong xuong hai dong. */
+  .nav a {
+    padding: 6px 1px;
+    font-size: 0.68em;
+  }
+
+  /* Man cao nen dat duoc nut lon hon cho ngon tay — N8 khong co phim bam. */
+  a.go {
+    padding: 14px 8px;
+  }
+
+  .info td.lb {
+    width: 42%;
+  }
 }

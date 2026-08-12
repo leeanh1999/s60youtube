@@ -312,6 +312,20 @@ bốn video thay vì một. Cả khối là **một liên kết duy nhất**, nh
 xuống một cái là sang đúng một video, và khối đang chọn thì đổi màu kèm dấu tam
 giác phát trên ảnh nên không bao giờ lạc con trỏ.
 
+Trang vừa hai khuôn màn hình, không phải đoán máy nào: nó chỉ khai báo bề ngang
+thật (`width=device-width`) rồi để `s60.css` tự chọn.
+
+| Máy | Màn hình | Trang hiện ra |
+| --- | --- | --- |
+| E6, E7, N97 | 640 điểm ngang | Chữ 20px, ảnh xem trước 8em (≈160 điểm) |
+| N8, C7, X7, C6-01 khi xem dọc | 360 điểm ngang | Chữ 16px, ảnh 6,4em (≈102 điểm), lề mỏng hơn |
+
+Ngưỡng đổi khuôn là 480 điểm. Điểm ảnh của N8 to hơn của E6 (210 so với 325 điểm
+mỗi inch) nên chữ 16px trên N8 đọc ra vẫn lớn hơn chữ 20px trên E6, mà bề ngang
+tiết kiệm được lại đủ cho ba dòng tên video. Máy nào không hiểu `@media` thì bỏ
+qua cả khối đó và dùng khuôn 640 — chữ to, ảnh to, vẫn đọc được chứ không bể
+trang. Xoay N8 sang ngang là nó tự nhận 640 điểm và về khuôn kia.
+
 Màn hình E6 nằm ngang, rộng 640 điểm và cao 480 điểm, nhưng đường chéo chỉ 2,46
 inch — khoảng 325 điểm mỗi inch, tức bề ngang thật chừng 5cm. Dày điểm ảnh như
 vậy nên cỡ chữ mặc định của web hiện ra rất bé; mục **Cài đặt** có ba mức
@@ -321,7 +335,8 @@ bằng `em` nên đổi cỡ chữ là chúng to nhỏ theo, giữ đúng tỉ l
 ảnh thu nhỏ (mạng 2G/EDGE nên tắt — lúc đó khối gom lại còn một cột chữ) và đổi
 số kết quả mỗi trang. Tất cả lưu bằng cookie trên máy.
 
-Trình duyệt của E6 (Nokia Browser 8.x, nền WebKit 535) đọc được HTML5, SVG đặt
+Trình duyệt Symbian^3 trở lên (Nokia Browser 7.x/8.x, nền WebKit 533–535) đọc
+được HTML5, SVG đặt
 thẳng trong trang, CSS3 cơ bản và JavaScript — nên biểu tượng trên trang là hình
 vẽ SVG chứ không phải ký tự đặc biệt (font máy thiếu ký tự là hiện ra ô vuông,
 còn SVG lỗi thì chỉ là khoảng trống). Phần nhảy khối bằng phím nằm trong
@@ -405,8 +420,12 @@ vào HTML, hoặc `s60.js` lỡ viết bằng cú pháp ES6 — WebKit 535 gặp
 `const` là chết cả file mà chết im lặng.
 
 `preview.js` dựng HTML của mọi trang ra thư mục `preview/` để xem trên máy tính,
-không cần chạy máy chủ hay gọi YouTube. Thu cửa sổ trình duyệt còn 640×480 là
-thấy gần đúng như trên E6. `test-login.js` chạy trọn luồng đăng nhập
+không cần chạy máy chủ hay gọi YouTube. Mở `preview/sizes.html` là thấy các
+trang trong khung 360×640 (N8) và 640×480 (E6) cạnh nhau. Đừng thu nhỏ cửa sổ
+trình duyệt để thử màn 360: Chrome và Edge trên Windows không cho cửa sổ hẹp hơn
+chừng 500 điểm, chúng vẽ ở 492 điểm rồi cắt bớt — trang trông như bị tràn dù
+`@media` chưa hề được áp. Muốn thử tay thì dùng chế độ Responsive của devtools.
+`test-login.js` chạy trọn luồng đăng nhập
 bằng cookie giả rồi tự đăng xuất, nên không đụng tới cookie thật của bạn; nó
 dựng hai "máy Nokia" song song để chắc chắn cookie máy này không dính sang máy
 kia.
