@@ -3,6 +3,7 @@
 // Chan doan: xem YouTube tra ve nhung dinh dang nao cho mot video.
 // Chay tren NAS:  docker exec s60youtube node tools/formats.js VH3mWd28Ndg
 
+const cookies = require('../lib/cookies');
 const ytdlp = require('../lib/ytdlp');
 const { parseVideoId } = require('../lib/util');
 
@@ -15,11 +16,15 @@ if (!videoId) {
 }
 
 (async () => {
-  const status = ytdlp.cookieStatus();
-  console.log(`cookie: ${status.mode}${status.source ? ` (${status.source})` : ''}`);
+  // Mac dinh dung cookie chung cua may chu. Muon thu bang cookie cua mot may
+  // cu the thi dat DEVICE_ID = ten file trong <DATA_DIR>/devices (bo duoi .txt).
+  const deviceId = process.env.DEVICE_ID || null;
+  const auth = cookies.authFor(deviceId);
+  const source = cookies.status(deviceId).source;
+  console.log(`cookie: ${auth.mode}${source ? ` (${source})` : ''}`);
 
   try {
-    const info = await ytdlp.getInfo(videoId);
+    const info = await ytdlp.getInfo(videoId, auth);
     console.log(`\n${info.title} — ${info.author}`);
     console.log(`thoi luong ${info.duration}s, truc tiep: ${info.isLive ? 'co' : 'khong'}`);
     console.log(`\nTong ${info.formats.length} dinh dang tai thang duoc:\n`);

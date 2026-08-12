@@ -2,11 +2,18 @@
 cookies.txt
 *.cookies.txt
 
+# Cookie rieng cua tung may + khoa ky dia chi phat, sinh ra luc chay
+devices/
+device-secret
+
 # Phu thuoc
 node_modules/
 
 # File da chuyen ma, sinh ra luc chay
 cache/
+
+# Ban HTML xem thu tren may tinh (node tools/preview.js)
+preview/
 
 # Thu muc du lieu khi chay bang Docker (chua ca cookies.txt)
 data/

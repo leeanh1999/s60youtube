@@ -1,16 +1,20 @@
-/* CSS 2.1 thuan de trinh duyet Symbian doc duoc.
-   Khong flexbox, khong grid, khong bo goc, khong rgba, khong bien CSS.
-   Bo cuc mot cot tu tren xuong — man hinh E6 chi rong 480 diem. */
+/* Giao dien cho Nokia E6 (Symbian Belle, Nokia Browser 8.x).
+   Ban WebKit nay hieu CSS3 co ban: bo goc, do trong suot, chon theo :focus.
+   Van tranh nhung thu nang tay cho con chip 680MHz: khong bong do, khong
+   chuyen mau, khong hoat hinh — cuon danh sach moi muot.
+
+   Bo cuc: mot cot the tu tren xuong (man hinh chi rong 480 diem), trong tung
+   the thi chia doi — anh ben trai, chu ben phai. */
 
 /* Co chu goc. Moi kich thuoc khac deu do bang em nen doi mot dong o day la
-   doi ca trang. Man hinh E6 rong chua toi 3cm ma nhet 480 diem, nen chu 13px
-   nho nhu hat gao — mac dinh de "lon", nguoi dung chinh lai trong Cai dat. */
+   doi ca trang, ke ca be ngang cua anh thu nho. Man hinh E6 rong chua toi 3cm
+   ma nhet 480 diem, nen chu 13px nho nhu hat gao — mac dinh de "lon". */
 body {
   margin: 0;
   padding: 0;
-  background: #ffffff;
-  color: #111111;
-  font-family: Arial, sans-serif;
+  background: #e9ecef;
+  color: #14161a;
+  font-family: "Nokia Pure Text", "Nokia Sans", Arial, sans-serif;
   font-size: 20px;
   line-height: 1.35;
 }
@@ -26,53 +30,130 @@ body.t-xl {
 a {
   color: #0b3fbf;
   text-decoration: none;
+  -webkit-tap-highlight-color: rgba(204, 0, 0, 0.28);
+}
+
+/* Bieu tuong SVG: mac dinh cao bang mot dong chu va an theo mau chu xung quanh. */
+.ic {
+  width: 1.05em;
+  height: 1.05em;
+  vertical-align: -0.16em;
 }
 
 h1 {
-  font-size: 1.2em;
+  font-size: 1.16em;
   line-height: 1.25;
-  margin: 10px 8px 4px 8px;
+  margin: 0 0 4px 0;
 }
 
+h1 .ic {
+  width: 1em;
+  height: 1em;
+  margin-right: 7px;
+  color: #c00000;
+}
+
+/* Tieu de muc: mot vach do ben trai thay cho ca dai nen xam. */
 h2 {
-  font-size: 1em;
-  margin: 14px 0 0 0;
-  padding: 7px 8px;
-  background: #f0f0f0;
-  color: #333333;
-  border-top: 1px solid #d8d8d8;
-  border-bottom: 1px solid #d8d8d8;
+  font-size: 0.95em;
+  font-weight: bold;
+  margin: 14px 6px 6px 6px;
+  padding: 1px 0 1px 9px;
+  border-left: 4px solid #c00000;
+  color: #33383d;
+}
+
+h2 .ic {
+  width: 1.15em;
+  height: 1.15em;
+  margin-right: 7px;
+  color: #c00000;
+}
+
+#main {
+  padding-bottom: 4px;
 }
 
 /* ---------- thanh tren ---------- */
 
 .bar {
-  background: #cc0000;
-  padding: 9px 8px;
+  background: #c00000;
+  padding: 8px;
   overflow: hidden;
+  border-bottom: 2px solid #8c0000;
 }
 
 .bar .brand {
+  display: block;
+  overflow: hidden;
   color: #ffffff;
   font-weight: bold;
   font-size: 1.05em;
 }
 
+.bar .brand .ic {
+  width: 1.5em;
+  height: 1.5em;
+  vertical-align: -0.35em;
+  margin-right: 8px;
+}
+
 .bar .back {
   float: right;
+  margin-left: 8px;
   color: #ffffff;
-  border: 1px solid #ffffff;
-  padding: 2px 9px;
-  font-size: 0.8em;
+  background: #a30000;
+  border: 1px solid #e58080;
+  border-radius: 5px;
+  -webkit-border-radius: 5px;
+  padding: 4px 9px;
+  font-size: 0.78em;
+}
+
+.bar .back .ic {
+  width: 0.95em;
+  height: 0.95em;
+  margin-right: 4px;
 }
 
 /* Tieu de trang cung may dong phu chu thich duoi no. */
 .head {
-  padding: 2px 8px 10px 8px;
+  margin: 6px;
+  padding: 9px;
+  background: #ffffff;
+  border: 1px solid #d3d8dd;
+  border-radius: 6px;
+  -webkit-border-radius: 6px;
 }
 
-.head h1 {
-  margin: 8px 0 4px 0;
+.head .by {
+  margin-top: 4px;
+  font-size: 0.82em;
+  color: #3d434a;
+}
+
+.head .by .ic {
+  width: 1.05em;
+  height: 1.05em;
+  margin-right: 5px;
+  color: #8a9099;
+}
+
+.head .facts {
+  margin-top: 4px;
+  font-size: 0.78em;
+  color: #6b7178;
+}
+
+.head .facts .ic {
+  width: 1.05em;
+  height: 1.05em;
+  margin-right: 4px;
+  color: #8a9099;
+}
+
+.head .facts span {
+  margin-right: 14px;
 }
 
 /* ---------- o tim kiem ---------- */
@@ -80,7 +161,7 @@ h2 {
 /* Dung bang thay vi float: o nhap va nut chia cot chinh xac tren moi doi may,
    khong lo tran ra ngoai vi CSS 2.1 tinh ca vien vao chieu rong. */
 .search {
-  margin: 8px;
+  margin: 6px;
   padding: 0;
 }
 
@@ -93,12 +174,22 @@ h2 {
   padding: 0;
 }
 
+/* Vien va dem tinh vao be ngang, khong thi 100% se tran ra ngoai o. */
+.sform .qi input,
+.form .submit button {
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+}
+
 .sform .qi input {
   width: 100%;
   font-size: 1em;
-  padding: 8px 4px;
-  border: 2px solid #bbbbbb;
-  color: #111111;
+  padding: 8px 7px;
+  color: #14161a;
+  background: #ffffff;
+  border: 1px solid #b9bfc6;
+  border-radius: 5px;
+  -webkit-border-radius: 5px;
 }
 
 .sform .qb {
@@ -106,13 +197,20 @@ h2 {
   padding-left: 6px;
 }
 
-.sform .qb input {
+.sform .qb button {
   font-size: 1em;
   font-weight: bold;
-  padding: 8px 12px;
-  background: #cc0000;
+  white-space: nowrap;
+  padding: 8px 11px;
+  background: #c00000;
   color: #ffffff;
-  border: 2px solid #990000;
+  border: 1px solid #8c0000;
+  border-radius: 5px;
+  -webkit-border-radius: 5px;
+}
+
+.sform .qb button .ic {
+  margin-right: 5px;
 }
 
 /* ---------- danh sach video: mot the moi video ---------- */
@@ -124,40 +222,144 @@ h2 {
 }
 
 .feed li {
-  margin: 0;
-  padding: 9px 8px;
-  border-bottom: 1px solid #e0e0e0;
+  margin: 6px;
+  padding: 0;
 }
 
-.feed .thumb {
+/* Ca khoi la mot the <a> duy nhat: bam phim xuong mot cai la sang dung mot
+   video, khong mac ket giua anh va tieu de cua cung mot muc. */
+.card {
   display: block;
-  margin-bottom: 6px;
-  background: #000000;
+  overflow: hidden;
+  padding: 7px;
+  background: #ffffff;
+  color: #14161a;
+  border: 1px solid #d3d8dd;
+  border-radius: 6px;
+  -webkit-border-radius: 6px;
 }
 
-.feed .thumb img {
+.card:focus,
+.card:hover {
+  background: #fff6d5;
+  border-color: #c00000;
+}
+
+/* Chia doi theo phan tram chu khong theo em: doi co chu thi ty le anh/chu van
+   the, chi co dong chu chay lai. */
+.card .th {
+  display: block;
+  float: left;
+  position: relative;
+  width: 38%;
+  background: #000000;
+  border-radius: 4px;
+  -webkit-border-radius: 4px;
+  overflow: hidden;
+}
+
+.card .th img {
   display: block;
   width: 100%;
   height: auto;
   border: 0;
 }
 
-.feed .title {
-  display: block;
-  font-weight: bold;
-  line-height: 1.3;
+/* Tam giac phat chi hien tren the dang duoc chon — nhin la biet con tro
+   dang o dau ma khong can vien nhap nhay. */
+.card .pv {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  margin: -0.62em 0 0 -0.42em;
+  border-left: 1.15em solid #ffffff;
+  border-top: 0.62em solid transparent;
+  border-bottom: 0.62em solid transparent;
 }
 
-.k {
-  background: #eeeeee;
-  border: 1px solid #cccccc;
-  padding: 0 5px;
+.card:focus .pv,
+.card:hover .pv {
+  display: block;
+}
+
+.card .badge {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  padding: 1px 4px;
+  background: #000000;
+  color: #ffffff;
+  font-size: 0.6em;
+  font-weight: bold;
+  border-radius: 3px;
+  -webkit-border-radius: 3px;
+}
+
+.card .badge.live {
+  background: #c00000;
+  color: #ffffff;
+}
+
+/* Nhan TRUC TIEP khi tat anh thu nho: khong con goc anh de dan nen di theo
+   dong chu thong tin. */
+.live-t {
+  padding: 1px 5px;
+  background: #c00000;
+  color: #ffffff;
+  border-radius: 3px;
+  -webkit-border-radius: 3px;
+}
+
+.card .tx {
+  display: block;
+  margin-left: 41%;
+}
+
+.feed.nothumb .tx {
+  margin-left: 0;
+}
+
+.card .ti {
+  display: block;
+  font-weight: bold;
+  line-height: 1.28;
+  color: #0b2f8f;
+}
+
+.card .ch {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.8em;
+  color: #3d434a;
+}
+
+.card .mt {
+  display: block;
+  margin-top: 2px;
   font-size: 0.75em;
-  color: #555555;
+  color: #737a82;
+}
+
+/* O so phim tat: bam so nao la vao thang muc do. */
+.k {
+  display: inline-block;
+  min-width: 1em;
+  padding: 0 4px;
+  background: #c00000;
+  color: #ffffff;
+  font-size: 0.68em;
+  font-weight: bold;
+  text-align: center;
+  vertical-align: 0.12em;
+  border-radius: 3px;
+  -webkit-border-radius: 3px;
 }
 
 .m {
-  color: #666666;
+  color: #6b7178;
   font-size: 0.8em;
   margin-top: 3px;
 }
@@ -167,8 +369,11 @@ h2 {
 /* Trinh duyet doi cu bo qua the <video> nen chi con lien ket du phong
    ben trong, van hien binh thuong. */
 .player {
-  margin: 8px;
+  margin: 6px;
   background: #000000;
+  border-radius: 6px;
+  -webkit-border-radius: 6px;
+  overflow: hidden;
 }
 
 .player video {
@@ -183,11 +388,17 @@ a.go {
   display: block;
   margin: 8px;
   padding: 13px 8px;
-  background: #cc0000;
-  border: 1px solid #990000;
+  background: #c00000;
+  border: 1px solid #8c0000;
+  border-radius: 5px;
+  -webkit-border-radius: 5px;
   color: #ffffff;
   font-weight: bold;
   text-align: center;
+}
+
+a.go .ic {
+  margin-right: 7px;
 }
 
 .opts {
@@ -197,91 +408,173 @@ a.go {
 }
 
 .opts li {
-  padding: 11px 8px;
-  border-bottom: 1px solid #e0e0e0;
+  margin: 6px;
+  padding: 0;
+  background: #ffffff;
+  border: 1px solid #d3d8dd;
+  border-radius: 6px;
+  -webkit-border-radius: 6px;
+  overflow: hidden;
 }
 
 .opts li a {
   display: block;
+  padding: 11px 9px;
+  overflow: hidden;
   font-weight: bold;
+}
+
+.opts li a:focus,
+.opts li a:hover {
+  background: #fff6d5;
+}
+
+.opts.icons li a .ic {
+  float: left;
+  width: 1.35em;
+  height: 1.35em;
+  margin: 0.05em 9px 0 0;
+  color: #c00000;
+}
+
+.opts li a .k {
+  float: right;
+  margin-left: 9px;
+}
+
+.opts li a .lb {
+  display: block;
+  overflow: hidden;
+}
+
+/* Muc chi la dong chu bao trang thai, khong bam duoc. */
+.opts li.m {
+  margin: 6px;
+  padding: 11px 9px;
+  font-size: 0.8em;
+}
+
+.opts li .m {
+  padding: 0 9px 10px 9px;
+  margin: -4px 0 0 0;
 }
 
 /* ---------- khoi van ban ---------- */
 
-.desc {
-  margin: 8px;
-  padding: 8px;
-  background: #f7f7f7;
-  border: 1px solid #e0e0e0;
-  font-size: 0.85em;
+.desc,
+.warn,
+.err,
+.ok {
+  margin: 6px;
+  padding: 9px;
+  overflow: hidden;
+  font-size: 0.82em;
+  border: 1px solid #d3d8dd;
+  border-radius: 6px;
+  -webkit-border-radius: 6px;
+  background: #ffffff;
+}
+
+.warn .ic,
+.err .ic,
+.ok .ic {
+  float: left;
+  width: 1.5em;
+  height: 1.5em;
+  margin-right: 8px;
+}
+
+.warn span,
+.err span,
+.ok span {
+  display: block;
+  overflow: hidden;
 }
 
 .warn {
-  margin: 8px;
-  padding: 8px;
-  background: #fffbe6;
-  border: 1px solid #e6c700;
-  font-size: 0.85em;
+  background: #fff9e0;
+  border-color: #e0bf00;
+}
+
+.warn .ic {
+  color: #a88600;
 }
 
 .err {
-  margin: 8px;
-  padding: 8px;
-  background: #ffeeee;
-  border: 1px solid #cc0000;
-  font-size: 0.85em;
+  background: #ffeceb;
+  border-color: #c00000;
+}
+
+.err .ic {
+  color: #c00000;
 }
 
 .ok {
-  margin: 8px;
-  padding: 8px;
-  background: #eeffee;
-  border: 1px solid #339933;
-  font-size: 0.85em;
+  background: #ecfaec;
+  border-color: #2f9e2f;
+}
+
+.ok .ic {
+  color: #2f9e2f;
 }
 
 .empty {
   margin: 12px 8px;
-  color: #666666;
+  color: #6b7178;
 }
 
 .hint {
-  margin: 12px 8px;
-  color: #666666;
-  font-size: 0.8em;
+  margin: 10px 9px;
+  color: #6b7178;
+  font-size: 0.78em;
 }
 
 .more {
-  margin: 0;
+  margin: 6px;
   padding: 0;
 }
 
 .more a {
   display: block;
-  padding: 13px 8px;
-  background: #f0f0f0;
-  border-bottom: 1px solid #d8d8d8;
+  padding: 12px 8px;
+  background: #ffffff;
+  border: 1px solid #d3d8dd;
+  border-radius: 6px;
+  -webkit-border-radius: 6px;
   text-align: center;
   font-weight: bold;
+}
+
+.more a:focus,
+.more a:hover {
+  background: #fff6d5;
+  border-color: #c00000;
+}
+
+.more a .ic {
+  margin-right: 7px;
 }
 
 /* ---------- trang chuyen ma ---------- */
 
 .stat {
-  margin: 8px;
+  margin: 10px 9px 6px 9px;
   font-weight: bold;
 }
 
 .pbar {
-  margin: 8px;
-  height: 16px;
-  border: 1px solid #999999;
+  margin: 0 6px;
+  height: 14px;
+  border: 1px solid #b9bfc6;
   background: #ffffff;
+  border-radius: 4px;
+  -webkit-border-radius: 4px;
+  overflow: hidden;
 }
 
 .pfill {
-  height: 16px;
-  background: #cc0000;
+  height: 14px;
+  background: #c00000;
   font-size: 1px;
   overflow: hidden;
 }
@@ -289,58 +582,67 @@ a.go {
 /* ---------- trang dang nhap ---------- */
 
 .code {
-  margin: 8px;
+  margin: 6px;
   padding: 12px 4px;
-  background: #f2f2f2;
-  border: 2px solid #cc0000;
+  background: #ffffff;
+  border: 2px solid #c00000;
+  border-radius: 6px;
+  -webkit-border-radius: 6px;
   text-align: center;
   font-family: monospace;
-  font-size: 1.6em;
+  font-size: 1.55em;
   font-weight: bold;
   letter-spacing: 3px;
 }
 
 .url {
-  margin: 8px;
+  margin: 6px;
   padding: 8px;
-  background: #f7f7f7;
-  border: 1px solid #dddddd;
+  background: #ffffff;
+  border: 1px solid #d3d8dd;
+  border-radius: 6px;
+  -webkit-border-radius: 6px;
   font-family: monospace;
-  font-size: 0.8em;
+  font-size: 0.78em;
   text-align: center;
   word-wrap: break-word;
 }
 
 .qr {
-  margin: 8px;
+  margin: 6px;
   text-align: center;
 }
 
 .qr img {
-  border: 4px solid #ffffff;
+  border: 6px solid #ffffff;
+  border-radius: 6px;
+  -webkit-border-radius: 6px;
 }
 
 /* ---------- bang thong tin (trang Gioi thieu) ---------- */
 
 .info {
   width: 100%;
-  border-collapse: collapse;
   margin: 0;
+  background: #ffffff;
+  border-collapse: collapse;
+  border-top: 1px solid #d3d8dd;
+  border-bottom: 1px solid #d3d8dd;
 }
 
 .info tr {
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e6eaee;
 }
 
 .info td {
-  padding: 8px;
+  padding: 8px 9px;
   vertical-align: top;
-  font-size: 0.85em;
+  font-size: 0.82em;
 }
 
 .info td.lb {
   width: 45%;
-  color: #666666;
+  color: #6b7178;
 }
 
 /* ---------- bieu mau cai dat ---------- */
@@ -351,49 +653,88 @@ a.go {
 }
 
 .form .row {
-  padding: 11px 8px;
-  border-bottom: 1px solid #e0e0e0;
+  margin: 6px;
+  padding: 10px 9px;
+  background: #ffffff;
+  border: 1px solid #d3d8dd;
+  border-radius: 6px;
+  -webkit-border-radius: 6px;
+}
+
+.form .row label {
+  font-weight: bold;
 }
 
 .form select,
 .form input {
   font-size: 1em;
   padding: 6px 4px;
+  margin-top: 5px;
+}
+
+.form input[type="checkbox"] {
+  margin: 0 6px 0 0;
+  vertical-align: -0.1em;
 }
 
 .form .submit {
-  padding: 8px;
+  padding: 6px;
 }
 
-.form .submit input {
+.form .submit button {
   width: 100%;
   font-size: 1em;
   font-weight: bold;
-  padding: 13px 8px;
-  background: #cc0000;
+  padding: 12px 8px;
+  background: #c00000;
   color: #ffffff;
-  border: 1px solid #990000;
+  border: 1px solid #8c0000;
+  border-radius: 5px;
+  -webkit-border-radius: 5px;
 }
 
-/* ---------- chan trang ---------- */
+.form .submit button .ic {
+  margin-right: 7px;
+}
+
+/* ---------- chan trang: bon o co bieu tuong ---------- */
 
 .nav {
-  list-style: none;
-  margin: 16px 0 0 0;
-  padding: 0;
-  border-top: 1px solid #cccccc;
-  background: #f7f7f7;
+  width: 100%;
+  margin: 12px 0 0 0;
+  background: #f4f6f8;
+  border-collapse: collapse;
+  border-top: 1px solid #c3c9cf;
 }
 
-.nav li {
-  margin: 0;
+.nav td {
+  width: 25%;
   padding: 0;
+  text-align: center;
+  border-right: 1px solid #dee3e8;
 }
 
 .nav a {
   display: block;
-  padding: 12px 8px;
-  border-bottom: 1px solid #e0e0e0;
-  color: #333333;
-  font-size: 0.9em;
+  padding: 8px 2px;
+  color: #4a5058;
+  font-size: 0.66em;
+}
+
+.nav a .ic {
+  display: block;
+  width: 2em;
+  height: 2em;
+  margin: 0 auto 3px auto;
+}
+
+.nav a:focus,
+.nav a:hover {
+  background: #fff6d5;
+}
+
+.nav a.on {
+  background: #ffffff;
+  color: #c00000;
+  font-weight: bold;
 }

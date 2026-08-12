@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-mkdir -p "${DATA_DIR:-/data}/cache"
+mkdir -p "${DATA_DIR:-/data}/cache" "${DATA_DIR:-/data}/devices"
 
 # YouTube doi API luon, yt-dlp cu la hong ngay. Bat bien nay de tu cap nhat
 # moi lan khoi dong container, khoi phai dung lai anh.

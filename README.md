@@ -56,8 +56,8 @@ Vài điểm cần biết:
   bên phải (`8080`) là cổng bên trong container, cứ để nguyên.
 - `YTDLP_AUTO_UPDATE=1` cho container tự cập nhật yt-dlp mỗi lần khởi động.
   YouTube đổi API liên tục, yt-dlp cũ là hỏng ngay, nên cứ để bật.
-- **Đừng mở cổng này ra Internet.** Trong `data/cookies.txt` là phiên đăng nhập
-  Google của bạn, ai vào được trang cũng dùng được tài khoản đó.
+- Mỗi máy vào trang dùng cookie YouTube của riêng nó. Muốn mở cổng ra Internet
+  thì đọc mục [Mở ra Internet cho nhiều người](#mở-ra-internet-cho-nhiều-người).
 
 ### NAS chip ARM (Realtek)
 
@@ -124,6 +124,13 @@ Khi máy chủ gọi YouTube từ IP lạ — VPN, VPS, hay mạng công ty — 
 *"Sign in to confirm you're not a bot"* và không cho lấy luồng. Cách xử lý chính
 thức của yt-dlp là cho nó dùng cookie của **chính tài khoản bạn**.
 
+Cookie là cả phiên đăng nhập Google của một người, nên **mỗi máy giữ cookie
+riêng**: lần đầu vào trang, máy chủ phát cho máy đó một mã thiết bị (lưu bằng
+cookie trình duyệt, không dính gì tới cookie YouTube), rồi cookie nạp lên được
+ghi thành một file riêng mang tên mã đó trong `<DATA_DIR>/devices`. Nhờ vậy
+nhiều người dùng chung một máy chủ mà không ai xem bằng tài khoản của ai. Máy
+nào 45 ngày không dùng thì cookie của nó tự xoá (`DEVICE_TTL_DAYS`).
+
 ### Cách 1 — nhập mã / quét QR (giống đăng nhập YouTube trên tivi)
 
 1. Trên máy Nokia vào mục **Đăng nhập**. Máy hiện mã kiểu `ABC-123`, địa chỉ
@@ -134,14 +141,18 @@ thức của yt-dlp là cho nó dùng cookie của **chính tài khoản bạn**
    nhập mã đang hiện trên Nokia và bấm lưu.
 4. Màn hình Nokia tự làm mới và chuyển sang **Đã đăng nhập**.
 
-Mã sống 10 phút và chỉ dùng được một lần, nên máy khác trong mạng không ghi đè
-cookie của bạn được. Nút **Kiểm tra còn dùng được không** gọi thử YouTube để biết
-cookie đã hết hạn hay chưa; **Xoá đăng nhập** thì xoá file đi.
+Mã sống 10 phút, chỉ dùng được một lần, và **gắn với đúng chiếc máy đã xin nó** —
+cookie nộp từ máy tính chỉ chảy vào máy đang hiện mã, không đụng tới máy khác.
+Nút **Kiểm tra còn dùng được không** gọi thử YouTube để biết cookie đã hết hạn
+hay chưa; **Xoá đăng nhập khỏi máy này** thì xoá file cookie của riêng máy đó.
 
-### Cách 2 — tự đặt file
+### Cách 2 — cookie chung cho cả nhà
 
-Xuất `cookies.txt` rồi chép thẳng vào thư mục dự án. Muốn để chỗ khác thì
-`set YT_COOKIES_FILE=D:\duong\dan\cookies.txt`.
+Xuất `cookies.txt` rồi chép thẳng vào thư mục dự án (Docker thì `data/cookies.txt`).
+Máy nào chưa tự đăng nhập sẽ mượn tạm cookie này. Đó là cách gọn nhất khi chỉ có
+mình bạn dùng trong mạng nhà. Muốn để file chỗ khác thì
+`set YT_COOKIES_FILE=D:\duong\dan\cookies.txt`; muốn tắt hẳn phần mượn chung thì
+`YT_SHARED_COOKIES=0`.
 
 ### Cách 3 — đọc thẳng từ trình duyệt
 
@@ -168,11 +179,100 @@ máy này tự cập nhật — còn thứ trao đổi là cookie của chính b
 (Từng có plugin OAuth cho yt-dlp dùng client ID của ứng dụng YouTube trên tivi.
 YouTube đã chặn và cảnh báo nguy cơ khoá tài khoản, nên dự án này không làm vậy.)
 
+## Mở ra Internet cho nhiều người
+
+Mỗi máy đã dùng cookie riêng nên nhiều người chung một máy chủ được. Trước khi
+mở cổng, làm đủ ba việc sau.
+
+**1. Tắt cookie chung.** Đặt `YT_SHARED_COOKIES=0` (và đừng để `data/cookies.txt`
+trong thư mục dữ liệu). Nếu quên, máy lạ nào vào cũng xem bằng tài khoản của
+bạn.
+
+**2. Máy Nokia vẫn phải vào bằng HTTP thường.** Trình duyệt Symbian không bắt
+tay TLS đời mới được, nên cổng công khai bắt buộc là `http://`. Nghĩa là đường
+truyền của máy cũ không mã hoá — chấp nhận được với việc xem video, nhưng đừng
+để nó cũng là đường nộp cookie.
+
+**3. Cho trang nộp cookie đi lối HTTPS — đây là việc quan trọng nhất.** Máy
+Nokia đi bằng HTTP thì chỉ lộ *việc bạn xem gì*. Nhưng trang `/link` chuyển đi
+**cả phiên đăng nhập Google**: đi qua HTTP trần giữa Internet là ai chen được
+vào đường truyền cũng đọc trọn cookie, và mã hoá phía máy chủ không cứu được.
+Trang `/link` mở trên máy tính đời mới nên dùng HTTPS thoải mái.
+
+Với nginx sẵn có, xin chứng chỉ rồi thêm khối này (đúng tên miền của bạn):
+
+```bash
+sudo certbot --nginx -d s60tube.ddnsfree.com
+```
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name s60tube.ddnsfree.com;
+    # ssl_certificate ... do certbot tự điền
+
+    location / {
+        proxy_pass http://127.0.0.1:9080;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host  $host;
+        proxy_buffering off;          # de xem online khong bi khung lai
+    }
+}
+```
+
+Giữ nguyên khối `listen 80` cho máy Nokia — **đừng** bật chuyển hướng 80 → 443,
+Symbian không bắt tay TLS đời mới được nên chuyển hướng là máy cũ chết hẳn.
+
+Rồi khai địa chỉ HTTPS để mã QR và dòng địa chỉ trên máy Nokia trỏ vào đó:
+
+```yaml
+      - PUBLIC_URL=https://s60tube.ddnsfree.com
+      - TRUST_PROXY=1
+      - REQUIRE_SECURE_LINK=1
+```
+
+`REQUIRE_SECURE_LINK=1` bắt máy chủ từ chối hẳn việc nhận cookie khi trang
+`/link` không đi qua HTTPS — chưa đặt thì trang chỉ hiện cảnh báo đỏ. Chưa có
+chứng chỉ thì tạm để trống biến này, và chỉ nạp cookie khi đang ngồi cùng mạng
+nhà với máy chủ.
+
+Vài điều nên biết khi đã mở cổng:
+
+- Ai vào được địa chỉ cũng dùng được máy chủ (tốn băng thông và CPU của bạn).
+  Muốn giới hạn thì chặn ở proxy — lọc theo IP, hoặc bắt đăng nhập ở lớp proxy
+  cho riêng đường `/link`.
+- Mã ghép nối gắn với đúng máy đã xin nó, sống 10 phút, dùng một lần. Mỗi lần
+  nhập sai bị giữ lại nửa giây, sai quá 10 lần từ một địa chỉ IP là nghỉ 10
+  phút. Người cầm mã đúng thì không bao giờ bị chặn.
+- Máy chủ chạy yt-dlp riêng cho từng tài khoản nên đông người là nặng máy. Cứ
+  để `MAX_JOBS=1` trên NAS.
+- Cookie của mỗi máy nằm ở `data/devices/<mã>.txt`. Đó là phiên đăng nhập Google
+  của người ta — sao lưu hay chia sẻ thư mục `data` là lộ hết.
+
+### Máy chủ giữ những gì, và mất thì hỏng tới đâu
+
+| Thứ | Ở đâu | Ai lấy được thì làm gì |
+| --- | --- | --- |
+| Cookie YouTube | `data/devices/<mã>.txt`, chỉ đọc từ đĩa | Toàn quyền tài khoản Google — không có đường nào trong web đọc ngược ra được |
+| Mã thiết bị (`did`) | Cookie trình duyệt, `HttpOnly` + `SameSite=Lax` | Xem YouTube *nhân danh* máy đó, nhưng không đọc được nội dung cookie |
+| Khoá phát (`?k=`) trong địa chỉ video | Sinh ngẫu nhiên khi nạp cookie | Chỉ xem được video bằng tài khoản đó; nạp cookie mới hoặc xoá đăng nhập là khoá cũ chết ngay |
+| Mã ghép nối | Chỉ nằm trong bộ nhớ, 10 phút | Nhét cookie *của họ* vào máy bạn (không lấy được cookie của bạn) |
+
+Không có đường nào trong máy chủ in nội dung `cookies.txt` ra trang web, và mã
+thiết bị là `HttpOnly` nên kể cả có lỗi chèn mã HTML thì script cũng không đọc
+được. Chỗ hở duy nhất còn lại là **đường truyền HTTP** — vì thế mục 3 ở trên là
+việc bắt buộc.
+
 ## Dùng trên điện thoại
 
 - Lần đầu vào **Đăng nhập** để nối tài khoản (xem mục trên).
 - Trang chính có ô tìm kiếm và 9 chủ đề gợi ý.
 - Dán thẳng link YouTube vào ô tìm kiếm cũng mở đúng video đó.
+- Phím **lên / xuống** nhảy hẳn sang khối video kế tiếp, không phải lết con trỏ
+  từng chút như mặc định của trình duyệt.
 - Phím tắt: `0` về trang chính, `1`–`9` chọn mục, `*` vào ô tìm, `#` sang trang sau.
 
 Trang video mở ra là có sẵn khung phát ngay trên trang. Bấm nút phát là xem được
@@ -206,25 +306,42 @@ không đụng tới.
 
 ## Cài đặt riêng
 
-Giao diện xếp một cột từ trên xuống, mỗi liên kết là một khối cao để ngón tay
-chạm trúng — Belle là máy cảm ứng. Màn hình E6 chỉ rộng chưa tới 3cm mà nhét
-480 điểm ảnh, nên cỡ chữ mặc định của web hiện ra rất bé; mục **Cài đặt** có ba
-mức **Vừa / Lớn / Rất lớn**, mặc định là "Lớn". Ở đó cũng tắt được ảnh thu nhỏ
-(mạng 2G/EDGE nên tắt) và đổi số kết quả mỗi trang. Tất cả lưu bằng cookie trên
-máy điện thoại.
+Danh sách xếp một cột từ trên xuống, mỗi video là một **khối** riêng: ảnh xem
+trước bên trái, tên video và thông tin bên phải — nhìn một màn hình là thấy ba
+bốn video thay vì một. Cả khối là **một liên kết duy nhất**, nhờ vậy bấm phím
+xuống một cái là sang đúng một video, và khối đang chọn thì đổi màu kèm dấu tam
+giác phát trên ảnh nên không bao giờ lạc con trỏ.
+
+Màn hình E6 chỉ rộng chưa tới 3cm mà nhét 480 điểm ảnh, nên cỡ chữ mặc định của
+web hiện ra rất bé; mục **Cài đặt** có ba mức **Vừa / Lớn / Rất lớn**, mặc định
+là "Lớn" (chữ càng to thì tên video càng được cắt ngắn để khối không cao quá).
+Ở đó cũng tắt được ảnh thu nhỏ (mạng 2G/EDGE nên tắt — lúc đó khối gom lại còn
+một cột chữ) và đổi số kết quả mỗi trang. Tất cả lưu bằng cookie trên máy.
+
+Trình duyệt của E6 (Nokia Browser 8.x, nền WebKit 535) đọc được HTML5, SVG đặt
+thẳng trong trang, CSS3 cơ bản và JavaScript — nên biểu tượng trên trang là hình
+vẽ SVG chứ không phải ký tự đặc biệt (font máy thiếu ký tự là hiện ra ô vuông,
+còn SVG lỗi thì chỉ là khoảng trống). Phần nhảy khối bằng phím nằm trong
+`public/s60.js`; tắt JavaScript đi thì trang vẫn dùng được đủ như cũ, chỉ mất
+đúng cái tiện đó.
 
 Biến môi trường:
 
 | Biến | Mặc định | Ý nghĩa |
 | --- | --- | --- |
 | `PORT` | `8080` | Cổng máy chủ |
-| `DATA_DIR` | thư mục dự án | Nơi chứa `cookies.txt`, `cache/` và bộ nhớ đệm của yt-dlp (Docker đặt `/data`) |
+| `DATA_DIR` | thư mục dự án | Nơi chứa `cookies.txt`, `devices/`, `cache/` và bộ nhớ đệm của yt-dlp (Docker đặt `/data`) |
 | `YT_HL` / `YT_GL` | `vi` / `VN` | Ngôn ngữ và vùng kết quả |
 | `PAGE_SIZE` | `12` | Số kết quả mỗi trang |
 | `MAX_JOBS` | `1` | Số video chuyển mã cùng lúc |
 | `FFMPEG_PRESET` | `veryfast` | Tốc độ mã hoá x264; chỉ dùng khi video không có bản H.264 nào |
-| `YT_COOKIES_FILE` | `<DATA_DIR>/cookies.txt` | Đường dẫn cookie |
-| `YT_COOKIES_BROWSER` | trống | Đọc cookie thẳng từ trình duyệt |
+| `YT_COOKIES_FILE` | `<DATA_DIR>/cookies.txt` | Cookie chung cho máy chưa tự đăng nhập |
+| `YT_COOKIES_BROWSER` | trống | Đọc cookie chung thẳng từ trình duyệt |
+| `YT_SHARED_COOKIES` | `1` | Đặt `0` để bắt mọi máy phải tự nạp cookie của mình |
+| `DEVICE_TTL_DAYS` | `45` | Bao nhiêu ngày không dùng thì xoá cookie của một máy |
+| `PUBLIC_URL` | trống | Địa chỉ công khai in ra mã QR và trang `/link` khi chạy sau reverse proxy |
+| `TRUST_PROXY` | trống | Đặt `1` khi có reverse proxy đứng trước, để đếm số lần nhập sai theo đúng IP người dùng |
+| `REQUIRE_SECURE_LINK` | trống | Đặt `1` để từ chối nhận cookie khi trang `/link` không đi qua HTTPS |
 | `FFMPEG_PATH` | tự dò | Chỉ thẳng tới ffmpeg (Docker đặt `/usr/bin/ffmpeg`) |
 | `YTDLP_AUTO_UPDATE` | trống | Đặt `1` để container tự cập nhật yt-dlp lúc khởi động |
 
@@ -237,8 +354,13 @@ Mở cổng một lần bằng PowerShell quyền quản trị:
 New-NetFirewallRule -DisplayName "YouTube S60" -Direction Inbound -Protocol TCP -LocalPort 8080 -Action Allow
 ```
 
-**"YouTube đang đòi đăng nhập từ máy chủ này."** Chưa có cookie, hoặc cookie đã
-hết hạn — xuất lại `cookies.txt`.
+**"YouTube đang đòi đăng nhập từ máy chủ này."** Máy này chưa nạp cookie, hoặc
+cookie của nó đã hết hạn — vào mục **Đăng nhập** trên chính chiếc máy đó rồi nạp
+lại. Cookie của máy khác không cứu được máy này.
+
+**Đang đăng nhập tự nhiên thành chưa đăng nhập.** Máy mất cookie trình duyệt nên
+máy chủ coi nó là máy mới: điện thoại bị xoá dữ liệu duyệt web, hoặc cookie của
+máy đó đã quá `DEVICE_TTL_DAYS` ngày không dùng. Nạp lại là xong.
 
 **"Không kết nối được tới YouTube."** Máy chủ không ra được mạng. Nếu mạng công ty
 chặn YouTube thì phải bật VPN trên máy tính (điện thoại thì không cần).
@@ -264,11 +386,20 @@ chỉ tải về được thôi.
 node tools/smoke.js
 node tools/test-login.js
 node tools/test-convert.js
+node tools/preview.js
 ```
 
-`smoke.js` gọi các trang bằng User-Agent của Nokia N8 và cảnh báo nếu trang lỡ
-chứa JavaScript, CSS3 hay quá nặng. `test-login.js` chạy trọn luồng đăng nhập
-bằng cookie giả rồi tự đăng xuất, nên không đụng tới cookie thật của bạn.
+`smoke.js` gọi các trang bằng User-Agent của Nokia N8 và cảnh báo nếu trang quá
+nặng, dùng CSS mà Belle không hiểu (flex, grid, biến CSS), có script chèn thẳng
+vào HTML, hoặc `s60.js` lỡ viết bằng cú pháp ES6 — WebKit 535 gặp một chữ
+`const` là chết cả file mà chết im lặng.
+
+`preview.js` dựng HTML của mọi trang ra thư mục `preview/` để xem trên máy tính,
+không cần chạy máy chủ hay gọi YouTube. Thu cửa sổ trình duyệt còn 480 điểm là
+thấy gần đúng như trên E6. `test-login.js` chạy trọn luồng đăng nhập
+bằng cookie giả rồi tự đăng xuất, nên không đụng tới cookie thật của bạn; nó
+dựng hai "máy Nokia" song song để chắc chắn cookie máy này không dính sang máy
+kia.
 `test-convert.js` dựng một đoạn phim mẫu, dọn nó qua HTTP giống như YouTube vẫn
 dọn luồng, rồi cho ffmpeg chạy y hệt lúc chạy thật — kiểm được cả độ phân giải,
 profile H.264 Baseline lẫn vị trí khối `moov`. Hai bài đầu cần máy chủ đang
@@ -276,5 +407,7 @@ chạy; bài thứ ba thì không.
 
 ## Ghi chú
 
-Dự án dành cho việc tự dùng với máy và tài khoản của chính bạn trong mạng nhà.
-Đừng mở cổng này ra Internet.
+Dự án dành cho việc tự dùng với máy và tài khoản của chính bạn. Mở ra Internet
+thì đọc kỹ mục [Mở ra Internet cho nhiều người](#mở-ra-internet-cho-nhiều-người):
+máy chủ giữ phiên đăng nhập Google của mọi người vào trang, nên bạn đang gánh
+trách nhiệm với tài khoản của họ.

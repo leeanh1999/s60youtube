@@ -7,16 +7,18 @@ const QRCode = require('qrcode');
 const { Readable } = require('stream');
 
 const config = require('./lib/config');
+const cookies = require('./lib/cookies');
 const innertube = require('./lib/innertube');
 const pairing = require('./lib/pairing');
 const ytdlp = require('./lib/ytdlp');
 const media = require('./lib/media');
 const render = require('./lib/render');
-const { parseVideoId, isVideoId } = require('./lib/util');
+const { parseCookies, parseVideoId, isVideoId } = require('./lib/util');
 
 const app = express();
 app.disable('x-powered-by');
 app.disable('etag');
+if (config.TRUST_PROXY) app.set('trust proxy', true);
 
 // Man hinh E6 la 640x480; luong gop san cao nhat cua YouTube duoi muc do la
 // 360p (itag 18, H.264 baseline + AAC) — dung thu Belle mo thang duoc.
@@ -32,20 +34,59 @@ const DEFAULT_PREFS = {
 
 function readPrefs(req) {
   const prefs = { ...DEFAULT_PREFS };
-  const header = req.headers.cookie;
-  if (!header) return prefs;
-  for (const part of header.split(';')) {
-    const [rawKey, ...rest] = part.split('=');
-    const key = rawKey.trim();
-    const value = decodeURIComponent(rest.join('=').trim());
-    if (key === 'thumbs') prefs.thumbs = value === '1';
-    if (key === 'textSize' && render.TEXT_SIZES[value]) prefs.textSize = value;
-    if (key === 'pageSize') {
-      const n = Number(value);
-      if (Number.isFinite(n) && n >= 4 && n <= 40) prefs.pageSize = n;
-    }
+  const jar = parseCookies(req.headers.cookie);
+  if (jar.thumbs !== undefined) prefs.thumbs = jar.thumbs === '1';
+  if (render.TEXT_SIZES[jar.textSize]) prefs.textSize = jar.textSize;
+  const pageSize = Number(jar.pageSize);
+  if (Number.isFinite(pageSize) && pageSize >= 4 && pageSize <= 40) {
+    prefs.pageSize = pageSize;
   }
   return prefs;
+}
+
+/**
+ * Dia chi de nguoi dung go tren may khac (trang /link, ma QR). Sau reverse
+ * proxy thi Host la ten noi bo, phai nghe theo X-Forwarded-* moi ra dung
+ * dia chi cong khai.
+ */
+function publicBase(req) {
+  if (config.PUBLIC_URL) return config.PUBLIC_URL;
+  const first = (value) => String(value || '').split(',')[0].trim();
+  const proto = first(req.headers['x-forwarded-proto']) || 'http';
+  const host =
+    first(req.headers['x-forwarded-host']) ||
+    req.headers.host ||
+    `localhost:${config.PORT}`;
+  return `${proto}://${host}`;
+}
+
+function clientIp(req) {
+  return req.ip || req.socket.remoteAddress || '?';
+}
+
+/** Ten may cua chinh mang nha — de biet co nen doi HTTPS hay khong. */
+function isLocalHost(hostname) {
+  const name = String(hostname || '').split(':')[0].toLowerCase();
+  return (
+    name === 'localhost' ||
+    name.endsWith('.local') ||
+    /^127\./.test(name) ||
+    /^10\./.test(name) ||
+    /^192\.168\./.test(name) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(name)
+  );
+}
+
+/**
+ * Cookie YouTube la ca phien dang nhap Google, nen trang nop cookie ma di qua
+ * HTTP tran giua Internet thi ai nam duong truyen cung doc duoc. Trong mang nha
+ * thi khong sao, ra ngoai Internet la phai HTTPS.
+ */
+function linkIsExposed(req) {
+  if (req.secure) return false;
+  const proto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+  if (proto === 'https') return false;
+  return !isLocalHost(req.headers['x-forwarded-host'] || req.headers.host);
 }
 
 function sendPage(res, html, status = 200) {
@@ -60,7 +101,7 @@ function sendPage(res, html, status = 200) {
 function friendlyError(err) {
   const message = String(err?.message || err);
   if (/Sign in to confirm|not a bot|LOGIN_REQUIRED|cookies/i.test(message)) {
-    return 'YouTube đang đòi đăng nhập từ máy chủ này. Vào mục Đăng nhập để nối lại tài khoản (cookie cũ có thể đã hết hạn).';
+    return 'YouTube đang đòi đăng nhập. Vào mục Đăng nhập trên chính máy này để nối lại tài khoản (cookie cũ có thể đã hết hạn).';
   }
   if (/Video unavailable|Private video|removed/i.test(message)) {
     return 'Video này không xem được (riêng tư, bị gỡ hoặc chặn theo khu vực).';
@@ -82,6 +123,14 @@ function friendlyError(err) {
 
 // ---------- tai nguyen tinh ----------
 
+app.use((req, res, next) => {
+  // Dia chi phat mang theo khoa cua may (?k=...), dung de no theo chan Referer
+  // sang trang khac. May Symbian bo qua header la nen dat thoai mai.
+  res.set('Referrer-Policy', 'no-referrer');
+  res.set('X-Content-Type-Options', 'nosniff');
+  next();
+});
+
 app.use(
   express.static(path.join(config.ROOT, 'public'), {
     maxAge: '1d',
@@ -93,9 +142,16 @@ app.use(
 
 app.use(express.urlencoded({ extended: false, limit: '2mb' }));
 
-// Moi trang deu can tuy chon hien thi (co chu, anh thu nho) de dung layout.
+// Moi trang deu can tuy chon hien thi (co chu, anh thu nho) de dung layout,
+// va can biet may nao dang goi de lay dung cookie YouTube cua nguoi do.
 app.use((req, res, next) => {
   req.prefs = readPrefs(req);
+  // Trinh phat cua may Nokia mo lien ket .mp4 ben ngoai trinh duyet nen khong
+  // gui cookie theo — luc do nhan ra may bang khoa phat dinh trong dia chi.
+  req.device =
+    cookies.read(req) || cookies.byStreamKey(req.query.k) || cookies.issue(res);
+  req.streamKey = cookies.streamKey(req.device);
+  req.auth = cookies.authFor(req.device);
   next();
 });
 
@@ -106,9 +162,9 @@ app.get('/', (req, res) => {
     res,
     render.homePage({
       prefs: req.prefs,
-      warning: ytdlp.hasCookies()
+      warning: cookies.status(req.device).ready
         ? null
-        : 'Chưa cấu hình cookie YouTube — tìm kiếm vẫn chạy nhưng có thể không phát được video. Xem mục Giới thiệu.',
+        : 'Máy này chưa nối tài khoản YouTube — tìm kiếm vẫn chạy nhưng chưa phát được video.',
     })
   );
 });
@@ -180,7 +236,7 @@ app.get('/watch', async (req, res) => {
   }
 
   const [infoResult, relatedResult] = await Promise.allSettled([
-    ytdlp.getInfo(videoId),
+    ytdlp.getInfo(videoId, req.auth),
     innertube.related(videoId),
   ]);
 
@@ -214,6 +270,7 @@ app.get('/watch', async (req, res) => {
       prefs,
       profiles: media.PROFILES,
       ffmpegOk: media.isAvailable(),
+      streamKey: req.streamKey,
       error,
     })
   );
@@ -294,7 +351,7 @@ app.all('/stream/:id/:formatId?', async (req, res) => {
   }
 
   try {
-    const info = await ytdlp.getInfo(id);
+    const info = await ytdlp.getInfo(id, req.auth);
     const format = formatId
       ? ytdlp.findFormat(info, formatId)
       : ytdlp.pickProgressive(info.formats, BELLE_MAX_HEIGHT);
@@ -342,7 +399,7 @@ app.all('/audio/:id', async (req, res) => {
   }
 
   try {
-    const info = await ytdlp.getInfo(id);
+    const info = await ytdlp.getInfo(id, req.auth);
     const audio = ytdlp.pickAudioOnly(info.formats);
     if (!ytdlp.isBelleAudio(audio)) {
       res.redirect(302, `/convert?v=${id}&p=audio`);
@@ -399,7 +456,7 @@ app.get('/convert', async (req, res) => {
 
   try {
     const existing = media.getJob(videoId, profileId);
-    const info = await ytdlp.getInfo(videoId);
+    const info = await ytdlp.getInfo(videoId, req.auth);
 
     let job = existing;
     if (!job || job.status === 'error') {
@@ -488,29 +545,32 @@ app.get('/file/:id/:profileId', (req, res) => {
 // ---------- dang nhap bang ma / QR ----------
 
 app.get('/login', async (req, res) => {
-  const status = ytdlp.cookieStatus();
+  const status = cookies.status(req.device);
 
   let notice = null;
   let error = null;
   if (status.ready && req.query.check === '1') {
     try {
-      await ytdlp.verify();
+      await ytdlp.verify(req.auth);
       notice = 'Cookie còn tốt — YouTube nhận. Vào xem video được rồi.';
     } catch (err) {
       error = friendlyError(err);
     }
   }
 
-  // Con hieu luc thi giu nguyen ma dang hien, tranh doi ma moi moi lan lam moi.
+  // Con hieu luc va dung la ma cua may nay thi giu nguyen, tranh doi ma moi
+  // moi lan trang tu lam moi.
   let code = pairing.normalize(req.query.c);
-  if (req.query.new === '1' || !pairing.isValid(code)) code = pairing.issue();
+  if (req.query.new === '1' || !pairing.isValid(code, req.device)) {
+    code = pairing.issue(req.device);
+  }
 
-  const host = req.headers.host || `localhost:${config.PORT}`;
   sendPage(
     res,
     render.loginPage({
       code,
-      linkUrl: `http://${host}/link?c=${code}`,
+      linkUrl: `${publicBase(req)}/link?c=${code}`,
+      logoutUrl: `/logout?t=${cookies.actionToken(req.device)}`,
       status,
       minutes: pairing.remainingMinutes(code),
       notice,
@@ -522,13 +582,15 @@ app.get('/login', async (req, res) => {
 
 app.get('/qr', async (req, res) => {
   const code = pairing.normalize(req.query.c);
+  // Trang nay cung tra loi duoc cau "ma nay co that khong", nen lan hoi truot
+  // o day cung phai tinh vao so lan do ma.
   if (!pairing.isValid(code)) {
+    pairing.noteMiss(clientIp(req));
     res.status(404).end();
     return;
   }
-  const host = req.headers.host || `localhost:${config.PORT}`;
   try {
-    const png = await QRCode.toBuffer(`http://${host}/link?c=${code}`, {
+    const png = await QRCode.toBuffer(`${publicBase(req)}/link?c=${code}`, {
       type: 'png',
       width: 200,
       margin: 2,
@@ -542,32 +604,61 @@ app.get('/qr', async (req, res) => {
 });
 
 app.get('/link', (req, res) => {
+  const exposed = linkIsExposed(req);
   res
-    .status(200)
+    .status(exposed && config.REQUIRE_SECURE_LINK ? 403 : 200)
     .set('Content-Type', 'text/html; charset=utf-8')
-    .send(render.linkPage({ code: pairing.format(pairing.normalize(req.query.c) || '') }));
+    .send(
+      render.linkPage({
+        code: pairing.format(pairing.normalize(req.query.c) || ''),
+        exposed,
+        refused: exposed && config.REQUIRE_SECURE_LINK,
+      })
+    );
 });
 
-app.post('/link', (req, res) => {
+app.post('/link', async (req, res) => {
   const code = pairing.normalize(req.body.code);
+  const ip = clientIp(req);
+  const exposed = linkIsExposed(req);
   const sendForm = (error, status = 400) =>
     res
       .status(status)
       .set('Content-Type', 'text/html; charset=utf-8')
-      .send(render.linkPage({ code: req.body.code, error }));
+      .send(render.linkPage({ code: req.body.code, error, exposed }));
 
-  if (!pairing.isValid(code)) {
+  if (exposed && config.REQUIRE_SECURE_LINK) {
+    res
+      .status(403)
+      .set('Content-Type', 'text/html; charset=utf-8')
+      .send(render.linkPage({ exposed, refused: true }));
+    return;
+  }
+
+  // Ma dung thi luon di tiep, ke ca khi bo dem dang bao "sai nhieu qua": sau
+  // reverse proxy moi nguoi chung mot dia chi IP, khoa cung tay la mot nguoi
+  // do bua co the chan het ca nhung nguoi dang nhap that.
+  const deviceId = pairing.deviceOf(code);
+  if (!deviceId) {
+    pairing.noteMiss(ip);
+    // Cham lai mot nhip cho viec do ma khong con re.
+    await new Promise((done) => setTimeout(done, 500));
+    if (pairing.blocked(ip)) {
+      sendForm('Nhập sai quá nhiều lần. Chờ ít phút rồi thử lại.', 429);
+      return;
+    }
     sendForm('Mã không đúng hoặc đã hết hạn. Bấm "Lấy mã mới" trên máy Nokia rồi thử lại.');
     return;
   }
 
   try {
-    ytdlp.saveCookies(req.body.cookies);
+    cookies.save(deviceId, req.body.cookies);
   } catch (err) {
     sendForm(err.message);
     return;
   }
 
+  ytdlp.forgetAuth(cookies.authFor(deviceId).key);
   pairing.consume(code);
   res
     .status(200)
@@ -576,7 +667,17 @@ app.post('/link', (req, res) => {
 });
 
 app.get('/logout', (req, res) => {
-  ytdlp.clearCookies();
+  // Chi may that su dang cam cookie 'did' moi xoa duoc cookie cua chinh no, va
+  // phai kem ma chong CSRF — khong thi mot lien ket la tren trang web bat ky
+  // cung dang xuat ho nguoi khac.
+  const own = cookies.read(req);
+  if (!own || !cookies.checkAction(own, req.query.t)) {
+    res.redirect(302, '/login');
+    return;
+  }
+  const auth = cookies.authFor(own);
+  cookies.clear(own);
+  if (auth.mode === 'device') ytdlp.forgetAuth(auth.key);
   res.redirect(302, '/login');
 });
 
@@ -592,11 +693,10 @@ app.get('/settings', (req, res) => {
       ? String(req.query.textSize)
       : DEFAULT_PREFS.textSize;
     const options = 'Path=/; Max-Age=31536000';
-    res.set('Set-Cookie', [
-      `thumbs=${thumbs ? 1 : 0}; ${options}`,
-      `pageSize=${pageSize}; ${options}`,
-      `textSize=${textSize}; ${options}`,
-    ]);
+    // append chu khong phai set: khong duoc de len cookie ma thiet bi.
+    res.append('Set-Cookie', `thumbs=${thumbs ? 1 : 0}; ${options}`);
+    res.append('Set-Cookie', `pageSize=${pageSize}; ${options}`);
+    res.append('Set-Cookie', `textSize=${textSize}; ${options}`);
     sendPage(res, render.settingsPage({ thumbs, pageSize, textSize }));
     return;
   }
@@ -609,7 +709,8 @@ app.get('/about', (req, res) => {
     res,
     render.aboutPage({
       ffmpegOk: media.isAvailable(),
-      cookiesOk: ytdlp.hasCookies(),
+      cookieStatus: cookies.status(req.device),
+      deviceCount: cookies.count(),
       address: `${req.headers.host || 'may-chu'}`,
       build: config.BUILD_VERSION,
       buildDate: config.BUILD_DATE,
@@ -644,7 +745,10 @@ function localAddresses() {
   return result;
 }
 
-setInterval(() => media.cleanup(), 30 * 60 * 1000).unref();
+setInterval(() => {
+  media.cleanup();
+  cookies.cleanup();
+}, 30 * 60 * 1000).unref();
 
 app.listen(config.PORT, config.HOST, () => {
   console.log('YouTube cho Symbian — may chu da chay');
@@ -653,7 +757,16 @@ app.listen(config.PORT, config.HOST, () => {
   );
   console.log(`  yt-dlp : ${ytdlp.version()}`);
   console.log(`  ffmpeg : ${media.isAvailable() ? media.FFMPEG : 'chua co'}`);
-  console.log(`  cookie : ${ytdlp.hasCookies() ? 'da cau hinh' : 'chua co'}`);
+  console.log(
+    `  cookie : ${cookies.count()} may co cookie rieng` +
+      `, cookie chung ${config.SHARED_COOKIES ? 'bat' : 'tat'}`
+  );
+  if (cookies.sharedInUse()) {
+    console.log(
+      '  !! Cookie chung dang bat: may nao chua dang nhap cung xem bang tai khoan\n' +
+        '     cua chu may. Mo cong ra Internet thi dat YT_SHARED_COOKIES=0.'
+    );
+  }
   console.log('  Nhap dia chi nay tren dien thoai:');
   for (const address of localAddresses()) {
     console.log(`    http://${address}:${config.PORT}/`);

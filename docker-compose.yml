@@ -13,13 +13,30 @@ services:
       - "9080:8080"
 
     volumes:
-      # Giu cookie dang nhap va file da chuyen ma qua cac lan khoi dong lai.
+      # Giu cookie dang nhap cua tung may va file da chuyen ma qua cac lan
+      # khoi dong lai. Cookie moi may nam trong ./data/devices.
       - ./data:/data
 
     environment:
       - TZ=Asia/Ho_Chi_Minh
       - YT_HL=vi
       - YT_GL=VN
+      # Moi may vao trang tu nap cookie cua chinh no. Bien nay noi ve cookie
+      # chung trong data/cookies.txt: 1 = may chua dang nhap van xem duoc bang
+      # tai khoan cua chu may (dung trong nha). Mo ra Internet cho nhieu nguoi
+      # thi dat 0 — luc do ai cung phai dang nhap bang tai khoan cua ho.
+      - YT_SHARED_COOKIES=0
+      # Cookie cua mot may bao nhieu ngay khong dung thi xoa.
+      - DEVICE_TTL_DAYS=45
+      # Chay sau reverse proxy ma proxy khong gui X-Forwarded-Proto/Host thi
+      # dien dia chi cong khai vao day, de ma QR va trang /link ra dung dia chi.
+      # - PUBLIC_URL=https://youtube.nha-toi.vn
+      # Co reverse proxy dung truoc thi bat, de dem so lan nhap sai theo dung
+      # IP nguoi dung chu khong phai IP cua proxy.
+      # - TRUST_PROXY=1
+      # Tu choi han viec nop cookie khi trang /link khong di qua HTTPS.
+      # Bat khi da co chung chi — cookie la ca phien dang nhap Google.
+      # - REQUIRE_SECURE_LINK=1
       # NAS thuong yeu CPU, chuyen ma mot video mot luc la vua.
       - MAX_JOBS=1
       # NAS chip ARM (Realtek RTD1296/RTD1619B) ma hoa rat cham.

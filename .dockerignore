@@ -8,9 +8,12 @@
 node_modules
 cache
 data
+preview
 
 cookies.txt
 *.cookies.txt
+devices
+device-secret
 
 *.log
 npm-debug.log*
