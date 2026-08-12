@@ -539,9 +539,11 @@ a.go .ic {
   font-size: 0.8em;
 }
 
-.opts li .m {
-  padding: 0 9px 10px 9px;
-  margin: -4px 0 0 0;
+/* Ghi chu nam trong the <a> nen no dang thua chu dam cua nhan muc. */
+.opts li a .m {
+  display: block;
+  overflow: hidden;
+  font-weight: normal;
 }
 
 /* ---------- khoi van ban ---------- */
