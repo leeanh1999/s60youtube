@@ -193,7 +193,11 @@ app.get('/watch', async (req, res) => {
   let error = null;
   if (infoResult.status === 'fulfilled') {
     const raw = infoResult.value;
-    info = { ...raw, direct: ytdlp.pickProgressive(raw.formats, BELLE_MAX_HEIGHT) };
+    info = {
+      ...raw,
+      direct: ytdlp.pickProgressive(raw.formats, BELLE_MAX_HEIGHT),
+      audioDirect: ytdlp.isBelleAudio(ytdlp.pickAudioOnly(raw.formats)),
+    };
   } else {
     // Giu nguyen van loi trong log de con lan ra nguyen nhan, con man hinh
     // dien thoai thi chi hien cau tieng Viet ngan gon.
@@ -256,10 +260,11 @@ async function proxyFormat(req, res, id, format) {
   const headers = { 'User-Agent': config.DESKTOP_UA };
   if (req.headers.range) headers.Range = req.headers.range;
 
+  const audioOnly = Boolean(format.acodec && !format.vcodec);
   const upstream = await fetch(format.url, { headers });
   res.status(upstream.status === 206 ? 206 : upstream.status);
-  res.set('Content-Type', format.acodec && !format.vcodec ? 'audio/mp4' : 'video/mp4');
-  res.set('Content-Disposition', `inline; filename="${id}.mp4"`);
+  res.set('Content-Type', audioOnly ? 'audio/mp4' : 'video/mp4');
+  res.set('Content-Disposition', `inline; filename="${id}.${audioOnly ? 'm4a' : 'mp4'}"`);
   res.set('Accept-Ranges', 'bytes');
   res.set('Cache-Control', 'no-store');
   for (const key of ['content-length', 'content-range']) {
@@ -322,6 +327,42 @@ app.all('/stream/:id/:formatId?', async (req, res) => {
   }
 });
 
+// ---------- nghe truc tiep (luong m4a cua YouTube, khong chuyen ma) ----------
+
+/**
+ * YouTube da san luong AAC trong vo MP4 (itag 140) — dung thu Symbian nghe duoc.
+ * Don thang no di la xong ngay, khong ton mot giay CPU nao cua NAS. Chi khi
+ * video khong co luong AAC nao moi phai nho toi ffmpeg.
+ */
+app.all('/audio/:id', async (req, res) => {
+  const { id } = req.params;
+  if (!isVideoId(id)) {
+    res.status(400).end();
+    return;
+  }
+
+  try {
+    const info = await ytdlp.getInfo(id);
+    const audio = ytdlp.pickAudioOnly(info.formats);
+    if (!ytdlp.isBelleAudio(audio)) {
+      res.redirect(302, `/convert?v=${id}&p=audio`);
+      return;
+    }
+    await proxyFormat(req, res, id, audio);
+  } catch (err) {
+    sendPage(
+      res,
+      render.errorPage({
+        title: 'Không nghe được',
+        message: friendlyError(err),
+        back: `/watch?v=${id}`,
+        prefs: req.prefs,
+      }),
+      502
+    );
+  }
+});
+
 // ---------- chuyen ma cho may yeu ----------
 
 app.get('/convert', async (req, res) => {
@@ -364,21 +405,31 @@ app.get('/convert', async (req, res) => {
     if (!job || job.status === 'error') {
       const profile = media.PROFILES[profileId];
       const sources = [];
+      // Ghep vo chua chi la chep du lieu, nhanh gap boi so voi ma hoa lai.
+      // Chi khi YouTube khong con ban H.264/AAC nao moi phai ma hoa that.
+      let copy = false;
 
       if (profile.audioOnly) {
         const audio = ytdlp.pickAudioOnly(info.formats) ||
           ytdlp.pickProgressive(info.formats, 720);
         if (!audio) throw new Error('Không tìm thấy luồng tiếng phù hợp.');
         sources.push(audio.url);
+        copy = ytdlp.isBelleAudio(audio);
       } else {
-        const progressive = ytdlp.pickProgressive(info.formats, profile.maxHeight);
-        if (progressive) {
-          sources.push(progressive.url);
+        const pair = ytdlp.pickForRemux(info.formats, profile.maxHeight);
+        if (pair) {
+          sources.push(pair.video.url, pair.audio.url);
+          copy = true;
         } else {
-          const video = ytdlp.pickVideoOnly(info.formats, profile.maxHeight);
-          const audio = ytdlp.pickAudioOnly(info.formats);
-          if (!video || !audio) throw new Error('Không tìm thấy luồng hình/tiếng phù hợp.');
-          sources.push(video.url, audio.url);
+          const progressive = ytdlp.pickProgressive(info.formats, profile.maxHeight);
+          if (progressive) {
+            sources.push(progressive.url);
+          } else {
+            const video = ytdlp.pickVideoOnly(info.formats, profile.maxHeight);
+            const audio = ytdlp.pickAudioOnly(info.formats);
+            if (!video || !audio) throw new Error('Không tìm thấy luồng hình/tiếng phù hợp.');
+            sources.push(video.url, audio.url);
+          }
         }
       }
 
@@ -387,6 +438,7 @@ app.get('/convert', async (req, res) => {
         profileId,
         sources,
         duration: info.duration,
+        copy,
       });
     }
 

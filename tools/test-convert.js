@@ -16,8 +16,6 @@ process.env.DATA_DIR = WORK;
 
 const media = require('../lib/media');
 
-const VIDEO_ID = 'TESTvideo01';
-
 let passed = 0;
 let failed = 0;
 
@@ -63,9 +61,14 @@ function firstBoxes(file) {
 }
 
 /** May chu gia lap YouTube: co Accept-Ranges de ffmpeg tua duoc nhu ngoai doi. */
-function serveFile(file) {
-  const size = fs.statSync(file).size;
+function serveFiles(files) {
   const server = http.createServer((req, res) => {
+    const file = files[req.url];
+    if (!file) {
+      res.writeHead(404).end();
+      return;
+    }
+    const size = fs.statSync(file).size;
     const match = /bytes=(\d*)-(\d*)/.exec(req.headers.range || '');
     if (match) {
       const start = Number(match[1] || 0);
@@ -107,51 +110,89 @@ function waitFor(job, timeoutMs = 180000) {
   });
 }
 
+function makeSample(args, file) {
+  execFileSync(media.FFMPEG, ['-hide_banner', '-loglevel', 'error', '-y', ...args, file], {
+    stdio: 'pipe',
+  });
+  return file;
+}
+
 (async () => {
   if (!media.isAvailable()) {
     console.log('Khong tim thay ffmpeg — khong kiem thu duoc phan chuyen ma.');
     process.exit(1);
   }
 
-  console.log('1. Dung doan phim mau roi don qua HTTP');
-  const source = path.join(WORK, 'nguon.mp4');
-  execFileSync(
-    media.FFMPEG,
+  console.log('1. Dung cac doan mau giong luong YouTube roi don qua HTTP');
+  // Giong itag 133: chi hinh, 240p, H.264 Main profile.
+  const videoOnly = makeSample(
     [
-      '-hide_banner', '-loglevel', 'error', '-y',
-      '-f', 'lavfi', '-i', 'testsrc=size=1280x720:rate=25:duration=2',
-      '-f', 'lavfi', '-i', 'sine=frequency=440:duration=2',
-      '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p',
-      '-c:a', 'aac', '-shortest', source,
+      '-f', 'lavfi', '-i', 'testsrc=size=426x240:rate=25:duration=2',
+      '-c:v', 'libx264', '-preset', 'veryfast', '-profile:v', 'main',
+      '-pix_fmt', 'yuv420p', '-an',
     ],
-    { stdio: 'pipe' }
+    path.join(WORK, 'hinh240.mp4')
   );
-  check('tao duoc file nguon', fs.existsSync(source) && fs.statSync(source).size > 0);
+  // Giong itag 140: chi tieng, AAC trong vo MP4.
+  const audioOnly = makeSample(
+    ['-f', 'lavfi', '-i', 'sine=frequency=440:duration=2', '-c:a', 'aac', '-vn'],
+    path.join(WORK, 'tieng.m4a')
+  );
+  // Giong itag 18: hinh va tieng gop san — duong lui khi phai ma hoa that.
+  const progressive = makeSample(
+    [
+      '-f', 'lavfi', '-i', 'testsrc=size=640x360:rate=25:duration=2',
+      '-f', 'lavfi', '-i', 'sine=frequency=440:duration=2',
+      '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p',
+      '-c:a', 'aac', '-shortest',
+    ],
+    path.join(WORK, 'gop.mp4')
+  );
+  check('tao duoc ba doan mau', [videoOnly, audioOnly, progressive].every(
+    (f) => fs.existsSync(f) && fs.statSync(f).size > 0
+  ));
 
-  const server = await serveFile(source);
-  const url = `http://127.0.0.1:${server.address().port}/nguon.mp4`;
+  const server = await serveFiles({
+    '/hinh240.mp4': videoOnly,
+    '/tieng.m4a': audioOnly,
+    '/gop.mp4': progressive,
+  });
+  const base = `http://127.0.0.1:${server.address().port}`;
   check('may chu mau da chay', Boolean(server.address().port));
 
-  console.log('2. Ban nhe 640x360 cho Belle');
-  const belle = await waitFor(
-    media.startJob({ videoId: VIDEO_ID, profileId: 'belle', sources: [url], duration: 2 })
+  console.log('2. Ban nhe: ghep vo chua, khong ma hoa lai');
+  const remux = await waitFor(
+    media.startJob({
+      videoId: 'TESTremux01',
+      profileId: 'belle',
+      sources: [`${base}/hinh240.mp4`, `${base}/tieng.m4a`],
+      duration: 2,
+      copy: true,
+    })
   );
-  check('chuyen ma xong', belle.status === 'done', belle.error || '');
-  if (belle.status === 'done') {
-    const info = streamInfo(belle.file);
-    check('file khong rong', fs.statSync(belle.file).size > 0);
+  check('ghep xong', remux.status === 'done', remux.error || '');
+  if (remux.status === 'done') {
+    const info = streamInfo(remux.file);
     check('co luong hinh H.264', /Video: h264/.test(info), info.trim());
-    check('dung Baseline cho Symbian', /h264 \((Constrained )?Baseline\)/.test(info));
-    check('dung co 640x360', /640x360/.test(info));
+    check('giu nguyen co 426x240', /426x240/.test(info));
+    // Duong ma hoa luon ep ve Baseline. Con nguyen Main tuc la ffmpeg da chep
+    // thang chu khong ma hoa lai — do moi la cho nhanh.
+    check('giu nguyen Main profile, tuc la khong ma hoa lai', /h264 \(Main\)/.test(info));
     check('co luong tieng AAC', /Audio: aac/.test(info));
-    check('moov nam dau file', firstBoxes(belle.file).includes('moov'));
+    check('moov nam dau file', firstBoxes(remux.file).includes('moov'));
   }
 
-  console.log('3. Chi tieng .m4a');
+  console.log('3. Chi tieng: chep thang luong AAC');
   const audio = await waitFor(
-    media.startJob({ videoId: VIDEO_ID, profileId: 'audio', sources: [url], duration: 2 })
+    media.startJob({
+      videoId: 'TESTaudio01',
+      profileId: 'audio',
+      sources: [`${base}/tieng.m4a`],
+      duration: 2,
+      copy: true,
+    })
   );
-  check('chuyen ma xong', audio.status === 'done', audio.error || '');
+  check('ghep xong', audio.status === 'done', audio.error || '');
   if (audio.status === 'done') {
     const info = streamInfo(audio.file);
     check('file mang duoi .m4a', audio.file.endsWith('.m4a'));
@@ -159,15 +200,34 @@ function waitFor(job, timeoutMs = 180000) {
     check('da bo luong hinh', !/Video:/.test(info));
   }
 
-  console.log('4. Goi lai thi dung file da co, khong chay ffmpeg lan nua');
+  console.log('4. Duong lui: ma hoa that khi khong co ban H.264 dung y');
+  const encoded = await waitFor(
+    media.startJob({
+      videoId: 'TESTencode1',
+      profileId: 'belle',
+      sources: [`${base}/gop.mp4`],
+      duration: 2,
+    })
+  );
+  check('ma hoa xong', encoded.status === 'done', encoded.error || '');
+  if (encoded.status === 'done') {
+    const info = streamInfo(encoded.file);
+    check('ha xuong 426x240', /426x240/.test(info), info.trim());
+    check('ep ve Baseline', /h264 \((Constrained )?Baseline\)/.test(info));
+    check('co luong tieng AAC', /Audio: aac/.test(info));
+    check('moov nam dau file', firstBoxes(encoded.file).includes('moov'));
+  }
+
+  console.log('5. Goi lai thi dung file da co, khong chay ffmpeg lan nua');
   const again = media.startJob({
-    videoId: VIDEO_ID,
+    videoId: 'TESTremux01',
     profileId: 'belle',
-    sources: [url],
+    sources: [`${base}/hinh240.mp4`, `${base}/tieng.m4a`],
     duration: 2,
+    copy: true,
   });
   check('bao xong ngay', again.status === 'done');
-  check('van la file cu', again.file === belle.file);
+  check('van la file cu', again.file === remux.file);
 
   server.close();
   fs.rmSync(WORK, { recursive: true, force: true });

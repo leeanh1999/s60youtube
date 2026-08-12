@@ -73,14 +73,11 @@ Trước hết kiểm tra hai thứ, vì không phải NAS ARM nào cũng chạy
 Mọi chip Realtek mà Synology dùng (RTD1293, RTD1296, RTD1619B) đều là ARMv8
 64-bit nên gần như chắc chắn ra `aarch64`.
 
-Chip ARM mã hoá video chậm hơn hẳn máy tính. Vì vậy file compose đặt sẵn
-`FFMPEG_PRESET=ultrafast`, và trên máy ARM nên ưu tiên theo thứ tự:
-
-| Ưu tiên | Lựa chọn | Vì sao |
-| --- | --- | --- |
-| 1 | **Xem online** | Chỉ chuyển tiếp luồng, NAS không phải mã hoá gì |
-| 2 | **Chỉ tiếng (.m4a)** | Mã hoá âm thanh rất nhẹ, xong trong vài giây |
-| 3 | 640x360 | Rất chậm trên ARM, chỉ nên dùng nếu NAS chạy Intel |
+Chip ARM mã hoá video chậm hơn hẳn máy tính, nên gần như mọi đường đi trong máy
+chủ đều tránh mã hoá: xem online và nghe nhạc chỉ là chuyển tiếp luồng, còn bản
+nhẹ thì ghép lại vỏ chứa chứ không mã hoá (xem mục dưới). `FFMPEG_PRESET`
+trong file compose chỉ còn tác dụng ở trường hợp hiếm là video không có bản
+H.264 nào — lúc đó mới phải mã hoá thật và NAS ARM sẽ rất chậm.
 
 ### Cập nhật lên bản mới
 
@@ -184,18 +181,27 @@ trong bộ nhớ máy. Trình duyệt của Belle (Nokia Browser 7.4 trở lên)
 `<video>` với H.264/MP4 nên làm được như vậy; máy đời cũ hơn không hiểu thẻ này
 sẽ thấy một liên kết thường ở chỗ đó.
 
-Dưới khung phát còn hai lựa chọn dự phòng, chỉ cần khi xem online bị giật hoặc
-khi YouTube không còn bản MP4 gộp sẵn cho video đó:
+Dưới khung phát còn hai lựa chọn:
 
-| Lựa chọn | Dành cho |
-| --- | --- |
-| 640x360 — bản nhẹ cho Belle | Mạng yếu, xem online hay khựng |
-| Chỉ tiếng (.m4a) | Nghe nhạc, tốn rất ít dung lượng |
+| Lựa chọn | Dành cho | Phải chờ |
+| --- | --- | --- |
+| Nghe ngay — chỉ tiếng | Nghe nhạc, tốn rất ít dung lượng | Không |
+| Bản nhẹ 240p | Mạng yếu, xem online hay khựng | Vài giây |
 
-Hai mức này cần chuyển mã: trang sẽ tự làm mới và hiện phần trăm, xong thì bấm
-phát. Video dài thì chờ lâu, cứ để trang đó tự chạy.
+**Nghe ngay** không chờ giây nào vì YouTube đã sẵn luồng AAC trong vỏ MP4
+(itag 140) — đúng thứ máy Symbian nghe được, nên máy chủ chỉ dọn thẳng nó đi.
 
-File đã chuyển mã nằm trong thư mục `cache/` **trên máy chủ**, tự xoá sau 6 tiếng
+**Bản nhẹ 240p** thì máy chủ phải ghép một file, nhưng chỉ ghép chứ không mã
+hoá. Nokia ghi rõ E6 đọc được H.264 cả ba profile (base, main, high) tới 720p,
+mà YouTube vốn đã có sẵn luồng hình H.264 240p và luồng tiếng AAC — nên ffmpeg
+chỉ cần chép hai luồng đó vào chung một vỏ MP4 (`-c copy`). Chép dữ liệu thì
+nghẽn ở mạng chứ không đụng CPU, xong trong vài giây kể cả trên NAS chip ARM.
+
+Chỉ khi YouTube không phát hành bản H.264 nào cho video đó (hiếm, thường là
+video mới chỉ có VP9/AV1) thì mới phải mã hoá thật. Lúc đó trang sẽ tự làm mới
+và hiện phần trăm; video dài thì chờ lâu, cứ để trang đó tự chạy.
+
+File đã ghép nằm trong thư mục `cache/` **trên máy chủ**, tự xoá sau 6 tiếng
 không đụng tới.
 
 ## Cài đặt riêng
@@ -212,11 +218,11 @@ Biến môi trường:
 | Biến | Mặc định | Ý nghĩa |
 | --- | --- | --- |
 | `PORT` | `8080` | Cổng máy chủ |
-| `DATA_DIR` | thư mục dự án | Nơi chứa `cookies.txt` và `cache/` (Docker đặt `/data`) |
+| `DATA_DIR` | thư mục dự án | Nơi chứa `cookies.txt`, `cache/` và bộ nhớ đệm của yt-dlp (Docker đặt `/data`) |
 | `YT_HL` / `YT_GL` | `vi` / `VN` | Ngôn ngữ và vùng kết quả |
 | `PAGE_SIZE` | `12` | Số kết quả mỗi trang |
 | `MAX_JOBS` | `1` | Số video chuyển mã cùng lúc |
-| `FFMPEG_PRESET` | `veryfast` | Tốc độ mã hoá x264; máy ARM yếu nên đặt `ultrafast` |
+| `FFMPEG_PRESET` | `veryfast` | Tốc độ mã hoá x264; chỉ dùng khi video không có bản H.264 nào |
 | `YT_COOKIES_FILE` | `<DATA_DIR>/cookies.txt` | Đường dẫn cookie |
 | `YT_COOKIES_BROWSER` | trống | Đọc cookie thẳng từ trình duyệt |
 | `FFMPEG_PATH` | tự dò | Chỉ thẳng tới ffmpeg (Docker đặt `/usr/bin/ffmpeg`) |
@@ -237,10 +243,15 @@ hết hạn — xuất lại `cookies.txt`.
 **"Không kết nối được tới YouTube."** Máy chủ không ra được mạng. Nếu mạng công ty
 chặn YouTube thì phải bật VPN trên máy tính (điện thoại thì không cần).
 
-**Chuyển mã quá chậm.** Cứ xem online ở khung phát trên trang video, cách đó
-không dùng tới ffmpeg. Bắt buộc phải chuyển mã thì trên NAS ARM đặt
-`FFMPEG_PRESET=ultrafast`; máy khoẻ thì tăng `MAX_JOBS` và hạ xuống
-`FFMPEG_PRESET=fast` cho file gọn hơn.
+**Bản nhẹ chờ lâu, không phải vài giây như nói ở trên.** Video đó không có bản
+H.264 nên máy chủ buộc phải mã hoá thật. Chạy `docker exec s60youtube node
+tools/formats.js <mã video>` để xem YouTube trả về những luồng nào — nếu cột
+mã hình toàn `vp9` hay `av01` thì đúng là trường hợp này. Cứ xem online hoặc
+nghe bản chỉ tiếng, cả hai đều không đụng tới ffmpeg.
+
+**Mở video đầu tiên sau khi khởi động lại container thì lâu.** yt-dlp phải tải
+và giải mã lại tệp JavaScript của trình phát YouTube. Nó nhớ kết quả trong
+`<DATA_DIR>/ytdlp-cache` nên chỉ chậm đúng lần đầu; đừng xoá thư mục đó.
 
 **Bấm vào là máy đòi tải cả file về.** Khung phát trên trang không hiện ra, nên
 máy rơi vào liên kết dự phòng. Kiểm tra máy đang chạy Nokia Belle bản mới
