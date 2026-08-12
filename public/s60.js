@@ -4,7 +4,8 @@
  *  1. Dan thanh tren va chan trang vao khung nhin (neu may lam duoc that).
  *  2. Kinh lup o thanh tren mo khung tim kiem ngay tai cho, may nao cung mo
  *     duoc, thay vi phai sang trang /search.
- *  3. Phim len/xuong nhay sang khoi video ke tiep.
+ *  3. Phim len/xuong nhay sang khoi video ke tiep; phim trai/phai di trong
+ *     nhung hang nam ngang, va nhay thang toi 'Quay lai' / 'Trang sau'.
  *
  * Viet bang ES3 (var, khong arrow, khong template string) cho hop voi may cu:
  * WebKit 533 gap mot chu 'const' la chet ca file, ma chet im lang.
@@ -225,6 +226,8 @@
 
   var UP = 38;
   var DOWN = 40;
+  var LEFT = 37;
+  var RIGHT = 39;
 
   /**
    * Lien ket co that su hien tren trang hay khong. Can loc vi lien ket du
@@ -274,8 +277,19 @@
    * Do lai toa do sau moi lan cuon, va xet dinh sau cung: khoi cao hon cho
    * trong thi tha de ho phan duoi, con phan dau thi phai thay.
    */
+  /** Muc nay co nam trong thanh do khong (thanh tren hoac chan trang). */
+  function inside(el, box) {
+    for (var up = el; up; up = up.parentNode) {
+      if (up === box) return true;
+    }
+    return false;
+  }
+
   function clearBars(el) {
     if (!pinned || !el.getBoundingClientRect || !window.scrollBy) return;
+    // Chinh muc trong thanh dan thi khoi chua: thanh dan vao khung nhin roi,
+    // cuon them chi lam trang truot di chu khong lam no lo ra hon.
+    if ((bar && inside(el, bar)) || (nav && inside(el, nav))) return;
     if (nav) {
       var room = document.documentElement.clientHeight - nav.offsetHeight;
       var under = el.getBoundingClientRect().bottom - room;
@@ -285,6 +299,22 @@
       var over = bar.offsetHeight - el.getBoundingClientRect().top;
       if (over > 0) window.scrollBy(0, -Math.ceil(over));
     }
+  }
+
+  /** Dua con tro toi mot muc va keo no ra cho nhin thay. */
+  function land(el, upward) {
+    try {
+      el.focus();
+    } catch (err) {
+      return false;
+    }
+    if (document.activeElement !== el) return false;
+    // scrollIntoViewIfNeeded co san trong WebKit va chi cuon khi that su
+    // can, nho vay danh sach khong giat len giat xuong.
+    if (el.scrollIntoViewIfNeeded) el.scrollIntoViewIfNeeded();
+    else if (el.scrollIntoView) el.scrollIntoView(!!upward);
+    clearBars(el);
+    return true;
   }
 
   /** Tra ve true khi da nhay duoc; false thi de trinh duyet cuon nhu thuong. */
@@ -298,23 +328,93 @@
     // Muc nao nhan khong duoc con tro thi di tiep, chu khong dung lai giua
     // duong roi bam may lan cung khong nhich.
     while (next >= 0 && next < list.length) {
-      var el = list[next];
-      try {
-        el.focus();
-      } catch (err) {
-        el = null;
-      }
-      if (el && document.activeElement === el) {
-        // scrollIntoViewIfNeeded co san trong WebKit va chi cuon khi that su
-        // can, nho vay danh sach khong giat len giat xuong.
-        if (el.scrollIntoViewIfNeeded) el.scrollIntoViewIfNeeded();
-        else if (el.scrollIntoView) el.scrollIntoView(direction < 0);
-        clearBars(el);
-        return true;
-      }
+      if (land(list[next], direction < 0)) return true;
       next += direction;
     }
     return false;
+  }
+
+  /**
+   * Hai muc coi la cung mot hang khi phan chong nhau theo chieu doc an het qua
+   * nua cai thap hon. Do bang toa do that chu khong doc the <tr>: chan trang la
+   * bang, nhung 'Quay lai' voi kinh lup chi la hai the <a> canh nhau trong mot o.
+   */
+  function sameRow(a, b) {
+    var over = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+    if (over <= 0) return false;
+    var thin = Math.min(a.bottom - a.top, b.bottom - b.top);
+    return thin > 0 && over * 2 >= thin;
+  }
+
+  /** Muc gan nhat nam ben trai (hoac ben phai) muc dang chon, cung mot hang. */
+  function beside(here, direction) {
+    if (!here.getBoundingClientRect) return null;
+    var from = here.getBoundingClientRect();
+    var list = stops();
+    var best = null;
+    var near = 0;
+    for (var i = 0; i < list.length; i++) {
+      var el = list[i];
+      if (el === here || !el.getBoundingClientRect) continue;
+      var box = el.getBoundingClientRect();
+      if (!sameRow(from, box)) continue;
+      // Cho chong nhau 2 diem: vien va le am hay lam hai muc sat nhau dinh nhau.
+      var gap = direction > 0 ? box.left - from.right : from.left - box.right;
+      if (gap < -2) continue;
+      if (!best || gap < near) {
+        best = el;
+        near = gap;
+      }
+    }
+    return best;
+  }
+
+  /** Muc dau (hoac muc cuoi) cua phan noi dung, khong tinh hai thanh. */
+  function edge(direction) {
+    var main = document.getElementById('main');
+    if (!main) return null;
+    var list = stops();
+    for (var i = 0; i < list.length; i++) {
+      var el = list[direction > 0 ? list.length - 1 - i : i];
+      if (inside(el, main)) return el;
+    }
+    return null;
+  }
+
+  /**
+   * Trai/phai. Danh sach xep mot cot nen phan lon trang khong co gi nam ngang
+   * that; de nguyen thi hai phim nay bam nhu khong, ma tren may Nokia thi phim
+   * nao cung dat. Cho chung mot nghia duy nhat la LUI va TIEN, doc theo thu tu
+   * trang, roi tuy cho dang dung ma ra viec:
+   *
+   *  1. Dang o trong mot hang nam ngang (bon o chan trang, hay 'Quay lai' voi
+   *     kinh lup o thanh tren) thi di trong hang do, khong nhay ra ngoai.
+   *  2. Dang trong danh sach thi phai la xuong cuoi, trai la ve dau. Danh sach
+   *     dai muoi may khoi, bam xuong tung cai toi cuoi thi moi tay; phim phai
+   *     dua thang toi 'Trang sau' o cuoi trang ket qua.
+   *  3. Da o dau danh sach roi ma con bam trai thi ra 'Quay lai' o thanh tren.
+   *
+   * Chi dua con tro toi cho chu khong bam ho: lo tay cham phim ma no chuyen
+   * trang luon thi kho chiu, ma phim mui ten rat de cham.
+   */
+  function sideways(direction) {
+    var here = document.activeElement;
+    if (here === document.body || !here) here = null;
+
+    if (here) {
+      var next = beside(here, direction);
+      if (next) return land(next, direction < 0);
+      // Trong thanh tren hay chan trang thi het hang la het duong: hai thanh do
+      // khong phai la danh sach de ma noi dau voi cuoi.
+      if ((bar && inside(here, bar)) || (nav && inside(here, nav))) return false;
+    }
+
+    var far = edge(direction);
+    if (far && far !== here && land(far, direction < 0)) return true;
+    if (direction > 0) return false;
+
+    var back = firstOf('a', 'back');
+    return !!back && back !== here && land(back, true);
   }
 
   /** Dang go trong o tim kiem thi phim mui ten la de di trong chu. */
@@ -331,9 +431,14 @@
       if (editing(event.target || event.srcElement)) return;
 
       var code = event.keyCode || event.which;
-      if (code !== UP && code !== DOWN) return;
+      var went = false;
+      if (code === UP || code === DOWN) went = step(code === DOWN ? 1 : -1);
+      else if (code === LEFT || code === RIGHT) went = sideways(code === RIGHT ? 1 : -1);
+      else return;
 
-      if (step(code === DOWN ? 1 : -1)) {
+      // Khong di duoc thi de nguyen phim cho trinh duyet: no con biet cuon
+      // ngang, ma khong cuon duoc thi bam cung khong hong gi.
+      if (went) {
         if (event.preventDefault) event.preventDefault();
         event.returnValue = false;
       }

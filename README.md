@@ -277,6 +277,10 @@ việc bắt buộc.
 - Dán thẳng link YouTube vào khung đó cũng mở đúng video đó.
 - Phím **lên / xuống** nhảy hẳn sang khối video kế tiếp, không phải lết con trỏ
   từng chút như mặc định của trình duyệt.
+- Phím **trái / phải** là lùi và tiến: đang đứng trong một hàng ngang (bốn ô chân
+  trang, hay **Quay lại** với kính lúp ở thanh trên) thì đi trong hàng đó; đang
+  trong danh sách thì phải là xuống cuối, trái là về đầu — ở trang kết quả tìm,
+  bấm phải một cái là tới thẳng **Trang sau**.
 - Phím tắt: `0` về trang chính, `1`–`9` chọn mục, `*` mở khung tìm, `#` sang trang
   sau.
 
@@ -385,6 +389,18 @@ riêng. Trước có bỏ nó ra ngoài hàng cho khỏi tốn một lần bấm
 máy nào bấm `*` không tiện thì thành ra không còn đường nào tới chỗ tìm kiếm. Chỉ
 tên trang bên trái là vẫn đứng ngoài hàng: nó chỉ là đường về trang chính, mà chân
 trang đã có sẵn ô **Trang chính** rồi.
+
+Trái/phải thì khó hơn, vì danh sách xếp một cột nên phần lớn trang **không có gì
+nằm ngang thật** — để mặc trình duyệt thì hai phím này bấm như không, mà trên máy
+Nokia phím nào cũng đắt. Cho chúng đúng một nghĩa là **lùi và tiến theo thứ tự
+trang**, rồi tuỳ chỗ đang đứng mà ra việc: đang trong một hàng ngang thì đi trong
+hàng đó và không nhảy ra ngoài; đang trong danh sách thì phải là xuống mục cuối,
+trái là về mục đầu; đã ở đầu rồi mà còn bấm trái thì ra **Quay lại** ở thanh trên.
+Hàng ngang không đọc theo thẻ `<tr>` mà **đo toạ độ thật**: chân trang đúng là một
+bảng, nhưng *Quay lại* với kính lúp chỉ là hai thẻ `<a>` nằm cạnh nhau trong một ô,
+hai thứ coi là cùng hàng khi phần chồng nhau theo chiều dọc ăn quá nửa cái thấp
+hơn. Cả hai phím chỉ **đưa con trỏ tới** chứ không bấm hộ: phím mũi tên rất dễ chạm
+phải, lỡ tay mà nó chuyển trang luôn thì khó chịu.
 
 Trong thanh trên có **một `<table>` thật**: ô của bảng tự căn giữa theo chiều dọc
 nên tên trang bên trái và kính lúp bên phải luôn ngang nhau, dù người dùng đổi cỡ
