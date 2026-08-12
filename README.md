@@ -271,7 +271,8 @@ việc bắt buộc.
 - Lần đầu vào **Đăng nhập** để nối tài khoản (xem mục trên).
 - Trang chính là danh sách gợi ý (nếu đã đăng nhập) và 9 chủ đề gợi ý.
 - Tìm kiếm nằm ở **kính lúp góc phải thanh trên**: bấm vào là khung tìm kiếm bật
-  ra ngay tại chỗ, không phải rời trang đang xem.
+  ra ngay tại chỗ, không phải rời trang đang xem. Đang xem kết quả mà bấm lại thì
+  từ khoá cũ còn nguyên trong ô, sửa tiếp là tìm lại.
 - Dán thẳng link YouTube vào khung đó cũng mở đúng video đó.
 - Phím **lên / xuống** nhảy hẳn sang khối video kế tiếp, không phải lết con trỏ
   từng chút như mặc định của trình duyệt.
@@ -378,16 +379,31 @@ cũ. Kết quả đo nhớ trong `localStorage` nên các trang sau không phả
 lại. Phím lên/xuống cũng biết chừa: khối vừa nhảy tới mà nằm khuất sau thanh nào
 thì trang cuộn thêm đúng phần bị che.
 
-Ô tìm kiếm thu thành **kính lúp ở góc phải thanh trên**, bấm vào là khung tìm bật
-ra ngay dưới thanh và con trỏ nhảy sẵn vào ô nhập (phím `*` cũng mở được, phím `C`
-đóng lại). Làm vậy vì bề ngang là thứ đắt nhất trên hai màn này: một ô nhập chiếm
-gần hết dòng đầu mà chín trong mười lần vào trang là để xem, không phải để gõ.
+Trong thanh trên có **một `<table>` thật**: ô của bảng tự căn giữa theo chiều dọc
+nên tên trang bên trái và kính lúp bên phải luôn ngang nhau, dù người dùng đổi cỡ
+chữ hay máy nào màn nào. Làm bằng `float` thì cả hai dính theo đỉnh dòng, lệch
+nhau vài điểm thấy rõ ngay; còn flexbox thì WebKit đời này chưa có. Vỏ ngoài vẫn
+là `<div>` vì chính nó là cái được dán vào khung nhìn — dán một `<div>` thì bản
+WebKit nào cũng làm đúng, dán một `<table>` thì không chắc.
 
-Khung đó cũng phải dán mới dùng được, nên nó chỉ bật khi phép đo trên nói máy dán
-đúng. Máy không dán được — hoặc tắt JavaScript — thì kính lúp là **liên kết thường
-sang `/search`**, và trang đó có ô nhập thật. Tức là mất JavaScript vẫn tìm được,
-chỉ tốn thêm một lần tải trang. Cũng vì thế trang `/search` giữ nguyên ô nhập
-trong trang chứ không thu thành biểu tượng như các trang khác.
+Ô tìm kiếm thu thành **một biểu tượng kính lúp ở góc phải thanh trên**, bấm vào là
+khung tìm bật ra và con trỏ nhảy sẵn vào ô nhập (phím `*` cũng mở được, phím `C`
+đóng lại). Làm vậy vì bề ngang là thứ đắt nhất trên hai màn này: một ô nhập chiếm
+gần hết dòng đầu mà chín trong mười lần vào trang là để xem, không phải để gõ. Nút
+tìm trong khung cũng chỉ còn biểu tượng, để trên màn 360 điểm ô nhập được dài nhất
+có thể.
+
+Khung bật ra **không đòi máy phải dán được thanh**: dán được thì nó là `fixed` nằm
+ngay dưới thanh, không dán được thì `s60.js` đặt nó bằng `absolute` vào đúng đỉnh
+khung nhìn lúc bấm — không đi theo trang khi cuộn, nhưng vừa bấm là thấy ngay, vẫn
+hơn là bắt sang một trang khác chỉ để gõ một dòng chữ.
+
+Tắt hẳn JavaScript thì kính lúp là **liên kết thường sang `/search`**, và trang đó
+có ô nhập thật — mất JavaScript vẫn tìm được, chỉ tốn thêm một lần tải trang. Vì
+thế `/search` khi chưa có từ khoá vẫn giữ ô nhập ngay trong trang; còn khi đã có
+kết quả thì trong trang không còn ô nhập nào, bấm kính lúp là khung bật ra với
+**từ khoá vừa tìm còn nguyên trong đó** và con trỏ nằm sau chữ cuối, sửa tiếp là
+xong.
 
 Ba phần trên nằm trong `public/s60.js`; tắt JavaScript đi thì trang vẫn dùng được
 đủ như cũ, chỉ mất đúng ba cái tiện đó.

@@ -2,8 +2,8 @@
  * chay day du, chi mat dung ba tien do.
  *
  *  1. Dan thanh tren va chan trang vao khung nhin (neu may lam duoc that).
- *  2. Kinh lup o thanh tren mo khung tim kiem ngay tai cho, thay vi phai sang
- *     trang /search.
+ *  2. Kinh lup o thanh tren mo khung tim kiem ngay tai cho, may nao cung mo
+ *     duoc, thay vi phai sang trang /search.
  *  3. Phim len/xuong nhay sang khoi video ke tiep.
  *
  * Viet bang ES3 (var, khong arrow, khong template string) cho hop voi may cu:
@@ -14,10 +14,6 @@
 
   /* ---------- 1. dan thanh tren va chan trang ---------- */
 
-  // Hai thanh dang dan; con null nghia la van nam trong dong chay nhu thuong.
-  var pinnedBar = null;
-  var pinnedNav = null;
-
   /** Phan tu dau tien mang mot ten lop, khong can querySelector. */
   function firstOf(tag, name) {
     var nodes = document.getElementsByTagName(tag);
@@ -26,6 +22,11 @@
     }
     return null;
   }
+
+  var bar = firstOf('div', 'bar');
+  var nav = firstOf('table', 'nav');
+  // Hai thanh da dan chua; chua dan thi chung nam trong dong chay nhu thuong.
+  var pinned = false;
 
   /**
    * Co dan that hay khong. Phai do chu khong the tin: nhieu ban WebKit doi
@@ -106,54 +107,38 @@
   }
 
   /** Hai thanh dan de len trang, nen chua san cho o dinh va o day. */
-  function spare(bar, nav) {
+  function spare() {
     var style = document.body.style;
     if (bar) style.paddingTop = bar.offsetHeight + 'px';
     if (nav) style.paddingBottom = nav.offsetHeight + 'px';
   }
 
-  function pin(bar, nav) {
+  function pin() {
     document.body.className += ' fixnav';
-    spare(bar, nav);
-    pinnedBar = bar;
-    pinnedNav = nav;
+    pinned = true;
+    spare();
 
     // Do ngay sau khi doi lop thi con vai diem sai: hinh SVG trong thanh chua
     // kip nhan co moi. Do lai mot nhip sau la dung han.
-    if (window.setTimeout) {
-      window.setTimeout(function () {
-        spare(bar, nav);
-      }, 0);
-    }
+    if (window.setTimeout) window.setTimeout(spare, 0);
 
     // N8 xoay ngang la doi ca be ngang lan chieu cao thanh, phai do lai.
-    if (window.addEventListener) {
-      window.addEventListener(
-        'resize',
-        function () {
-          spare(bar, nav);
-        },
-        false
-      );
-    }
+    if (window.addEventListener) window.addEventListener('resize', spare, false);
   }
 
   function setUpPins() {
-    if (!document.body) return;
-    var bar = firstOf('div', 'bar');
-    var nav = firstOf('table', 'nav');
-    if (!bar && !nav) return;
+    if (!document.body || (!bar && !nav)) return;
 
     var known = recall();
     if (known === '0') return;
     if (known === '1') {
-      pin(bar, nav);
+      pin();
       return;
     }
 
     var ok = measurePin();
     memorize(ok);
-    if (ok) pin(bar, nav);
+    if (ok) pin();
   }
 
   setUpPins();
@@ -161,14 +146,22 @@
   /* ---------- 2. kinh lup mo khung tim kiem ---------- */
 
   /**
-   * Khung tim kiem dan ngay duoi thanh tren nen chi mo khi da dan duoc that.
-   * May khong dan duoc thi de kinh lup lam lien ket thuong sang /search — trang
-   * do co o nhap that, con hon la mo mot khung treo lo lung giua trang.
+   * May dan duoc thanh thi khung tim nam dan ngay duoi thanh. May khong dan
+   * duoc thi dat khung bang 'absolute' vao dung dinh khung nhin luc bam: no
+   * khong theo trang khi cuon, nhung vua bam la nhin thay ngay — quan trong hon
+   * la bat nguoi ta sang mot trang khac chi de go mot dong chu.
    */
+  function popTop() {
+    if (!bar) return scrolled();
+    if (pinned) return bar.offsetHeight;
+    // Chua cuon qua thanh thi de khung ngay duoi thanh cho khoi che ten trang.
+    return Math.max(scrolled(), bar.offsetHeight);
+  }
+
   function setUpFind() {
     var link = firstOf('a', 'find');
     var pop = document.getElementById('pop');
-    if (!pinnedBar || !link || !pop) return;
+    if (!link || !pop) return;
 
     var box = pop.getElementsByTagName('input')[0];
     var close = firstOf('a', 'popx');
@@ -180,11 +173,15 @@
     }
 
     function open(event) {
-      pop.style.top = pinnedBar.offsetHeight + 'px';
+      pop.style.position = pinned ? 'fixed' : 'absolute';
+      pop.style.top = popTop() + 'px';
       pop.className = 'on';
       if (box) {
         try {
           box.focus();
+          // Tu khoa vua tim con nguyen trong o; dua con tro ra sau chu cuoi de
+          // go tiep la noi duoi, chu khong chen vao dau dong.
+          if (box.setSelectionRange) box.setSelectionRange(box.value.length, box.value.length);
         } catch (err) {
           /* May khong cho dat con tro thi nguoi dung tu bam vao o. */
         }
@@ -274,14 +271,14 @@
    * trong thi tha de ho phan duoi, con phan dau thi phai thay.
    */
   function clearBars(el) {
-    if (!el.getBoundingClientRect || !window.scrollBy) return;
-    if (pinnedNav) {
-      var room = document.documentElement.clientHeight - pinnedNav.offsetHeight;
+    if (!pinned || !el.getBoundingClientRect || !window.scrollBy) return;
+    if (nav) {
+      var room = document.documentElement.clientHeight - nav.offsetHeight;
       var under = el.getBoundingClientRect().bottom - room;
       if (under > 0) window.scrollBy(0, Math.ceil(under));
     }
-    if (pinnedBar) {
-      var over = pinnedBar.offsetHeight - el.getBoundingClientRect().top;
+    if (bar) {
+      var over = bar.offsetHeight - el.getBoundingClientRect().top;
       if (over > 0) window.scrollBy(0, -Math.ceil(over));
     }
   }

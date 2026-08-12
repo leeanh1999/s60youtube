@@ -83,16 +83,38 @@ h2 .ic {
 
 /* ---------- thanh tren ---------- */
 
+/* Trong thanh co mot bang that: o cua bang tu can giua theo chieu doc, nen ten
+   trang ben trai va kinh lup ben phai luon ngang nhau du cao thap khac nhau. Lam
+   bang float thi ca hai dinh theo dinh dong, chenh nhau vai diem thay ro.
+
+   Dem nam trong o cua bang chu khong tren .bar: .bar la cai duoc dan vao khung
+   nhin voi be ngang 100%, con them dem hai ben nua la no dai hon trang va trang
+   sinh ra thanh cuon ngang. */
 .bar {
   background: #c00000;
-  padding: 8px;
-  overflow: hidden;
   border-bottom: 2px solid #8c0000;
+}
+
+.bar table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.bar td {
+  padding: 6px 8px;
+  vertical-align: middle;
+}
+
+.bar .br {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
 }
 
 .bar .brand {
   display: block;
   overflow: hidden;
+  white-space: nowrap;
   color: #ffffff;
   font-weight: bold;
   font-size: 1.05em;
@@ -105,11 +127,9 @@ h2 .ic {
   margin-right: 7px;
 }
 
-/* Kinh lup va nut Quay lai: hai o nho ben phai thanh. Trong HTML kinh lup dung
-   truoc nen no ra ngoai cung — goc phai la cho ngon tay va con tro toi de nhat. */
 .bar .find,
 .bar .back {
-  float: right;
+  display: inline-block;
   margin-left: 8px;
   color: #ffffff;
   background: #a30000;
@@ -120,11 +140,23 @@ h2 .ic {
   font-size: 0.78em;
 }
 
-.bar .find .ic,
 .bar .back .ic {
   width: 0.85em;
   height: 0.85em;
   margin-right: 4px;
+}
+
+/* Kinh lup di mot minh, khong co chu ben canh: hinh phai to hon vien phai rong
+   hon de con la mot o dam duoc bang dau ngon tay. */
+.bar .find {
+  padding: 3px 10px;
+  font-size: 1em;
+}
+
+.bar .find .ic {
+  width: 1.1em;
+  height: 1.1em;
+  vertical-align: -0.18em;
 }
 
 /* Tieu de trang cung may dong phu chu thich duoi no. */
@@ -219,10 +251,11 @@ h2 .ic {
   padding-left: 6px;
 }
 
+/* Nut chi co hinh kinh lup, khong co chu: dinh luon be ngang cho no vuong vuong
+   thay vi de no co theo hinh ben trong. */
 .sform .qb button {
-  font-weight: bold;
-  white-space: nowrap;
-  padding: 0 0.65em;
+  width: 3em;
+  padding: 0;
   background: #c00000;
   color: #ffffff;
   border: 1px solid #8c0000;
@@ -231,7 +264,9 @@ h2 .ic {
 }
 
 .sform .qb button .ic {
-  margin-right: 5px;
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: -0.2em;
 }
 
 /* ---------- danh sach video: mot the moi video ---------- */
@@ -782,14 +817,13 @@ body.fixnav .bar {
   top: 0;
   left: 0;
   width: 100%;
-  /* Rong 100% ma con dem 8 diem hai ben thi thanh dai hon trang 16 diem, trang
-     sinh ra thanh cuon ngang va nut ben phai bi cat. Tinh ca dem vao be rong. */
-  -webkit-box-sizing: border-box;
-  box-sizing: border-box;
   z-index: 3;
-  /* Da dan thi thanh an cho suot ca man hinh — E6 chi cao 480 diem. */
-  padding-top: 5px;
-  padding-bottom: 5px;
+}
+
+/* Da dan thi thanh an cho suot ca man hinh — E6 chi cao 480 diem. */
+body.fixnav .bar td {
+  padding-top: 4px;
+  padding-bottom: 4px;
 }
 
 body.fixnav .nav {
@@ -818,9 +852,11 @@ body.fixnav .nav a .ic {
 
 /* Mac dinh dong: khong co JavaScript thi kinh lup o thanh tren la lien ket
    thuong sang /search, trang do co o nhap that. s60.js dat lop 'on' vao day de
-   mo, va chi lam vay khi da do duoc rang may dan dung — khong dan duoc thi
-   khung se treo lo lung giua trang, tha de no sang /search cho chac.
-   Vi tri dinh do s60.js dat, vi chi no biet thanh tren cao bao nhieu. */
+   mo khung.
+
+   Vi tri dinh va cach dinh vi deu do s60.js dat: may dan duoc thanh thi 'fixed'
+   ngay duoi thanh, may khong dan duoc thi 'absolute' vao dinh khung nhin luc
+   bam. Chi no biet thanh cao bao nhieu diem va trang dang cuon toi dau. */
 #pop {
   display: none;
 }
@@ -889,8 +925,8 @@ body.fixnav .nav a .ic {
     margin-right: 4px;
   }
 
-  .bar {
-    padding: 6px;
+  .bar td {
+    padding: 5px 6px;
   }
 
   h2 {

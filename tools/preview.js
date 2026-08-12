@@ -138,13 +138,18 @@ for (const [name, html] of Object.entries(pages)) {
 
 /**
  * Khung tim kiem chi hien ra khi bam vao kinh lup, ma anh chup thi khong bam
- * duoc: ban nay tu goi ho cai bam do de con soi duoc bo cuc cua khung.
+ * duoc: hai ban nay tu goi ho cai bam do de con soi duoc bo cuc cua khung. Ban
+ * tu trang ket qua con de xem tu khoa vua tim co con nguyen trong o nhap khong.
  */
-fs.writeFileSync(
-  path.join(outDir, 'find.html'),
-  fs.readFileSync(path.join(outDir, 'home-feed.html'), 'utf8').replace(
-    '</body>',
-    `<script type="text/javascript">
+for (const [name, from] of [
+  ['find.html', 'home-feed.html'],
+  ['find-search.html', 'search.html'],
+]) {
+  fs.writeFileSync(
+    path.join(outDir, name),
+    fs.readFileSync(path.join(outDir, from), 'utf8').replace(
+      '</body>',
+      `<script type="text/javascript">
 (function () {
   var a = document.getElementsByTagName('a');
   for (var i = 0; i < a.length; i++) {
@@ -153,9 +158,10 @@ fs.writeFileSync(
 })();
 </script>
 </body>`
-  )
-);
-console.log('find.html  trang chinh voi khung tim kiem dang mo');
+    )
+  );
+  console.log(`${name}  ${from} voi khung tim kiem dang mo`);
+}
 
 /**
  * Trang doi chieu hai khuon man hinh. Phai long vao <iframe> chu khong the thu
@@ -168,7 +174,14 @@ const SCREENS = [
   ['Nokia N8 — 360 x 640 (xem doc)', 360, 640],
   ['Nokia E6 — 640 x 480 (nam ngang)', 640, 480],
 ];
-const shown = ['home.html', 'find.html', 'search.html', 'watch.html', 'settings.html'];
+const shown = [
+  'home.html',
+  'find.html',
+  'search.html',
+  'find-search.html',
+  'watch.html',
+  'settings.html',
+];
 fs.writeFileSync(
   path.join(outDir, 'sizes.html'),
   `<!DOCTYPE html>
