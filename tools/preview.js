@@ -120,7 +120,7 @@ for (const [name, html] of Object.entries(pages)) {
   // Trang that lay tai nguyen tu goc dia chi; ban xem thu nam trong mot thu
   // muc nen phai doi sang duong dan tuong doi.
   const local = html
-    .replace(/"\/s60\.(css|js)"/g, '"s60.$1"')
+    .replace(/"\/s60\.(css|js)(?:\?[^"]*)?"/g, '"s60.$1"')
     .replace(/"\/thumb\/[^"]*"/g, '"thumb.svg"');
   fs.writeFileSync(path.join(outDir, name), local);
   console.log(`${name}  ${html.length} byte`);

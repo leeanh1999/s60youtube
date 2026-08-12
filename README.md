@@ -383,6 +383,13 @@ máy rơi vào liên kết dự phòng. Kiểm tra máy đang chạy Nokia Belle
 (Nokia Browser 7.4 trở lên) — Symbian Anna và cũ hơn không có thẻ `<video>` nên
 chỉ tải về được thôi.
 
+**Giao diện bể sau khi cập nhật: ảnh thu nhỏ to như cả trang, chữ đè lên ảnh,
+nút Tìm trơ ra như nút mặc định.** Máy đang ghép HTML mới với `s60.css` cũ còn
+trong bộ đệm. Địa chỉ file đã có đuôi `?v=...` tính từ nội dung file nên chuyện
+này tự hết: bản mới là địa chỉ mới, máy tải lại đúng một lần. Nếu vẫn thấy vậy
+thì trang HTML cũng đang bị đệm ở đâu đó — xoá bộ đệm trình duyệt, hoặc xem lại
+reverse proxy có tự đệm HTML không.
+
 ## Kiểm thử nhanh
 
 ```bash

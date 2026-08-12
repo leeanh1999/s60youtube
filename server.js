@@ -133,7 +133,9 @@ app.use((req, res, next) => {
 
 app.use(
   express.static(path.join(config.ROOT, 'public'), {
-    maxAge: '1d',
+    // Duong dan trong HTML co dinh ?v=<ASSET_TAG> theo noi dung file, nen giu
+    // lau trong may cho do ton 2G: doi file la doi duong dan, may tai lai ngay.
+    maxAge: '30d',
     setHeaders: (res, filePath) => {
       if (filePath.endsWith('.css')) res.set('Content-Type', 'text/css; charset=utf-8');
     },
