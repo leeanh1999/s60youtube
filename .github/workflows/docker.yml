@@ -67,6 +67,11 @@ jobs:
           BASE=http://127.0.0.1:8080 node tools/smoke.js
           BASE=http://127.0.0.1:8080 node tools/test-login.js
 
+      # Chay trong container de kiem luon ffmpeg cua anh: no phai co libx264
+      # va muxer ipod thi hai muc chuyen ma moi ra duoc file.
+      - name: Kiem thu chuyen ma
+        run: docker exec test node /app/tools/test-convert.js
+
       - name: Trang Gioi thieu phai bao dung ban dang chay
         run: |
           curl -fsS http://127.0.0.1:8080/about > about.html

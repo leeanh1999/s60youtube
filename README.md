@@ -252,11 +252,16 @@ chỉ tải về được thôi.
 ```bash
 node tools/smoke.js
 node tools/test-login.js
+node tools/test-convert.js
 ```
 
 `smoke.js` gọi các trang bằng User-Agent của Nokia N8 và cảnh báo nếu trang lỡ
 chứa JavaScript, CSS3 hay quá nặng. `test-login.js` chạy trọn luồng đăng nhập
 bằng cookie giả rồi tự đăng xuất, nên không đụng tới cookie thật của bạn.
+`test-convert.js` dựng một đoạn phim mẫu, dọn nó qua HTTP giống như YouTube vẫn
+dọn luồng, rồi cho ffmpeg chạy y hệt lúc chạy thật — kiểm được cả độ phân giải,
+profile H.264 Baseline lẫn vị trí khối `moov`. Hai bài đầu cần máy chủ đang
+chạy; bài thứ ba thì không.
 
 ## Ghi chú
 
