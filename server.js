@@ -1,12 +1,15 @@
 'use strict';
 
 const express = require('express');
+const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const QRCode = require('qrcode');
+const zlib = require('zlib');
 const { Readable } = require('stream');
 
 const config = require('./lib/config');
+const { TtlCache } = require('./lib/cache');
 const cookies = require('./lib/cookies');
 const innertube = require('./lib/innertube');
 const pairing = require('./lib/pairing');
@@ -89,12 +92,27 @@ function linkIsExposed(req) {
   return !isLocalHost(req.headers['x-forwarded-host'] || req.headers.host);
 }
 
+/**
+ * Trang cua ta gan nhu chi co chu (HTML, SVG dat thang trong trang) nen nen lai
+ * con chung mot phan ba — dang ke voi mot may keo qua Wi-Fi 802.11b va ve trang
+ * bang chip 680MHz. Nokia Browser tu bao "Accept-Encoding: gzip" va giai dung,
+ * nhung chi nen khi may that su noi la doc duoc: may nao khong noi thi gui tran.
+ */
 function sendPage(res, html, status = 200) {
+  const body = Buffer.from(html, 'utf8');
   res
     .status(status)
     .set('Content-Type', 'text/html; charset=utf-8')
     .set('Cache-Control', 'no-cache')
-    .send(html);
+    .set('Vary', 'Accept-Encoding');
+
+  const accepts = String(res.req?.headers['accept-encoding'] || '');
+  // Trang be hon mot goi tin thi nen cung khong bot duoc lan truyen nao.
+  if (body.length > 1400 && /\bgzip\b/.test(accepts)) {
+    res.set('Content-Encoding', 'gzip').send(zlib.gzipSync(body));
+    return;
+  }
+  res.send(body);
 }
 
 /** Doi loi ky thuat sang cau tieng Viet de hieu tren man hinh nho. */
@@ -143,6 +161,57 @@ app.use((req, res, next) => {
   next();
 });
 
+/**
+ * express.static khong biet nen, ma /s60.css voi /s60.js cong lai 36KB — nen lai
+ * con chung mot phan tu. Duong dan da co ?v=<ma noi dung> nen giu ban da nen
+ * trong bo nho luon: doi file la doi ma, khoi dong lai may chu la nen lai.
+ */
+const ASSET_TYPES = {
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+};
+const packedAssets = new Map();
+
+function packedAsset(name) {
+  if (!packedAssets.has(name)) {
+    let packed = null;
+    try {
+      packed = zlib.gzipSync(fs.readFileSync(path.join(config.ROOT, 'public', name)), {
+        level: 9,
+      });
+    } catch {
+      // khong co file thi de express.static tra loi 404 nhu thuong
+    }
+    packedAssets.set(name, packed);
+  }
+  return packedAssets.get(name);
+}
+
+app.get('/*', (req, res, next) => {
+  const type = ASSET_TYPES[path.extname(req.path)];
+  const name = path.basename(req.path);
+  // Chi nhung file nam ngay trong public/, va chi khi may noi la doc duoc ban nen.
+  if (!type || req.path !== `/${name}`) {
+    next();
+    return;
+  }
+  if (!/\bgzip\b/.test(String(req.headers['accept-encoding'] || ''))) {
+    next();
+    return;
+  }
+  const body = packedAsset(name);
+  if (!body) {
+    next();
+    return;
+  }
+  res
+    .set('Content-Type', type)
+    .set('Content-Encoding', 'gzip')
+    .set('Cache-Control', 'public, max-age=2592000')
+    .set('Vary', 'Accept-Encoding')
+    .send(body);
+});
+
 app.use(
   express.static(path.join(config.ROOT, 'public'), {
     // Duong dan trong HTML co dinh ?v=<ASSET_TAG> theo noi dung file, nen giu
@@ -156,14 +225,28 @@ app.use(
 
 app.use(express.urlencoded({ extended: false, limit: '2mb' }));
 
+/** Duong dan tra ve file cho trinh phat, khong phai trang de nguoi doc. */
+function isMediaPath(pathname) {
+  return /^\/(stream|audio|file|thumb)\//.test(pathname) || pathname === '/qr';
+}
+
 // Moi trang deu can tuy chon hien thi (co chu, anh thu nho) de dung layout,
 // va can biet may nao dang goi de lay dung cookie YouTube cua nguoi do.
 app.use((req, res, next) => {
   req.prefs = readPrefs(req);
+  const own = cookies.read(req);
+  // Trang /remember mang san ma thiet bi trong dia chi va tu dat lai cookie do,
+  // nen o day khong phat ma moi: mot phan hoi co hai Set-Cookie cung ten thi
+  // may cu chon cai nao la chuyen cua may cu.
+  const claiming = req.path === '/remember';
   // Trinh phat cua may Nokia mo lien ket .mp4 ben ngoai trinh duyet nen khong
   // gui cookie theo — luc do nhan ra may bang khoa phat dinh trong dia chi.
   req.device =
-    cookies.read(req) || cookies.byStreamKey(req.query.k) || cookies.issue(res);
+    own || cookies.byStreamKey(req.query.k) || (claiming ? '' : cookies.issue(res));
+  // Gui lai ma thiet bi o moi trang: han dung luon lui ra mot nam nua, nen may
+  // dung hang ngay thi khong bao gio het han. Chi lam voi may that su dang cam
+  // cookie — dat cookie theo khoa phat la nang khoa do len bang ca ma thiet bi.
+  if (own && !isMediaPath(req.path)) cookies.attach(res, own);
   req.streamKey = cookies.streamKey(req.device);
   req.auth = cookies.authFor(req.device);
   next();
@@ -325,32 +408,51 @@ app.get('/watch', async (req, res) => {
 
 // ---------- anh thu nho ----------
 
-app.get('/thumb/:id', async (req, res) => {
-  const { id } = req.params;
-  if (!isVideoId(id)) {
-    res.status(400).end();
-    return;
-  }
+/**
+ * Anh nam trong bo nho may chu, khong xuong dia: mot trang danh sach la muoi may
+ * anh, moi cai mot lan goi ra i.ytimg.com. Doi lai chi lay mot lan cho moi video
+ * — do la phan cho lau nhat cua mot trang danh sach.
+ */
+const thumbCache = new TtlCache(400);
+const THUMB_TTL_MS = 24 * 60 * 60 * 1000;
+
+async function loadThumb(id) {
   // mqdefault la ban 320x180 dung khung 16:9, vua khop voi mot cot rong het
   // man hinh. default.jpg chi 120x90 va vien den hai ben nen de danh du phong.
-  const names = ['mqdefault', 'default'];
-  for (const name of names) {
+  for (const name of ['mqdefault', 'default']) {
     try {
       const upstream = await fetch(`https://i.ytimg.com/vi/${id}/${name}.jpg`, {
         headers: { 'User-Agent': config.DESKTOP_UA },
       });
       if (!upstream.ok) continue;
       const buffer = Buffer.from(await upstream.arrayBuffer());
-      res
-        .set('Content-Type', 'image/jpeg')
-        .set('Cache-Control', 'public, max-age=86400')
-        .send(buffer);
-      return;
+      return (await media.shrinkJpeg(buffer)) || buffer;
     } catch {
       // thu ten tiep theo
     }
   }
-  res.status(502).end();
+  // Nem loi chu khong tra ve rong: bo nho dem chi giu ket qua thanh cong, khong
+  // thi mot lan mang chap la anh do trong ca ngay.
+  throw new Error(`khong lay duoc anh ${id}`);
+}
+
+app.get('/thumb/:id', async (req, res) => {
+  const { id } = req.params;
+  if (!isVideoId(id)) {
+    res.status(400).end();
+    return;
+  }
+  try {
+    const buffer = await thumbCache.wrap(id, THUMB_TTL_MS, () => loadThumb(id));
+    res
+      .set('Content-Type', 'image/jpeg')
+      // Anh bia cua mot video hau nhu khong doi, ma dia chi lai mang ma video —
+      // giu ca tuan trong may cho de cac lan vao sau khoi tai lai.
+      .set('Cache-Control', 'public, max-age=604800')
+      .send(buffer);
+  } catch {
+    res.status(502).end();
+  }
 });
 
 // ---------- xem online (proxy MP4 co san, khong luu gi tren dia) ----------
@@ -617,6 +719,9 @@ app.get('/login', async (req, res) => {
     render.loginPage({
       code,
       linkUrl: `${publicBase(req)}/link?c=${code}`,
+      // Duong ve khi trinh duyet quen ma thiet bi: mo dia chi nay la may chu
+      // nhan ra may cu ngay, khong phai nop lai cookie tu may tinh lan nua.
+      rememberUrl: `${publicBase(req)}/remember?d=${req.device}`,
       logoutUrl: `/logout?t=${cookies.actionToken(req.device)}`,
       status,
       minutes: pairing.remainingMinutes(code),
@@ -652,16 +757,15 @@ app.get('/qr', async (req, res) => {
 
 app.get('/link', (req, res) => {
   const exposed = linkIsExposed(req);
-  res
-    .status(exposed && config.REQUIRE_SECURE_LINK ? 403 : 200)
-    .set('Content-Type', 'text/html; charset=utf-8')
-    .send(
-      render.linkPage({
-        code: pairing.format(pairing.normalize(req.query.c) || ''),
-        exposed,
-        refused: exposed && config.REQUIRE_SECURE_LINK,
-      })
-    );
+  sendPage(
+    res,
+    render.linkPage({
+      code: pairing.format(pairing.normalize(req.query.c) || ''),
+      exposed,
+      refused: exposed && config.REQUIRE_SECURE_LINK,
+    }),
+    exposed && config.REQUIRE_SECURE_LINK ? 403 : 200
+  );
 });
 
 app.post('/link', async (req, res) => {
@@ -669,16 +773,10 @@ app.post('/link', async (req, res) => {
   const ip = clientIp(req);
   const exposed = linkIsExposed(req);
   const sendForm = (error, status = 400) =>
-    res
-      .status(status)
-      .set('Content-Type', 'text/html; charset=utf-8')
-      .send(render.linkPage({ code: req.body.code, error, exposed }));
+    sendPage(res, render.linkPage({ code: req.body.code, error, exposed }), status);
 
   if (exposed && config.REQUIRE_SECURE_LINK) {
-    res
-      .status(403)
-      .set('Content-Type', 'text/html; charset=utf-8')
-      .send(render.linkPage({ exposed, refused: true }));
+    sendPage(res, render.linkPage({ exposed, refused: true }), 403);
     return;
   }
 
@@ -707,17 +805,40 @@ app.post('/link', async (req, res) => {
 
   ytdlp.forgetAuth(cookies.authFor(deviceId).key);
   pairing.consume(code);
-  res
-    .status(200)
-    .set('Content-Type', 'text/html; charset=utf-8')
-    .send(
-      render.linkPage({
-        done: true,
-        // Cookie chi co phan '3P': phat duoc video nhung khong co goi y rieng.
-        // Noi ngay bay gio, luc nguoi dung con dang ngoi truoc may tinh.
-        partial: cookies.hasPageSession(deviceId) === false,
-      })
+  sendPage(
+    res,
+    render.linkPage({
+      done: true,
+      // Cookie chi co phan '3P': phat duoc video nhung khong co goi y rieng.
+      // Noi ngay bay gio, luc nguoi dung con dang ngoi truoc may tinh.
+      partial: cookies.hasPageSession(deviceId) === false,
+    })
+  );
+});
+
+/**
+ * Duong ve cua mot may bi trinh duyet xoa cookie. Trang nay KHONG chuyen huong
+ * di dau: dia chi phai con nguyen tren thanh dia chi de nguoi dung luu ngay no
+ * vao Bookmark — chuyen ve trang chinh thi ho luu duoc mot dia chi vo dung.
+ */
+app.get('/remember', (req, res) => {
+  const id = String(req.query.d || '');
+  if (!cookies.claim(res, id)) {
+    sendPage(
+      res,
+      render.errorPage({
+        title: 'Không nhận ra máy nào',
+        message:
+          'Địa chỉ ghi nhớ này không còn đúng — có thể máy đó đã xoá đăng nhập,' +
+          ' hoặc cookie đã quá lâu không dùng nên máy chủ dọn đi rồi. Đăng nhập lại là có địa chỉ mới.',
+        back: '/login',
+        prefs: req.prefs,
+      }),
+      404
     );
+    return;
+  }
+  sendPage(res, render.rememberPage({ prefs: req.prefs }));
 });
 
 app.get('/logout', (req, res) => {
@@ -746,7 +867,8 @@ app.get('/settings', (req, res) => {
     const textSize = render.TEXT_SIZES[req.query.textSize]
       ? String(req.query.textSize)
       : DEFAULT_PREFS.textSize;
-    const options = 'Path=/; Max-Age=31536000';
+    // Cung ly do nhu ma thiet bi: may Nokia chi doc 'Expires', khong doc 'Max-Age'.
+    const options = cookies.keepFor();
     // append chu khong phai set: khong duoc de len cookie ma thiet bi.
     res.append('Set-Cookie', `thumbs=${thumbs ? 1 : 0}; ${options}`);
     res.append('Set-Cookie', `pageSize=${pageSize}; ${options}`);

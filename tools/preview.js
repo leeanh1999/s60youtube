@@ -78,6 +78,16 @@ const pages = {
     minutes: 9,
     prefs,
   }),
+  // Da dang nhap: co them dia chi ghi nho de luu vao Bookmark.
+  'login-in.html': render.loginPage({
+    code: 'ABC123',
+    rememberUrl: `http://192.168.1.10:9080/remember?d=${'a1b2c3d4'.repeat(4)}`,
+    logoutUrl: '/logout?t=0123456789abcdef',
+    status: { own: true, ready: true, usedAt: new Date(), size: 4096 },
+    minutes: 9,
+    prefs,
+  }),
+  'remember.html': render.rememberPage({ prefs }),
   'settings.html': render.settingsPage(prefs),
   'about.html': render.aboutPage({
     ffmpegOk: true,

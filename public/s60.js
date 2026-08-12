@@ -248,7 +248,17 @@
    * cung bam duoc dau `*` de dang, ma bo ra ngoai hang thi nguoi chi dung phim
    * di chuyen khong con duong nao toi cho tim kiem.
    */
+  /**
+   * Nho lai danh sach nay: trang khong tu them bo lien ket nao, ma do lai thi
+   * phai duyet ca cay DOM va hoi `offsetParent` cua tung the — moi lan hoi la
+   * mot lan bat trinh duyet tinh lai bo cuc. Tren E6 mot lan bam phim con phai
+   * qua ba lan do nhu vay (len/xuong mot lan, trai/phai hai lan), do la cho giat
+   * ro nhat khi giu phim di trong danh sach dai. Xoay may thi do lai.
+   */
+  var cached = null;
+
   function stops() {
+    if (cached) return cached;
     var list = [];
     var nodes = document.getElementsByTagName('a');
     for (var i = 0; i < nodes.length; i++) {
@@ -258,7 +268,18 @@
       if (!shown(el)) continue;
       list.push(el);
     }
+    cached = list;
     return list;
+  }
+
+  if (window.addEventListener) {
+    window.addEventListener(
+      'resize',
+      function () {
+        cached = null;
+      },
+      false
+    );
   }
 
   function positionOf(list) {

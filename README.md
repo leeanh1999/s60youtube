@@ -150,6 +150,29 @@ cookie nộp từ máy tính chỉ chảy vào máy đang hiện mã, không đ�
 Nút **Kiểm tra còn dùng được không** gọi thử YouTube để biết cookie đã hết hạn
 hay chưa; **Xoá đăng nhập khỏi máy này** thì xoá file cookie của riêng máy đó.
 
+### Giữ đăng nhập khi thoát trình duyệt — địa chỉ ghi nhớ
+
+Mã thiết bị nằm trong cookie trình duyệt, hạn một năm, và mỗi lần mở trang là hạn
+đó lại lùi ra một năm nữa — máy dùng hằng ngày thì không bao giờ phải đăng nhập
+lại. Hạn ghi bằng **cả hai cách**: `Max-Age` cho máy đời mới và `Expires` kiểu
+Netscape cho Nokia Browser. Bản WebKit đời Symbian chỉ đọc `Expires`; chỉ ghi
+`Max-Age` thì nó coi đây là cookie phiên, **thoát trình duyệt là mất** và điện
+thoại lại hỏi đăng nhập từ đầu.
+
+Có máy vẫn dọn sạch cookie lúc thoát (đặt trong *Cài đặt › Riêng tư* của trình
+duyệt, hay bộ nhớ đầy). Cho trường hợp đó, trang **Đăng nhập** của máy đã đăng
+nhập có thêm mục **Ghi nhớ máy này**: bấm vào, rồi lưu **đúng trang vừa mở** vào
+Bookmark (*Tuỳ chọn › Bookmark › Lưu làm bookmark*). Địa chỉ của nó,
+`/remember?d=<mã máy>`, mang sẵn mã thiết bị — lần nào trình duyệt quên thì mở
+bookmark ấy một lần là máy chủ nhận lại tài khoản, khỏi lấy mã và nộp cookie từ
+máy tính lần nữa. Trang đó cố tình **không chuyển hướng** đi đâu, để địa chỉ còn
+nguyên trên thanh địa chỉ mà lưu.
+
+Địa chỉ ghi nhớ chính là chìa khoá của máy đó: ai mở được nó cũng xem YouTube
+bằng tài khoản của bạn, đúng như ai cầm được cookie trình duyệt của máy. Nó chỉ
+hiện trên trang Đăng nhập của chính máy đó, và **Xoá đăng nhập khỏi máy này** làm
+nó chết ngay.
+
 ### Cách 2 — cookie chung cho cả nhà
 
 Xuất `cookies.txt` rồi chép thẳng vào thư mục dự án (Docker thì `data/cookies.txt`).
@@ -262,6 +285,7 @@ Vài điều nên biết khi đã mở cổng:
 | --- | --- | --- |
 | Cookie YouTube | `data/devices/<mã>.txt`, chỉ đọc từ đĩa | Toàn quyền tài khoản Google — không có đường nào trong web đọc ngược ra được |
 | Mã thiết bị (`did`) | Cookie trình duyệt, `HttpOnly` + `SameSite=Lax` | Xem YouTube *nhân danh* máy đó, nhưng không đọc được nội dung cookie |
+| Địa chỉ ghi nhớ (`/remember?d=`) | Chính là mã thiết bị, chỉ hiện trên trang Đăng nhập của máy đó | Y như cầm được cookie của máy: xem bằng tài khoản đó, và nạp cookie khác hay xoá đăng nhập được |
 | Khoá phát (`?k=`) trong địa chỉ video | Sinh ngẫu nhiên khi nạp cookie | Chỉ xem được video bằng tài khoản đó; nạp cookie mới hoặc xoá đăng nhập là khoá cũ chết ngay |
 | Mã ghép nối | Chỉ nằm trong bộ nhớ, 10 phút | Nhét cookie *của họ* vào máy bạn (không lấy được cookie của bạn) |
 
@@ -452,6 +476,38 @@ xong.
 Ba phần trên nằm trong `public/s60.js`; tắt JavaScript đi thì trang vẫn dùng được
 đủ như cũ, chỉ mất đúng ba cái tiện đó.
 
+### Trang nặng bao nhiêu byte
+
+E6 đi Wi-Fi 802.11b/g và vẽ trang bằng chip 680MHz, nên byte nào cũng đắt. Bốn chỗ
+tiết kiệm:
+
+**Nén gzip.** Trang chính 7,1KB còn 2,2KB; trang kết quả tìm 8,9KB còn 2,3KB;
+`s60.css` với `s60.js` cộng lại 36KB còn 11KB. Nokia Browser tự khai
+`Accept-Encoding: gzip` và giải đúng, nhưng máy chủ chỉ nén khi máy có khai — máy
+nào không nói thì vẫn nhận bản trần. Hai file tĩnh nén một lần rồi giữ luôn bản nén
+trong bộ nhớ, vì địa chỉ của chúng đã mang `?v=<mã nội dung>`: đổi file là đổi mã.
+
+**Ảnh thu nhỏ thu về đúng bề ngang cần hiện.** Ảnh `mqdefault` của YouTube rộng
+320 điểm, còn khung ảnh trên trang chỉ rộng chừng 160 — máy đang tải gấp bốn số
+điểm ảnh cần thiết rồi còn phải tự thu nhỏ lại. Máy chủ thu sẵn về 192 điểm bằng
+ffmpeg (đủ cho cả cỡ chữ *Rất lớn*), thường bớt được một nửa số byte. Không có
+ffmpeg, hay ffmpeg trả về thứ gì không phải JPEG, thì dùng ảnh gốc — thừa byte chứ
+không mất ảnh.
+
+**Ảnh đệm trên máy chủ.** Một trang danh sách là mười mấy ảnh, mỗi cái một lần gọi
+ra `i.ytimg.com`, và đó là phần chờ lâu nhất của trang. Bản đã thu nhỏ nằm trong bộ
+nhớ máy chủ một ngày, và trong bộ đệm của điện thoại một tuần.
+
+**Phím lên/xuống không đo lại cả trang mỗi lần bấm.** Danh sách điểm dừng phải hỏi
+`offsetParent` của từng thẻ `<a>`, mỗi lần hỏi là một lần bắt trình duyệt tính lại
+bố cục; mà một lần bấm phím trước đây phải đo tới ba lượt như vậy. Trang không tự
+thêm bớt liên kết nào nên `s60.js` nhớ luôn danh sách đó, chỉ đo lại khi máy xoay
+màn hình.
+
+Còn một chỗ chờ nữa không nằm ở byte: trang chính phải gọi `yt-dlp` để lấy gợi ý
+riêng, mất khoảng hai giây cho lần đầu trong mỗi 10 phút. Đặt `HOME_FEED=0` là
+trang chính mở tức thì, chỉ còn danh sách chủ đề.
+
 Biến môi trường:
 
 | Biến | Mặc định | Ý nghĩa |
@@ -487,9 +543,17 @@ New-NetFirewallRule -DisplayName "YouTube S60" -Direction Inbound -Protocol TCP 
 cookie của nó đã hết hạn — vào mục **Đăng nhập** trên chính chiếc máy đó rồi nạp
 lại. Cookie của máy khác không cứu được máy này.
 
-**Đang đăng nhập tự nhiên thành chưa đăng nhập.** Máy mất cookie trình duyệt nên
-máy chủ coi nó là máy mới: điện thoại bị xoá dữ liệu duyệt web, hoặc cookie của
-máy đó đã quá `DEVICE_TTL_DAYS` ngày không dùng. Nạp lại là xong.
+**Cứ thoát trình duyệt là phải đăng nhập lại từ đầu.** Máy mất mã thiết bị nên máy
+chủ coi nó là máy mới, còn file cookie thì vẫn nằm nguyên trên đĩa. Mở mục **Đăng
+nhập** rồi bấm **Ghi nhớ máy này** và lưu trang đó vào Bookmark — lần sau mở
+bookmark ấy là vào lại được, xem mục *Giữ đăng nhập khi thoát trình duyệt* ở trên.
+Nếu bản đang chạy cũ hơn bản có mục đó thì cập nhật máy chủ trước: bản cũ ghi hạn
+cookie bằng `Max-Age`, mà trình duyệt Symbian không đọc thuộc tính đó.
+
+**Đang đăng nhập tự nhiên thành chưa đăng nhập.** Ngoài nguyên nhân trên, còn có
+thể điện thoại bị xoá dữ liệu duyệt web, hoặc cookie của máy đó đã quá
+`DEVICE_TTL_DAYS` ngày không dùng nên máy chủ dọn đi (lúc đó địa chỉ ghi nhớ cũng
+không cứu được, phải nạp lại).
 
 **"Không kết nối được tới YouTube."** Máy chủ không ra được mạng. Nếu mạng công ty
 chặn YouTube thì phải bật VPN trên máy tính (điện thoại thì không cần).
@@ -562,7 +626,7 @@ chừng 500 điểm, chúng vẽ ở 492 điểm rồi cắt bớt — trang tr�
 `test-login.js` chạy trọn luồng đăng nhập
 bằng cookie giả rồi tự đăng xuất, nên không đụng tới cookie thật của bạn; nó
 dựng hai "máy Nokia" song song để chắc chắn cookie máy này không dính sang máy
-kia.
+kia, và dựng thêm một "máy vừa bị trình duyệt xoá cookie" để thử địa chỉ ghi nhớ.
 `test-convert.js` dựng một đoạn phim mẫu, dọn nó qua HTTP giống như YouTube vẫn
 dọn luồng, rồi cho ffmpeg chạy y hệt lúc chạy thật — kiểm được cả độ phân giải,
 profile H.264 Baseline lẫn vị trí khối `moov`. Hai bài đầu cần máy chủ đang

@@ -166,7 +166,27 @@ const codeOf = (body) => (body.match(/\/qr\?c=([A-Z0-9]+)/) || [])[1];
   const badKey = await fetch(`${BASE}/about?k=${'0'.repeat(24)}`);
   check('khoa bay khong nhan ra may nao', !/Tài khoản riêng/.test(await badKey.text()));
 
-  console.log('9. Xoa dang nhap phai dung may va dung ma chong CSRF');
+  console.log('9. Dia chi ghi nho keo mot may da quen cookie tro lai');
+  const remembered = ((await nokia.get('/login')).body.match(/\/remember\?d=([0-9a-f]{32})/) ||
+    [])[1];
+  check('trang dang nhap co dia chi ghi nho', remembered === nokia.jar.get('did'));
+
+  // Trinh duyet Symbian don sach cookie luc thoat = mot may trang tron, nhung
+  // file cookie cua nguoi ta van con nguyen tren dia.
+  const forgetful = device();
+  check('may quen cookie bi coi la may la', /class="code"/.test((await forgetful.get('/login')).body));
+
+  const claimed = await forgetful.get(`/remember?d=${remembered}`);
+  check('mo dia chi ghi nho thi nhan lai may', /Đã ghi nhớ máy này/.test(claimed.body));
+  check('may nhan lai dung ma thiet bi', forgetful.jar.get('did') === remembered);
+  check('vao lai la da dang nhap', /Đã đăng nhập/.test((await forgetful.get('/login')).body));
+  // Khong chuyen huong: dia chi phai con tren thanh dia chi de luu Bookmark.
+  check('trang ghi nho khong chuyen huong', claimed.res.status === 200);
+
+  const bogus = await device().get(`/remember?d=${'0'.repeat(32)}`);
+  check('ma bay khong nhan duoc may nao', bogus.res.status === 404);
+
+  console.log('10. Xoa dang nhap phai dung may va dung ma chong CSRF');
   const token = (
     (await nokia.get('/login')).body.match(/\/logout\?t=([0-9a-f]{16})/) || []
   )[1];
@@ -180,11 +200,14 @@ const codeOf = (body) => (body.match(/\/qr\?c=([A-Z0-9]+)/) || [])[1];
   check('thieu ma chong CSRF thi khong xoa', noToken.res.status === 302);
   check('van con dang nhap', /Đã đăng nhập/.test((await nokia.get('/login')).body));
 
-  console.log('10. Dang xuat that, tra may ve trang thai sach');
+  console.log('11. Dang xuat that, tra may ve trang thai sach');
   const out = await nokia.get(`/logout?t=${token}`);
   check('chuyen huong ve /login', out.res.status === 302);
   const final = await nokia.get('/login');
   check('quay lai man hinh ma', /class="code"/.test(final.body));
+
+  const deadRemember = await device().get(`/remember?d=${remembered}`);
+  check('dia chi ghi nho cu cung chet theo', deadRemember.res.status === 404);
 
   if (streamKey) {
     const revoked = await fetch(`${BASE}/about?k=${streamKey}`);
