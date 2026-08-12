@@ -398,9 +398,13 @@ trình duyệt vẫn dựng sẵn trong mọi ô có chữ). Đo lại bằng c�
 viền không nền, chỉ hình), bấm vào là khung tìm bật ra và con trỏ nhảy sẵn vào ô
 nhập (phím `*` cũng mở được, phím `C` đóng lại). Làm vậy vì bề ngang là thứ đắt
 nhất trên hai màn này: một ô nhập chiếm gần hết dòng đầu mà chín trong mười lần vào
-trang là để xem, không phải để gõ. Nút tìm trong khung cũng chỉ còn biểu tượng, để
-trên màn 360 điểm ô nhập được dài nhất có thể — nhưng nút đó giữ nền đỏ, vì nó là
-nút bấm để gửi đi, khác với cái kính lúp chỉ để mở khung.
+trang là để xem, không phải để gõ.
+
+Trong khung thì ngược lại, hai nút **Tìm kiếm** và **Đóng** đều là chữ, cùng cao
+cùng cỡ, chỉ khác màu: đỏ đậm cho việc chính, xám cho đường lui. Một bên chữ một
+bên hình nhỏ thì nhìn ra hai thứ khác loại, mà chỗ này không có thanh trên chật
+chội để phải tiết kiệm bề ngang: ngay cả ở cỡ chữ Rất lớn trên màn 360 điểm, ô nhập
+vẫn còn 211 điểm.
 
 Khung bật ra **không đòi máy phải dán được thanh**: dán được thì nó là `fixed` nằm
 ngay dưới thanh, không dán được thì `s60.js` đặt nó bằng `absolute` vào đúng đỉnh
