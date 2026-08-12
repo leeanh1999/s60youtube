@@ -28,6 +28,10 @@ services:
       - YT_SHARED_COOKIES=0
       # Cookie cua mot may bao nhieu ngay khong dung thi xoa.
       - DEVICE_TTL_DAYS=45
+      # May da dang nhap thi trang chinh hien goi y rieng cua tai khoan do.
+      # Moi lan lay phai goi yt-dlp (chung 2 giay, co dem 10 phut cho tung may).
+      # NAS qua yeu thi dat 0, luc do trang chinh chi con danh sach chu de.
+      # - HOME_FEED=0
       # Chay sau reverse proxy ma proxy khong gui X-Forwarded-Proto/Host thi
       # dien dia chi cong khai vao day, de ma QR va trang /link ra dung dia chi.
       # - PUBLIC_URL=https://youtube.nha-toi.vn

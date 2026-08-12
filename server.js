@@ -159,11 +159,44 @@ app.use((req, res, next) => {
 
 // ---------- trang chinh ----------
 
-app.get('/', (req, res) => {
+/**
+ * Da dang nhap thi trang chinh la trang goi y cua chinh tai khoan do, giong
+ * YouTube thuong. Lay duoc hay khong thi danh sach chu de van nam duoi, nen
+ * moi duong hong o day chi lam mat phan goi y chu khong lam mat trang chinh:
+ * day la trang dau tien may goi, khong duoc phep tra ve loi.
+ */
+async function homeFeed(req) {
+  if (!config.HOME_FEED || !cookies.status(req.device).ready) return {};
+  try {
+    const videos = await ytdlp.getFeed('recommended', req.auth, config.PAGE_SIZE);
+    if (videos.length) return { videos };
+    return { note: feedEmptyNote(req) };
+  } catch (err) {
+    console.error('goi y that bai:', err.message);
+    return { note: feedEmptyNote(req) };
+  }
+}
+
+/** Noi ro cho de sua, khong bao chung chung "khong lay duoc". */
+function feedEmptyNote(req) {
+  if (cookies.hasPageSession(req.device) === false) {
+    return (
+      'Chưa có gợi ý riêng: cookie của máy này thiếu phần đăng nhập gốc của' +
+      ' youtube.com (LOGIN_INFO, SID) nên YouTube coi máy chủ là chưa đăng nhập.' +
+      ' Xuất lại cookie khi đang mở youtube.com và đã đăng nhập là có.'
+    );
+  }
+  return 'Chưa lấy được gợi ý riêng lúc này — YouTube không trả về danh sách nào.';
+}
+
+app.get('/', async (req, res) => {
+  const { videos, note } = await homeFeed(req);
   sendPage(
     res,
     render.homePage({
       prefs: req.prefs,
+      videos,
+      note,
       warning: cookies.status(req.device).ready
         ? null
         : 'Máy này chưa nối tài khoản YouTube — tìm kiếm vẫn chạy nhưng chưa phát được video.',
@@ -665,7 +698,14 @@ app.post('/link', async (req, res) => {
   res
     .status(200)
     .set('Content-Type', 'text/html; charset=utf-8')
-    .send(render.linkPage({ done: true }));
+    .send(
+      render.linkPage({
+        done: true,
+        // Cookie chi co phan '3P': phat duoc video nhung khong co goi y rieng.
+        // Noi ngay bay gio, luc nguoi dung con dang ngoi truoc may tinh.
+        partial: cookies.hasPageSession(deviceId) === false,
+      })
+    );
 });
 
 app.get('/logout', (req, res) => {

@@ -304,6 +304,27 @@ và hiện phần trăm; video dài thì chờ lâu, cứ để trang đó tự 
 File đã ghép nằm trong thư mục `cache/` **trên máy chủ**, tự xoá sau 6 tiếng
 không đụng tới.
 
+## Gợi ý cho bạn
+
+Máy đã đăng nhập thì trang chính là trang gợi ý của chính tài khoản đó, giống
+YouTube thường; danh sách **Chủ đề nhanh** tụt xuống dưới. Máy chưa đăng nhập
+thì trang chính vẫn như trước, không gọi mạng thêm lần nào.
+
+Gợi ý lấy bằng `yt-dlp` với cookie của đúng máy đó (`:ytrec`, tức
+`youtube.com/feed/recommended`), nên hai máy hai tài khoản thấy hai danh sách
+khác nhau. Mỗi lần lấy mất khoảng hai giây nên kết quả đệm 10 phút cho từng bộ
+cookie; quá 25 giây thì bỏ, trang chính vẫn ra đủ, chỉ thiếu phần gợi ý. Đặt
+`HOME_FEED=0` để tắt hẳn (NAS yếu, hoặc muốn trang chính mở tức thì).
+
+**Cookie phát được video chưa chắc lấy được gợi ý.** Bản chỉ có phần "3P"
+(`__Secure-3PSID`, `__Secure-3PAPISID`) vẫn phát video bình thường, nhưng với
+các trang cá nhân thì YouTube coi máy chủ là người chưa đăng nhập: `:ytrec` trả
+về danh sách rỗng và `:ytsubs` báo thẳng *Login details are needed*. Muốn có gợi
+ý thì bản xuất phải kèm cookie đăng nhập gốc của `youtube.com` — `LOGIN_INFO`,
+`SID`, `__Secure-1PSID`. Máy chủ tự kiểm chỗ này: thiếu thì trang `/link` nói
+ngay lúc bạn vừa nộp cookie (còn đang ngồi trước máy tính để xuất lại), và trang
+chính ghi rõ lý do thay vì để danh sách trống không hiểu vì sao.
+
 ## Cài đặt riêng
 
 Danh sách xếp một cột từ trên xuống, mỗi video là một **khối** riêng: ảnh xem
@@ -363,7 +384,8 @@ Biến môi trường:
 | `PORT` | `8080` | Cổng máy chủ |
 | `DATA_DIR` | thư mục dự án | Nơi chứa `cookies.txt`, `devices/`, `cache/` và bộ nhớ đệm của yt-dlp (Docker đặt `/data`) |
 | `YT_HL` / `YT_GL` | `vi` / `VN` | Ngôn ngữ và vùng kết quả |
-| `PAGE_SIZE` | `12` | Số kết quả mỗi trang |
+| `PAGE_SIZE` | `12` | Số kết quả mỗi trang, cũng là số video gợi ý ở trang chính |
+| `HOME_FEED` | `1` | Đặt `0` để trang chính không lấy gợi ý riêng nữa |
 | `MAX_JOBS` | `1` | Số video chuyển mã cùng lúc |
 | `FFMPEG_PRESET` | `veryfast` | Tốc độ mã hoá x264; chỉ dùng khi video không có bản H.264 nào |
 | `YT_COOKIES_FILE` | `<DATA_DIR>/cookies.txt` | Cookie chung cho máy chưa tự đăng nhập |

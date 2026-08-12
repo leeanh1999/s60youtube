@@ -44,6 +44,16 @@ const profiles = {
 
 const pages = {
   'home.html': render.homePage({ prefs, warning: 'Máy này chưa nối tài khoản YouTube.' }),
+  // Da dang nhap: trang chinh la trang goi y, chu de tut xuong duoi.
+  'home-feed.html': render.homePage({ prefs, videos }),
+  // Dang nhap roi ma cookie thieu phan ngoi thu nhat.
+  'home-nofeed.html': render.homePage({
+    prefs,
+    note:
+      'Chưa có gợi ý riêng: cookie của máy này thiếu phần đăng nhập gốc của' +
+      ' youtube.com (LOGIN_INFO, SID) nên YouTube coi máy chủ là chưa đăng nhập.' +
+      ' Xuất lại cookie khi đang mở youtube.com và đã đăng nhập là có.',
+  }),
   'search.html': render.searchPage({ query: 'nhạc vàng', videos, prefs, nextPage: '2' }),
   'watch.html': render.watchPage({
     video: { id: videos[0].id, title: info.title, author: info.author, duration: 245 },
