@@ -386,12 +386,21 @@ nhau vài điểm thấy rõ ngay; còn flexbox thì WebKit đời này chưa c�
 là `<div>` vì chính nó là cái được dán vào khung nhìn — dán một `<div>` thì bản
 WebKit nào cũng làm đúng, dán một `<table>` thì không chắc.
 
-Ô tìm kiếm thu thành **một biểu tượng kính lúp ở góc phải thanh trên**, bấm vào là
-khung tìm bật ra và con trỏ nhảy sẵn vào ô nhập (phím `*` cũng mở được, phím `C`
-đóng lại). Làm vậy vì bề ngang là thứ đắt nhất trên hai màn này: một ô nhập chiếm
-gần hết dòng đầu mà chín trong mười lần vào trang là để xem, không phải để gõ. Nút
-tìm trong khung cũng chỉ còn biểu tượng, để trên màn 360 điểm ô nhập được dài nhất
-có thể.
+Ô bảng thì căn giữa **hộp chữ**, mà mắt người lại thấy **nét chữ** — dưới nét chữ
+luôn còn một khoảng trống dành cho đuôi chữ `g`, `y`, trong khi "YouTube S60"
+không có chữ nào thò xuống. Font nào giãn dòng thoáng thì khoảng trống đó càng to,
+thành ra chữ nhìn như bị kéo lên. Vì vậy tên trang định hẳn `line-height: 1` (bỏ
+phần giãn dòng của font) và ô bên phải đặt `line-height: 0` (bỏ hộp chữ vô hình mà
+trình duyệt vẫn dựng sẵn trong mọi ô có chữ). Đo lại bằng cách đếm điểm ảnh trên
+ảnh chụp ở cả ba cỡ chữ và hai bề ngang: lệch không quá 1 điểm.
+
+Ô tìm kiếm thu thành **một biểu tượng kính lúp trần ở góc phải thanh trên** (không
+viền không nền, chỉ hình), bấm vào là khung tìm bật ra và con trỏ nhảy sẵn vào ô
+nhập (phím `*` cũng mở được, phím `C` đóng lại). Làm vậy vì bề ngang là thứ đắt
+nhất trên hai màn này: một ô nhập chiếm gần hết dòng đầu mà chín trong mười lần vào
+trang là để xem, không phải để gõ. Nút tìm trong khung cũng chỉ còn biểu tượng, để
+trên màn 360 điểm ô nhập được dài nhất có thể — nhưng nút đó giữ nền đỏ, vì nó là
+nút bấm để gửi đi, khác với cái kính lúp chỉ để mở khung.
 
 Khung bật ra **không đòi máy phải dán được thanh**: dán được thì nó là `fixed` nằm
 ngay dưới thanh, không dán được thì `s60.js` đặt nó bằng `absolute` vào đúng đỉnh

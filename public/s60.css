@@ -111,10 +111,17 @@ h2 .ic {
   text-align: right;
 }
 
+/* Dinh han line-height thay vi de font tu quyet. O cua bang can giua HOP chu,
+   con mat nguoi thi thay NET chu — ma duoi net chu luon con mot khoang trong
+   danh cho duoi chu 'g', 'y', trong khi "YouTube S60" khong co chu nao tho
+   xuong. Font nao gian dong thoang thi khoang trong do cang to, thanh ra chu
+   nhin nhu bi keo len tren. Dat line-height: 1 la bo phan gian dong cua font,
+   hop chu bo sat net chu, can giua hop thi net chu cung giua. */
 .bar .brand {
   display: block;
   overflow: hidden;
   white-space: nowrap;
+  line-height: 1;
   color: #ffffff;
   font-weight: bold;
   font-size: 1.05em;
@@ -127,11 +134,24 @@ h2 .ic {
   margin-right: 7px;
 }
 
+/* Bo strut cua o: o bang nao co chu thi trinh duyet dung san mot hop chu vo hinh
+   theo font, hop do thua cho o duoi va lam moi thu trong o bi day len. Dat
+   line-height: 0 la bo hop vo hinh ay, chieu cao o do chinh hai nut quyet dinh.
+   Nut Quay lai co chu thi tu dat lai dong cho no. */
+.bar .br {
+  line-height: 0;
+}
+
 .bar .find,
 .bar .back {
   display: inline-block;
+  vertical-align: middle;
   margin-left: 8px;
   color: #ffffff;
+}
+
+.bar .back {
+  line-height: 1.2;
   background: #a30000;
   border: 1px solid #e58080;
   border-radius: 5px;
@@ -146,17 +166,13 @@ h2 .ic {
   margin-right: 4px;
 }
 
-/* Kinh lup di mot minh, khong co chu ben canh: hinh phai to hon vien phai rong
-   hon de con la mot o dam duoc bang dau ngon tay. */
-.bar .find {
-  padding: 3px 10px;
-  font-size: 1em;
-}
-
+/* Kinh lup tran, khong vien khong nen: chi con hinh nen phai ve to len cho du
+   dam bang dau ngon tay. Hinh dat display:block de trong o khong con duong ke
+   chu nao — het duong ke la het cho trong lech tren lech duoi. */
 .bar .find .ic {
-  width: 1.1em;
-  height: 1.1em;
-  vertical-align: -0.18em;
+  display: block;
+  width: 1.45em;
+  height: 1.45em;
 }
 
 /* Tieu de trang cung may dong phu chu thich duoi no. */
