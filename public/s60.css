@@ -881,11 +881,11 @@ body.fixnav .nav a .ic {
   border-bottom: 2px solid #8c0000;
 }
 
-/* Nut dong la mot mui nhon quay len: khung tim tu tren tut xuong, dong la no thu
-   len lai, nen hinh chi huong dung ve cho no se bien vao.
+/* Nut dong la mot mui nhon quay len, tran nhu kinh lup o thanh tren: khung tim tu
+   tren tut xuong, dong la no thu len lai, nen hinh chi dung ve cho no se bien vao.
 
-   Cao bang nut Tim kiem ben tren cho hai nut cung mot co: hinh 1,2em cong dem
-   0,45em hai dau la 2,1em, dung bang chieu cao dinh cho o nhap va nut. */
+   Khong vien khong nen thi hinh phai ve to hon mot chut, va dem quanh hinh giu
+   nguyen de cho dam van rong bang dau ngon tay chu khong bo theo net hinh. */
 #pop .popb {
   margin: 6px 6px 0 6px;
   text-align: right;
@@ -894,18 +894,14 @@ body.fixnav .nav a .ic {
 
 #pop .popx {
   display: inline-block;
-  padding: 0.45em 0.9em;
-  color: #33383d;
-  background: #e4e8ec;
-  border: 1px solid #b9bfc6;
-  border-radius: 5px;
-  -webkit-border-radius: 5px;
+  padding: 0.42em 0.6em;
+  color: #4a5058;
 }
 
 #pop .popx .ic {
   display: block;
-  width: 1.2em;
-  height: 1.2em;
+  width: 1.35em;
+  height: 1.35em;
 }
 
 /* ---------- man hep: N8 va ho 640x360 khi xem doc ---------- */

@@ -402,10 +402,12 @@ trang là để xem, không phải để gõ.
 
 Trong khung thì ngược lại, nút gửi là chữ **Tìm kiếm** — chỗ này không chật như
 thanh trên nên không phải tiết kiệm bề ngang: ngay cả ở cỡ chữ Rất lớn trên màn 360
-điểm, ô nhập vẫn còn 211 điểm. Nút đóng là **một mũi nhọn quay lên**, vì khung tìm
-từ trên tụt xuống thì đóng là nó thu lên lại, hình chỉ đúng về chỗ nó sẽ biến vào.
-Hai nút cao đúng bằng nhau (hình 1,2em cộng đệm 0,45em hai đầu là 2,1em, bằng chiều
-cao định cho ô nhập), chỉ khác màu: đỏ đậm cho việc chính, xám cho đường lui.
+điểm, ô nhập vẫn còn 211 điểm. Nút đóng là **một mũi nhọn quay lên để trần**, vì
+khung tìm từ trên tụt xuống thì đóng là nó thu lên lại, hình chỉ đúng về chỗ nó sẽ
+biến vào. Hai nút cố ý khác hẳn nhau: gửi đi là việc chính nên là nút chữ nền đỏ,
+đóng là đường lui nên chỉ là một hình xám nhạt — trông giống nhau quá thì dễ bấm
+nhầm cái nọ ra cái kia. Đệm quanh hình vẫn giữ rộng để chỗ đâm bằng đầu ngón tay
+không bó theo nét hình.
 
 Khung bật ra **không đòi máy phải dán được thanh**: dán được thì nó là `fixed` nằm
 ngay dưới thanh, không dán được thì `s60.js` đặt nó bằng `absolute` vào đúng đỉnh
