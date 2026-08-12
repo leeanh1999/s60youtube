@@ -18,9 +18,17 @@ const app = express();
 app.disable('x-powered-by');
 app.disable('etag');
 
+// Man hinh E6 la 640x480; luong gop san cao nhat cua YouTube duoi muc do la
+// 360p (itag 18, H.264 baseline + AAC) — dung thu Belle mo thang duoc.
+const BELLE_MAX_HEIGHT = 360;
+
 // ---------- tuy chon nguoi dung (luu bang cookie) ----------
 
-const DEFAULT_PREFS = { thumbs: true, pageSize: config.PAGE_SIZE };
+const DEFAULT_PREFS = {
+  thumbs: true,
+  pageSize: config.PAGE_SIZE,
+  textSize: render.DEFAULT_TEXT_SIZE,
+};
 
 function readPrefs(req) {
   const prefs = { ...DEFAULT_PREFS };
@@ -31,6 +39,7 @@ function readPrefs(req) {
     const key = rawKey.trim();
     const value = decodeURIComponent(rest.join('=').trim());
     if (key === 'thumbs') prefs.thumbs = value === '1';
+    if (key === 'textSize' && render.TEXT_SIZES[value]) prefs.textSize = value;
     if (key === 'pageSize') {
       const n = Number(value);
       if (Number.isFinite(n) && n >= 4 && n <= 40) prefs.pageSize = n;
@@ -84,12 +93,19 @@ app.use(
 
 app.use(express.urlencoded({ extended: false, limit: '2mb' }));
 
+// Moi trang deu can tuy chon hien thi (co chu, anh thu nho) de dung layout.
+app.use((req, res, next) => {
+  req.prefs = readPrefs(req);
+  next();
+});
+
 // ---------- trang chinh ----------
 
 app.get('/', (req, res) => {
   sendPage(
     res,
     render.homePage({
+      prefs: req.prefs,
       warning: ytdlp.hasCookies()
         ? null
         : 'Chưa cấu hình cookie YouTube — tìm kiếm vẫn chạy nhưng có thể không phát được video. Xem mục Giới thiệu.',
@@ -100,7 +116,7 @@ app.get('/', (req, res) => {
 // ---------- tim kiem ----------
 
 app.get('/search', async (req, res) => {
-  const prefs = readPrefs(req);
+  const prefs = req.prefs;
   const query = String(req.query.q || '').trim();
   const page = String(req.query.p || '');
 
@@ -147,7 +163,7 @@ app.get('/search', async (req, res) => {
 // ---------- trang xem ----------
 
 app.get('/watch', async (req, res) => {
-  const prefs = readPrefs(req);
+  const prefs = req.prefs;
   const videoId = parseVideoId(req.query.v);
   if (!videoId) {
     sendPage(
@@ -156,6 +172,7 @@ app.get('/watch', async (req, res) => {
         title: 'Sai địa chỉ',
         message: 'Thiếu mã video hợp lệ.',
         back: '/',
+        prefs,
       }),
       400
     );
@@ -176,7 +193,7 @@ app.get('/watch', async (req, res) => {
   let error = null;
   if (infoResult.status === 'fulfilled') {
     const raw = infoResult.value;
-    info = { ...raw, direct: ytdlp.pickProgressive(raw.formats, 360) };
+    info = { ...raw, direct: ytdlp.pickProgressive(raw.formats, BELLE_MAX_HEIGHT) };
   } else {
     // Giu nguyen van loi trong log de con lan ra nguyen nhan, con man hinh
     // dien thoai thi chi hien cau tieng Viet ngan gon.
@@ -206,27 +223,65 @@ app.get('/thumb/:id', async (req, res) => {
     res.status(400).end();
     return;
   }
-  try {
-    const upstream = await fetch(`https://i.ytimg.com/vi/${id}/default.jpg`, {
-      headers: { 'User-Agent': config.DESKTOP_UA },
-    });
-    if (!upstream.ok) {
-      res.status(502).end();
+  // mqdefault la ban 320x180 dung khung 16:9, vua khop voi mot cot rong het
+  // man hinh. default.jpg chi 120x90 va vien den hai ben nen de danh du phong.
+  const names = ['mqdefault', 'default'];
+  for (const name of names) {
+    try {
+      const upstream = await fetch(`https://i.ytimg.com/vi/${id}/${name}.jpg`, {
+        headers: { 'User-Agent': config.DESKTOP_UA },
+      });
+      if (!upstream.ok) continue;
+      const buffer = Buffer.from(await upstream.arrayBuffer());
+      res
+        .set('Content-Type', 'image/jpeg')
+        .set('Cache-Control', 'public, max-age=86400')
+        .send(buffer);
       return;
+    } catch {
+      // thu ten tiep theo
     }
-    const buffer = Buffer.from(await upstream.arrayBuffer());
-    res
-      .set('Content-Type', 'image/jpeg')
-      .set('Cache-Control', 'public, max-age=86400')
-      .send(buffer);
-  } catch {
-    res.status(502).end();
   }
+  res.status(502).end();
 });
 
-// ---------- phat truc tiep (proxy MP4 co san) ----------
+// ---------- xem online (proxy MP4 co san, khong luu gi tren dia) ----------
 
-app.all('/stream/:id/:formatId', async (req, res) => {
+/**
+ * Trinh phat cua Belle keo file theo tung doan bang header Range, nen chi can
+ * chuyen tiep Range len YouTube la may phat duoc ngay ma khong tai het file.
+ * Bat buoc de "inline": co "attachment" la trinh duyet Symbian chuyen sang tai ve.
+ */
+async function proxyFormat(req, res, id, format) {
+  const headers = { 'User-Agent': config.DESKTOP_UA };
+  if (req.headers.range) headers.Range = req.headers.range;
+
+  const upstream = await fetch(format.url, { headers });
+  res.status(upstream.status === 206 ? 206 : upstream.status);
+  res.set('Content-Type', format.acodec && !format.vcodec ? 'audio/mp4' : 'video/mp4');
+  res.set('Content-Disposition', `inline; filename="${id}.mp4"`);
+  res.set('Accept-Ranges', 'bytes');
+  res.set('Cache-Control', 'no-store');
+  for (const key of ['content-length', 'content-range']) {
+    const value = upstream.headers.get(key);
+    if (value) res.set(key, value);
+  }
+
+  if (req.method === 'HEAD') {
+    upstream.body?.cancel?.();
+    res.end();
+    return;
+  }
+
+  const stream = Readable.fromWeb(upstream.body);
+  res.on('close', () => stream.destroy());
+  stream.on('error', () => res.destroy());
+  stream.pipe(res);
+}
+
+// Khong co :formatId thi tu chon luong hop voi Belle. Duong dan on dinh nhu vay
+// thi trinh phat mo lai duoc sau khi thong tin video het han trong bo nho dem.
+app.all('/stream/:id/:formatId?', async (req, res) => {
   const { id, formatId } = req.params;
   if (!isVideoId(id)) {
     res.status(400).end();
@@ -235,43 +290,24 @@ app.all('/stream/:id/:formatId', async (req, res) => {
 
   try {
     const info = await ytdlp.getInfo(id);
-    const format = ytdlp.findFormat(info, formatId);
+    const format = formatId
+      ? ytdlp.findFormat(info, formatId)
+      : ytdlp.pickProgressive(info.formats, BELLE_MAX_HEIGHT);
     if (!format) {
       sendPage(
         res,
         render.errorPage({
-          title: 'Không tìm thấy định dạng',
-          message: 'Liên kết đã cũ, hãy mở lại trang video.',
+          title: 'Không xem online được',
+          message:
+            'Video này không có sẵn luồng MP4 mà Belle mở thẳng được. Hãy chọn "Tạo bản nhẹ" ở trang video.',
           back: `/watch?v=${id}`,
+          prefs: req.prefs,
         }),
         404
       );
       return;
     }
-
-    // Dien thoai gui Range de tua; chuyen nguyen ven len YouTube va tra ve.
-    const headers = { 'User-Agent': config.DESKTOP_UA };
-    if (req.headers.range) headers.Range = req.headers.range;
-
-    const upstream = await fetch(format.url, { headers });
-    res.status(upstream.status === 206 ? 206 : upstream.status);
-    res.set('Content-Type', 'video/mp4');
-    res.set('Accept-Ranges', 'bytes');
-    for (const key of ['content-length', 'content-range']) {
-      const value = upstream.headers.get(key);
-      if (value) res.set(key, value);
-    }
-
-    if (req.method === 'HEAD') {
-      upstream.body?.cancel?.();
-      res.end();
-      return;
-    }
-
-    const stream = Readable.fromWeb(upstream.body);
-    res.on('close', () => stream.destroy());
-    stream.on('error', () => res.destroy());
-    stream.pipe(res);
+    await proxyFormat(req, res, id, format);
   } catch (err) {
     sendPage(
       res,
@@ -279,6 +315,7 @@ app.all('/stream/:id/:formatId', async (req, res) => {
         title: 'Không phát được',
         message: friendlyError(err),
         back: `/watch?v=${id}`,
+        prefs: req.prefs,
       }),
       502
     );
@@ -298,6 +335,7 @@ app.get('/convert', async (req, res) => {
         title: 'Sai yêu cầu',
         message: 'Thiếu mã video hoặc chất lượng không hợp lệ.',
         back: '/',
+        prefs: req.prefs,
       }),
       400
     );
@@ -311,6 +349,7 @@ app.get('/convert', async (req, res) => {
         title: 'Thiếu ffmpeg',
         message: 'Máy chủ chưa có ffmpeg nên không chuyển mã được.',
         back: `/watch?v=${videoId}`,
+        prefs: req.prefs,
       }),
       503
     );
@@ -358,6 +397,7 @@ app.get('/convert', async (req, res) => {
         job: { ...job, position: media.queuePosition(job) },
         profileId,
         profiles: media.PROFILES,
+        prefs: req.prefs,
       })
     );
   } catch (err) {
@@ -367,6 +407,7 @@ app.get('/convert', async (req, res) => {
         title: 'Không chuẩn bị được video',
         message: friendlyError(err),
         back: `/watch?v=${videoId}`,
+        prefs: req.prefs,
       }),
       502
     );
@@ -386,10 +427,9 @@ app.get('/file/:id/:profileId', (req, res) => {
     res.redirect(302, `/convert?v=${id}&p=${profileId}`);
     return;
   }
-  res.set(
-    'Content-Type',
-    media.PROFILES[profileId].ext === 'm4a' ? 'audio/mp4' : 'video/mp4'
-  );
+  const audioOnly = media.PROFILES[profileId].ext === 'm4a';
+  res.set('Content-Type', audioOnly ? 'audio/mp4' : 'video/mp4');
+  res.set('Content-Disposition', `inline; filename="${id}.${audioOnly ? 'm4a' : 'mp4'}"`);
   res.sendFile(job.file, { acceptRanges: true, cacheControl: false });
 });
 
@@ -423,6 +463,7 @@ app.get('/login', async (req, res) => {
       minutes: pairing.remainingMinutes(code),
       notice,
       error,
+      prefs: req.prefs,
     })
   );
 });
@@ -490,22 +531,25 @@ app.get('/logout', (req, res) => {
 // ---------- cai dat / gioi thieu ----------
 
 app.get('/settings', (req, res) => {
-  const prefs = readPrefs(req);
   const submitted = Object.prototype.hasOwnProperty.call(req.query, 'pageSize');
 
   if (submitted) {
     const pageSize = Number(req.query.pageSize) || DEFAULT_PREFS.pageSize;
     const thumbs = req.query.thumbs === '1';
+    const textSize = render.TEXT_SIZES[req.query.textSize]
+      ? String(req.query.textSize)
+      : DEFAULT_PREFS.textSize;
     const options = 'Path=/; Max-Age=31536000';
     res.set('Set-Cookie', [
       `thumbs=${thumbs ? 1 : 0}; ${options}`,
       `pageSize=${pageSize}; ${options}`,
+      `textSize=${textSize}; ${options}`,
     ]);
-    sendPage(res, render.settingsPage({ thumbs, pageSize }));
+    sendPage(res, render.settingsPage({ thumbs, pageSize, textSize }));
     return;
   }
 
-  sendPage(res, render.settingsPage(prefs));
+  sendPage(res, render.settingsPage(req.prefs));
 });
 
 app.get('/about', (req, res) => {
@@ -518,6 +562,7 @@ app.get('/about', (req, res) => {
       build: config.BUILD_VERSION,
       buildDate: config.BUILD_DATE,
       ytdlpVersion: ytdlp.version(),
+      prefs: req.prefs,
     })
   );
 });
@@ -529,6 +574,7 @@ app.use((req, res) => {
       title: 'Không có trang này',
       message: `Đường dẫn ${req.path} không tồn tại.`,
       back: '/',
+      prefs: req.prefs,
     }),
     404
   );

@@ -78,10 +78,9 @@ Chip ARM mã hoá video chậm hơn hẳn máy tính. Vì vậy file compose đ�
 
 | Ưu tiên | Lựa chọn | Vì sao |
 | --- | --- | --- |
-| 1 | **Phát ngay** | Chỉ chuyển tiếp luồng, NAS không phải mã hoá gì |
+| 1 | **Xem online** | Chỉ chuyển tiếp luồng, NAS không phải mã hoá gì |
 | 2 | **Chỉ tiếng (.m4a)** | Mã hoá âm thanh rất nhẹ, xong trong vài giây |
-| 3 | **176x144 / 320x240** | Chậm — video 4 phút có thể mất vài phút |
-| 4 | 640x360 | Rất chậm trên ARM, chỉ nên dùng nếu NAS chạy Intel |
+| 3 | 640x360 | Rất chậm trên ARM, chỉ nên dùng nếu NAS chạy Intel |
 
 ### Cập nhật lên bản mới
 
@@ -179,25 +178,34 @@ YouTube đã chặn và cảnh báo nguy cơ khoá tài khoản, nên dự án n
 - Dán thẳng link YouTube vào ô tìm kiếm cũng mở đúng video đó.
 - Phím tắt: `0` về trang chính, `1`–`9` chọn mục, `*` vào ô tìm, `#` sang trang sau.
 
-Ở trang video có các lựa chọn:
+Trang video mở ra là có sẵn khung phát ngay trên trang. Bấm nút phát là xem được
+luôn: máy chỉ kéo phần đang xem chứ không tải cả file, xem xong không còn gì
+trong bộ nhớ máy. Trình duyệt của Belle (Nokia Browser 7.4 trở lên) đọc được thẻ
+`<video>` với H.264/MP4 nên làm được như vậy; máy đời cũ hơn không hiểu thẻ này
+sẽ thấy một liên kết thường ở chỗ đó.
+
+Dưới khung phát còn hai lựa chọn dự phòng, chỉ cần khi xem online bị giật hoặc
+khi YouTube không còn bản MP4 gộp sẵn cho video đó:
 
 | Lựa chọn | Dành cho |
 | --- | --- |
-| Phát ngay | Máy Belle, khi YouTube còn sẵn bản MP4 gộp — không phải chờ |
-| 176x144 | S60v3 đời cũ (N70, N73, E71) |
-| 320x240 | S60v5 (5800, N97, X6) |
-| 640x360 | Symbian Belle (N8, 808, E7, 701) |
+| 640x360 — bản nhẹ cho Belle | Mạng yếu, xem online hay khựng |
 | Chỉ tiếng (.m4a) | Nghe nhạc, tốn rất ít dung lượng |
 
-Ba mức đầu và bản âm thanh cần chuyển mã: trang sẽ tự làm mới và hiện phần trăm,
-xong thì bấm phát. Video dài thì chờ lâu, cứ để trang đó tự chạy.
+Hai mức này cần chuyển mã: trang sẽ tự làm mới và hiện phần trăm, xong thì bấm
+phát. Video dài thì chờ lâu, cứ để trang đó tự chạy.
 
-File đã chuyển mã nằm trong thư mục `cache/`, tự xoá sau 6 tiếng không đụng tới.
+File đã chuyển mã nằm trong thư mục `cache/` **trên máy chủ**, tự xoá sau 6 tiếng
+không đụng tới.
 
 ## Cài đặt riêng
 
-Mục **Cài đặt** cho tắt ảnh thu nhỏ (mạng 2G/EDGE nên tắt) và đổi số kết quả mỗi
-trang. Lưu bằng cookie trên máy điện thoại.
+Giao diện xếp một cột từ trên xuống, mỗi liên kết là một khối cao để ngón tay
+chạm trúng — Belle là máy cảm ứng. Màn hình E6 chỉ rộng chưa tới 3cm mà nhét
+480 điểm ảnh, nên cỡ chữ mặc định của web hiện ra rất bé; mục **Cài đặt** có ba
+mức **Vừa / Lớn / Rất lớn**, mặc định là "Lớn". Ở đó cũng tắt được ảnh thu nhỏ
+(mạng 2G/EDGE nên tắt) và đổi số kết quả mỗi trang. Tất cả lưu bằng cookie trên
+máy điện thoại.
 
 Biến môi trường:
 
@@ -229,12 +237,15 @@ hết hạn — xuất lại `cookies.txt`.
 **"Không kết nối được tới YouTube."** Máy chủ không ra được mạng. Nếu mạng công ty
 chặn YouTube thì phải bật VPN trên máy tính (điện thoại thì không cần).
 
-**Chuyển mã quá chậm.** Chọn mức thấp hơn, hoặc nghe bản "Chỉ tiếng". Trên NAS
-ARM thì đặt `FFMPEG_PRESET=ultrafast`. Ngược lại nếu máy khoẻ có thể tăng
-`MAX_JOBS` và hạ xuống `FFMPEG_PRESET=fast` cho file gọn hơn.
+**Chuyển mã quá chậm.** Cứ xem online ở khung phát trên trang video, cách đó
+không dùng tới ffmpeg. Bắt buộc phải chuyển mã thì trên NAS ARM đặt
+`FFMPEG_PRESET=ultrafast`; máy khoẻ thì tăng `MAX_JOBS` và hạ xuống
+`FFMPEG_PRESET=fast` cho file gọn hơn.
 
-**Tải về không phát được.** Vài đời máy chỉ mở file sau khi lưu vào thẻ nhớ. Chọn
-"Lưu" rồi mở bằng trình phát sẵn có của máy.
+**Bấm vào là máy đòi tải cả file về.** Khung phát trên trang không hiện ra, nên
+máy rơi vào liên kết dự phòng. Kiểm tra máy đang chạy Nokia Belle bản mới
+(Nokia Browser 7.4 trở lên) — Symbian Anna và cũ hơn không có thẻ `<video>` nên
+chỉ tải về được thôi.
 
 ## Kiểm thử nhanh
 
