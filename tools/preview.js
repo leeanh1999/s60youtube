@@ -4,7 +4,7 @@
  * Dung HTML cua tung trang ra file de xem tren may tinh, khong can chay may
  * chu hay goi YouTube. Chay: node tools/preview.js [thu-muc-dich]
  *
- * Mo file trong thu muc do bang trinh duyet, thu nho cua so lai con 480 diem
+ * Mo file trong thu muc do bang trinh duyet, thu cua so lai con 640x480 diem
  * la thay gan dung nhu tren Nokia E6.
  */
 const fs = require('fs');

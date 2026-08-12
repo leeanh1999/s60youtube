@@ -3,12 +3,14 @@
    Van tranh nhung thu nang tay cho con chip 680MHz: khong bong do, khong
    chuyen mau, khong hoat hinh — cuon danh sach moi muot.
 
-   Bo cuc: mot cot the tu tren xuong (man hinh chi rong 480 diem), trong tung
-   the thi chia doi — anh ben trai, chu ben phai. */
+   Man hinh E6 nam ngang: 640 diem be ngang, 480 diem chieu cao, tren duong
+   cheo 2,46 inch — khoang 325 diem moi inch, tuc be ngang that chi chung 5cm.
+   Bo cuc mot cot the tu tren xuong, trong tung the thi chia doi: anh ben trai,
+   chu ben phai. */
 
 /* Co chu goc. Moi kich thuoc khac deu do bang em nen doi mot dong o day la
-   doi ca trang, ke ca be ngang cua anh thu nho. Man hinh E6 rong chua toi 3cm
-   ma nhet 480 diem, nen chu 13px nho nhu hat gao — mac dinh de "lon". */
+   doi ca trang, ke ca be ngang cua anh thu nho. Man hinh day diem anh ma be
+   xiu nen chu 13px hien ra nho nhu hat gao — mac dinh de "lon". */
 body {
   margin: 0;
   padding: 0;
@@ -33,11 +35,12 @@ a {
   -webkit-tap-highlight-color: rgba(204, 0, 0, 0.28);
 }
 
-/* Bieu tuong SVG: mac dinh cao bang mot dong chu va an theo mau chu xung quanh. */
+/* Bieu tuong SVG: cao xap xi chu cai hoa cua dong chu ben canh, khong cao hon.
+   To hon mot chut la no doi cho, nhin nhu bang hieu chu khong nhu nhan muc. */
 .ic {
-  width: 1.05em;
-  height: 1.05em;
-  vertical-align: -0.16em;
+  width: 0.92em;
+  height: 0.92em;
+  vertical-align: -0.11em;
 }
 
 h1 {
@@ -47,9 +50,9 @@ h1 {
 }
 
 h1 .ic {
-  width: 1em;
-  height: 1em;
-  margin-right: 7px;
+  width: 0.88em;
+  height: 0.88em;
+  margin-right: 6px;
   color: #c00000;
 }
 
@@ -64,9 +67,9 @@ h2 {
 }
 
 h2 .ic {
-  width: 1.15em;
-  height: 1.15em;
-  margin-right: 7px;
+  width: 0.95em;
+  height: 0.95em;
+  margin-right: 6px;
   color: #c00000;
 }
 
@@ -92,10 +95,10 @@ h2 .ic {
 }
 
 .bar .brand .ic {
-  width: 1.5em;
-  height: 1.5em;
-  vertical-align: -0.35em;
-  margin-right: 8px;
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: -0.2em;
+  margin-right: 7px;
 }
 
 .bar .back {
@@ -111,8 +114,8 @@ h2 .ic {
 }
 
 .bar .back .ic {
-  width: 0.95em;
-  height: 0.95em;
+  width: 0.85em;
+  height: 0.85em;
   margin-right: 4px;
 }
 
@@ -133,8 +136,8 @@ h2 .ic {
 }
 
 .head .by .ic {
-  width: 1.05em;
-  height: 1.05em;
+  width: 0.9em;
+  height: 0.9em;
   margin-right: 5px;
   color: #8a9099;
 }
@@ -146,8 +149,8 @@ h2 .ic {
 }
 
 .head .facts .ic {
-  width: 1.05em;
-  height: 1.05em;
+  width: 0.9em;
+  height: 0.9em;
   margin-right: 4px;
   color: #8a9099;
 }
@@ -172,6 +175,7 @@ h2 .ic {
 
 .sform td {
   padding: 0;
+  vertical-align: middle;
 }
 
 /* Vien va dem tinh vao be ngang, khong thi 100% se tran ra ngoai o. */
@@ -181,10 +185,20 @@ h2 .ic {
   box-sizing: border-box;
 }
 
+/* Dinh han chieu cao cho ca o nhap va nut, va bo dem tren duoi. De moi cai tu
+   cao theo noi dung thi khong bao gio bang nhau: trong nut co hinh SVG lam
+   dong chu day len, ma o nhap thi chi co chu tran. */
+.sform .qi input,
+.sform .qb button {
+  height: 2.1em;
+  font-size: 1em;
+  line-height: 1.2;
+  vertical-align: middle;
+}
+
 .sform .qi input {
   width: 100%;
-  font-size: 1em;
-  padding: 8px 7px;
+  padding: 0 0.4em;
   color: #14161a;
   background: #ffffff;
   border: 1px solid #b9bfc6;
@@ -198,10 +212,9 @@ h2 .ic {
 }
 
 .sform .qb button {
-  font-size: 1em;
   font-weight: bold;
   white-space: nowrap;
-  padding: 8px 11px;
+  padding: 0 0.65em;
   background: #c00000;
   color: #ffffff;
   border: 1px solid #8c0000;
@@ -227,11 +240,17 @@ h2 .ic {
 }
 
 /* Ca khoi la mot the <a> duy nhat: bam phim xuong mot cai la sang dung mot
-   video, khong mac ket giua anh va tieu de cua cung mot muc. */
+   video, khong mac ket giua anh va tieu de cua cung mot muc.
+
+   Chia hai cot bang cach neo anh vao goc trai roi chua san le trong ben trai
+   khoi chu, chu khong dung float: float ma trinh duyet tinh sai mot chut la
+   dong chu tut xuong duoi anh, con cach nay thi khong the nao lech. */
 .card {
+  position: relative;
   display: block;
   overflow: hidden;
-  padding: 7px;
+  min-height: 4.5em;
+  padding: 0.35em 0.4em 0.35em 9.1em;
   background: #ffffff;
   color: #14161a;
   border: 1px solid #d3d8dd;
@@ -245,13 +264,14 @@ h2 .ic {
   border-color: #c00000;
 }
 
-/* Chia doi theo phan tram chu khong theo em: doi co chu thi ty le anh/chu van
-   the, chi co dong chu chay lai. */
+/* Khung anh 16:9 do bang em: doi co chu trong Cai dat thi anh to nho theo, ma
+   van la con so co dinh nen khong phai nho trinh duyet tu suy ra chieu cao. */
 .card .th {
-  display: block;
-  float: left;
-  position: relative;
-  width: 38%;
+  position: absolute;
+  left: 0.4em;
+  top: 0.35em;
+  width: 8em;
+  height: 4.5em;
   background: #000000;
   border-radius: 4px;
   -webkit-border-radius: 4px;
@@ -261,7 +281,7 @@ h2 .ic {
 .card .th img {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
   border: 0;
 }
 
@@ -315,11 +335,12 @@ h2 .ic {
 
 .card .tx {
   display: block;
-  margin-left: 41%;
 }
 
-.feed.nothumb .tx {
-  margin-left: 0;
+/* Tat anh thu nho thi khong con gi ben trai, chu chay het be ngang. */
+.feed.nothumb .card {
+  min-height: 0;
+  padding-left: 0.4em;
 }
 
 .card .ti {
@@ -431,9 +452,9 @@ a.go .ic {
 
 .opts.icons li a .ic {
   float: left;
-  width: 1.35em;
-  height: 1.35em;
-  margin: 0.05em 9px 0 0;
+  width: 1.05em;
+  height: 1.05em;
+  margin: 0.12em 8px 0 0;
   color: #c00000;
 }
 
@@ -479,9 +500,9 @@ a.go .ic {
 .err .ic,
 .ok .ic {
   float: left;
-  width: 1.5em;
-  height: 1.5em;
-  margin-right: 8px;
+  width: 1.1em;
+  height: 1.1em;
+  margin: 0.1em 7px 0 0;
 }
 
 .warn span,
@@ -716,16 +737,16 @@ a.go .ic {
 
 .nav a {
   display: block;
-  padding: 8px 2px;
+  padding: 7px 2px;
   color: #4a5058;
-  font-size: 0.66em;
+  font-size: 0.7em;
 }
 
 .nav a .ic {
   display: block;
-  width: 2em;
-  height: 2em;
-  margin: 0 auto 3px auto;
+  width: 1.5em;
+  height: 1.5em;
+  margin: 0 auto 2px auto;
 }
 
 .nav a:focus,

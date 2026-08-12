@@ -312,11 +312,14 @@ bốn video thay vì một. Cả khối là **một liên kết duy nhất**, nh
 xuống một cái là sang đúng một video, và khối đang chọn thì đổi màu kèm dấu tam
 giác phát trên ảnh nên không bao giờ lạc con trỏ.
 
-Màn hình E6 chỉ rộng chưa tới 3cm mà nhét 480 điểm ảnh, nên cỡ chữ mặc định của
-web hiện ra rất bé; mục **Cài đặt** có ba mức **Vừa / Lớn / Rất lớn**, mặc định
-là "Lớn" (chữ càng to thì tên video càng được cắt ngắn để khối không cao quá).
-Ở đó cũng tắt được ảnh thu nhỏ (mạng 2G/EDGE nên tắt — lúc đó khối gom lại còn
-một cột chữ) và đổi số kết quả mỗi trang. Tất cả lưu bằng cookie trên máy.
+Màn hình E6 nằm ngang, rộng 640 điểm và cao 480 điểm, nhưng đường chéo chỉ 2,46
+inch — khoảng 325 điểm mỗi inch, tức bề ngang thật chừng 5cm. Dày điểm ảnh như
+vậy nên cỡ chữ mặc định của web hiện ra rất bé; mục **Cài đặt** có ba mức
+**Vừa / Lớn / Rất lớn**, mặc định là "Lớn". Ảnh xem trước và biểu tượng đều đo
+bằng `em` nên đổi cỡ chữ là chúng to nhỏ theo, giữ đúng tỉ lệ; tên video cũng
+được cắt ngắn hơn khi chữ to, để khối không cao gấp đôi ảnh. Ở đó cũng tắt được
+ảnh thu nhỏ (mạng 2G/EDGE nên tắt — lúc đó khối gom lại còn một cột chữ) và đổi
+số kết quả mỗi trang. Tất cả lưu bằng cookie trên máy.
 
 Trình duyệt của E6 (Nokia Browser 8.x, nền WebKit 535) đọc được HTML5, SVG đặt
 thẳng trong trang, CSS3 cơ bản và JavaScript — nên biểu tượng trên trang là hình
@@ -395,7 +398,7 @@ vào HTML, hoặc `s60.js` lỡ viết bằng cú pháp ES6 — WebKit 535 gặp
 `const` là chết cả file mà chết im lặng.
 
 `preview.js` dựng HTML của mọi trang ra thư mục `preview/` để xem trên máy tính,
-không cần chạy máy chủ hay gọi YouTube. Thu cửa sổ trình duyệt còn 480 điểm là
+không cần chạy máy chủ hay gọi YouTube. Thu cửa sổ trình duyệt còn 640×480 là
 thấy gần đúng như trên E6. `test-login.js` chạy trọn luồng đăng nhập
 bằng cookie giả rồi tự đăng xuất, nên không đụng tới cookie thật của bạn; nó
 dựng hai "máy Nokia" song song để chắc chắn cookie máy này không dính sang máy
