@@ -164,7 +164,6 @@
     if (!link || !pop) return;
 
     var box = pop.getElementsByTagName('input')[0];
-    var close = firstOf('a', 'popx');
 
     function stop(event) {
       if (!event) return;
@@ -176,6 +175,9 @@
       pop.style.position = pinned ? 'fixed' : 'absolute';
       pop.style.top = popTop() + 'px';
       pop.className = 'on';
+      // Khung khong con nut dong nao, nen phai noi cho nguoi ta biet duong ra:
+      // to nen cho kinh lup thanh dang an xuong, bam lai chinh no la dong.
+      link.className = 'find on';
       if (box) {
         try {
           box.focus();
@@ -192,16 +194,16 @@
 
     function shut(event) {
       pop.className = '';
+      link.className = 'find';
       stop(event);
       return false;
     }
 
-    // Bam kinh lup lan nua la dong: khong co chuot de bam ra ngoai, va nut Dong
-    // thi nam duoi khung — dang mo ma bam lai cai vua bam la phan xa tu nhien.
+    // Bam kinh lup lan nua la dong. Do la duong dong duy nhat cua khung, nen no
+    // phai chac: khung nam ngay duoi thanh chu khong de len, kinh lup luon lo ra.
     link.onclick = function (event) {
       return pop.className === 'on' ? shut(event) : open(event);
     };
-    if (close) close.onclick = shut;
     // Phim C tren may Nokia bao ve trinh duyet la Esc (27) — dong khung cho gon.
     if (box) {
       box.onkeydown = function (event) {
@@ -236,9 +238,12 @@
   }
 
   /**
-   * Cac diem dung theo dung thu tu tren trang. Bo qua logo va kinh lup o thanh
-   * tren: hai cai do co phim tat rieng (0 va *) va nam trong thanh dan luon thay,
-   * de chung trong hang thi moi trang deu phai bam qua chung truoc khi toi video.
+   * Cac diem dung theo dung thu tu tren trang. Chi bo qua ten trang o thanh tren:
+   * no la duong ve trang chinh, ma chan trang da co san mot o 'Trang chinh' roi.
+   *
+   * Kinh lup thi PHAI co trong hang, du no da co phim tat `*`: khong phai may nao
+   * cung bam duoc dau `*` de dang, ma bo ra ngoai hang thi nguoi chi dung phim
+   * di chuyen khong con duong nao toi cho tim kiem.
    */
   function stops() {
     var list = [];
@@ -246,8 +251,7 @@
     for (var i = 0; i < nodes.length; i++) {
       var el = nodes[i];
       if (!el.getAttribute('href')) continue;
-      var mark = ' ' + el.className + ' ';
-      if (mark.indexOf(' brand ') > -1 || mark.indexOf(' find ') > -1) continue;
+      if ((' ' + el.className + ' ').indexOf(' brand ') > -1) continue;
       if (!shown(el)) continue;
       list.push(el);
     }

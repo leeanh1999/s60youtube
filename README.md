@@ -271,8 +271,9 @@ việc bắt buộc.
 - Lần đầu vào **Đăng nhập** để nối tài khoản (xem mục trên).
 - Trang chính là danh sách gợi ý (nếu đã đăng nhập) và 9 chủ đề gợi ý.
 - Tìm kiếm nằm ở **kính lúp góc phải thanh trên**: bấm vào là khung tìm kiếm bật
-  ra ngay tại chỗ, không phải rời trang đang xem. Đang xem kết quả mà bấm lại thì
-  từ khoá cũ còn nguyên trong ô, sửa tiếp là tìm lại.
+  ra ngay tại chỗ, không phải rời trang đang xem. **Bấm lại kính lúp là đóng
+  khung** — đang mở thì kính lúp có nền đậm hơn để biết đường ra. Đang xem kết
+  quả mà mở lại thì từ khoá cũ còn nguyên trong ô, sửa tiếp là tìm lại.
 - Dán thẳng link YouTube vào khung đó cũng mở đúng video đó.
 - Phím **lên / xuống** nhảy hẳn sang khối video kế tiếp, không phải lết con trỏ
   từng chút như mặc định của trình duyệt.
@@ -379,6 +380,12 @@ cũ. Kết quả đo nhớ trong `localStorage` nên các trang sau không phả
 lại. Phím lên/xuống cũng biết chừa: khối vừa nhảy tới mà nằm khuất sau thanh nào
 thì trang cuộn thêm đúng phần bị che.
 
+Kính lúp **nằm trong hàng nhảy của phím lên/xuống**, dù nó đã có phím tắt `*`
+riêng. Trước có bỏ nó ra ngoài hàng cho khỏi tốn một lần bấm ở mỗi trang, nhưng
+máy nào bấm `*` không tiện thì thành ra không còn đường nào tới chỗ tìm kiếm. Chỉ
+tên trang bên trái là vẫn đứng ngoài hàng: nó chỉ là đường về trang chính, mà chân
+trang đã có sẵn ô **Trang chính** rồi.
+
 Trong thanh trên có **một `<table>` thật**: ô của bảng tự căn giữa theo chiều dọc
 nên tên trang bên trái và kính lúp bên phải luôn ngang nhau, dù người dùng đổi cỡ
 chữ hay máy nào màn nào. Làm bằng `float` thì cả hai dính theo đỉnh dòng, lệch
@@ -400,14 +407,15 @@ nhập (phím `*` cũng mở được, phím `C` đóng lại). Làm vậy vì b
 nhất trên hai màn này: một ô nhập chiếm gần hết dòng đầu mà chín trong mười lần vào
 trang là để xem, không phải để gõ.
 
-Trong khung thì ngược lại, nút gửi là chữ **Tìm kiếm** — chỗ này không chật như
-thanh trên nên không phải tiết kiệm bề ngang: ngay cả ở cỡ chữ Rất lớn trên màn 360
-điểm, ô nhập vẫn còn 211 điểm. Nút đóng là **một mũi nhọn quay lên để trần**, vì
-khung tìm từ trên tụt xuống thì đóng là nó thu lên lại, hình chỉ đúng về chỗ nó sẽ
-biến vào. Hai nút cố ý khác hẳn nhau: gửi đi là việc chính nên là nút chữ nền đỏ,
-đóng là đường lui nên chỉ là một hình xám nhạt — trông giống nhau quá thì dễ bấm
-nhầm cái nọ ra cái kia. Đệm quanh hình vẫn giữ rộng để chỗ đâm bằng đầu ngón tay
-không bó theo nét hình.
+**Bấm lại kính lúp là đóng khung**, trong khung không có nút đóng riêng. Một nút
+đóng riêng thì thành hai đường làm một việc, mà thêm dòng nào trong khung cũng ăn
+mất một dòng của danh sách video ngay bên dưới. Đang mở thì kính lúp được tô nền đỏ
+đậm cho ra dáng đang ấn xuống — đó là chỗ chỉ đường ra, không có nó thì người dùng
+mở khung lên rồi không biết đóng bằng cách nào. Khung luôn nằm **dưới** thanh chứ
+không đè lên, nên kính lúp lúc nào cũng lộ ra để bấm lần nữa. Nút gửi trong khung
+thì ngược lại thanh trên, là chữ **Tìm kiếm** hẳn hoi: chỗ này không chật nên không
+phải tiết kiệm bề ngang — ngay cả ở cỡ chữ Rất lớn trên màn 360 điểm, ô nhập vẫn
+còn 211 điểm.
 
 Khung bật ra **không đòi máy phải dán được thanh**: dán được thì nó là `fixed` nằm
 ngay dưới thanh, không dán được thì `s60.js` đặt nó bằng `absolute` vào đúng đỉnh

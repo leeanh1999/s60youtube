@@ -169,10 +169,22 @@ h2 .ic {
 /* Kinh lup tran, khong vien khong nen: chi con hinh nen phai ve to len cho du
    dam bang dau ngon tay. Hinh dat display:block de trong o khong con duong ke
    chu nao — het duong ke la het cho trong lech tren lech duoi. */
+.bar .find {
+  padding: 0 4px;
+}
+
 .bar .find .ic {
   display: block;
   width: 1.45em;
   height: 1.45em;
+}
+
+/* Dang mo khung tim: to nen cho kinh lup thanh dang an xuong. Khung khong co nut
+   dong nao, duong ra la bam lai chinh cai nay, nen phai chi ro cai nay dang bat. */
+.bar .find.on {
+  background: #8c0000;
+  border-radius: 5px;
+  -webkit-border-radius: 5px;
 }
 
 /* Tieu de trang cung may dong phu chu thich duoi no. */
@@ -865,7 +877,11 @@ body.fixnav .nav a .ic {
 
    Vi tri dinh va cach dinh vi deu do s60.js dat: may dan duoc thanh thi 'fixed'
    ngay duoi thanh, may khong dan duoc thi 'absolute' vao dinh khung nhin luc
-   bam. Chi no biet thanh cao bao nhieu diem va trang dang cuon toi dau. */
+   bam. Chi no biet thanh cao bao nhieu diem va trang dang cuon toi dau.
+
+   Trong khung khong co nut dong nao: bam lai kinh lup la dong. Mot nut dong rieng
+   thi thanh hai duong lam mot viec, ma them dong nao trong khung cung an mat mot
+   dong cua danh sach video ngay ben duoi. */
 #pop {
   display: none;
 }
@@ -879,29 +895,6 @@ body.fixnav .nav a .ic {
   padding: 5px 0 6px 0;
   background: #f4f6f8;
   border-bottom: 2px solid #8c0000;
-}
-
-/* Nut dong la mot mui nhon quay len, tran nhu kinh lup o thanh tren: khung tim tu
-   tren tut xuong, dong la no thu len lai, nen hinh chi dung ve cho no se bien vao.
-
-   Khong vien khong nen thi hinh phai ve to hon mot chut, va dem quanh hinh giu
-   nguyen de cho dam van rong bang dau ngon tay chu khong bo theo net hinh. */
-#pop .popb {
-  margin: 6px 6px 0 6px;
-  text-align: right;
-  line-height: 0;
-}
-
-#pop .popx {
-  display: inline-block;
-  padding: 0.42em 0.6em;
-  color: #4a5058;
-}
-
-#pop .popx .ic {
-  display: block;
-  width: 1.35em;
-  height: 1.35em;
 }
 
 /* ---------- man hep: N8 va ho 640x360 khi xem doc ---------- */
