@@ -68,7 +68,8 @@ jobs:
           BASE=http://127.0.0.1:8080 node tools/test-login.js
 
       # Phep do 'position: fixed' chi lo sai tren dien thoai, nen thu bang may
-      # gia: dan dung, dan gia, va hai kieu do khong duoc cua Opera Mobile 12.
+      # gia: dan dung, dan gia, hai kieu do khong duoc, va may khai ten Opera
+      # Mobile (nen Presto khong dan that nen phai bo han viec dan).
       - name: Kiem thu phep do dan thanh
         run: node tools/test-pin.js
 

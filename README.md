@@ -431,20 +431,32 @@ cuộn đi bốn điểm rồi xem toạ độ của chúng so với khung nhìn
 cũ ngay. Ô `absolute` là **thước đo của chính phép đo**: nó phải trôi lên đúng
 bốn điểm; đúng thì ô `fixed` không nhích nghĩa là máy dán thật.
 
-Ô `absolute` không trôi thì phép đo không nói lên điều gì cả — và đó chính là
-**Opera Mobile 12**: nó cuộn bên trong một khung nhìn riêng, nên số cuộn của
-`window` và toạ độ `getBoundingClientRect` không ăn khớp nhau. Trước đây "đo
-không được" bị coi là "không dán được", thành ra trên Opera hai thanh trôi mất
-theo trang. Giờ gặp thế thì nghe theo lời máy khai (`getComputedStyle` báo
-`fixed`) mà dán — Opera Mobile 12 dán đúng. Cách này giữ nguyên phần quan trọng:
-máy nào *đo được* mà đo ra sai thì vẫn không dán.
+Ô `absolute` không trôi thì phép đo không nói lên điều gì cả, và lúc đó câu trả
+lời là **không dán**: chỉ dán khi có bằng chứng dán được thật. Tin theo lời máy
+khai (`getComputedStyle` báo `fixed`) thì đúng phải họ "nhảy" nói ngay dưới đây.
+
+**Opera Mobile 12 không được dán, dù nó khai là biết `fixed`.** Nền Presto —
+nền của Opera Mobile và Opera Mini — không dán thật: cuộn thì lớp dán vẫn đi theo
+trang, rồi chừng nửa giây sau khi tay rời màn hình nó mới nhảy về chỗ đúng. Đó là
+cách Presto được viết chứ không phải lỗi trang ([quirksmode đo đúng máy Opera
+Mobile 12](https://www.quirksmode.org/css/css2/mobile.html) cũng thấy vậy), nên
+trang không sửa được. Để dán thì thanh vừa trôi theo trang vừa nhảy giật, và nó
+nhảy đè lên giữa danh sách chứ không phải chỗ đã chừa sẵn — tệ hơn hẳn là không
+dán. Chỗ này đo bằng JavaScript không ra (lúc đang đo thì trang không cuộn, mà
+máy vẫn báo hiệu `fixed` thật), nên `s60.js` **nhận theo tên máy**: `Opera Mobi`,
+`Opera Mini`, `Presto` thì bỏ hẳn việc dán, không đo và không nhớ gì. Nhận theo
+tên máy là việc thường phải tránh, riêng đây thì được: Presto là một nền đã dừng
+hẳn từ 2013, không bản nào ra thêm để mà đổi tính này. Opera đời Blink (`OPR/...`)
+không mang tên nào trong số đó nên vẫn dán như mọi trình duyệt mới. Trên Opera
+Mobile hai thanh nằm trong dòng chảy: thanh trên cuộn mất, chân trang đợi ở cuối —
+kém dán, nhưng cuộn đến đâu cũng thấy đúng chỗ đó.
 
 Đo đúng thì mới đặt lớp `fixnav` vào `<body>`, chừa sẵn khoảng trống ở đỉnh và ở
 cuối trang cho khỏi che chữ, và thu hai thanh gọn lại (E6 chỉ cao 480 điểm, hai
 thanh ăn chừng 80 điểm là vừa). Đo sai thì bỏ qua, hai thanh nằm trong dòng chảy
 như cũ. Kết quả đo nhớ trong `localStorage` nên các trang sau không phải cuộn thử
-lại — tên khoá mang số 2, vì kết quả sai của bản đo cũ còn nằm trong máy người
-dùng, đổi tên khoá là máy đo lại một lần bằng cách đo mới. Phím lên/xuống cũng
+lại — tên khoá mang số 2, vì cách đo đã đổi một lần mà kết quả của bản cũ còn nằm
+trong máy người dùng, đổi tên khoá là máy đo lại một lần. Phím lên/xuống cũng
 biết chừa: khối vừa nhảy tới mà nằm khuất sau thanh nào thì trang cuộn thêm đúng
 phần bị che.
 
@@ -652,10 +664,12 @@ bản mới gửi biểu tượng dưới dạng ảnh PNG. Kiểm nhanh bằng 
 `http://<máy chủ>:8080/i/home-red.png` trên điện thoại — phải thấy hình ngôi nhà
 màu đỏ.
 
-**Mở bằng Opera Mobile 12 thì thanh trên và chân trang trôi mất khi cuộn.** Cũng
-là bản cũ: phép đo `position: fixed` của nó đo Opera ra kết quả sai nên bỏ luôn
-việc dán. Cập nhật máy chủ là xong, và không phải xoá gì trong điện thoại — kết
-quả đo cũ nằm dưới một tên khoá khác, bản mới tự đo lại một lần.
+**Mở bằng Opera Mobile 12 thì thanh trên và chân trang không dán.** Đúng như
+thiết kế. Nền Presto của Opera Mobile không dán thật: nếu dán thì cuộn tới đâu
+thanh cũng đi theo trang tới đó, ngừng cuộn chừng nửa giây nó mới nhảy về chỗ
+đúng — và nhảy đè lên giữa danh sách. Nên trên Opera Mobile hai thanh để nằm
+trong dòng chảy, cuộn đến đâu thấy đúng chỗ đó. Muốn có thanh dán thì mở bằng
+trình duyệt gốc của máy (Nokia Browser đời Belle) — máy đó dán thật.
 
 ## Kiểm thử nhanh
 
@@ -688,9 +702,11 @@ kia, và dựng thêm một "máy vừa bị trình duyệt xoá cookie" để t
 dọn luồng, rồi cho ffmpeg chạy y hệt lúc chạy thật — kiểm được cả độ phân giải,
 profile H.264 Baseline lẫn vị trí khối `moov`.
 
-`test-pin.js` chạy chính `public/s60.js` trên năm chiếc "máy giả": máy dán thật,
-máy nhận `fixed` rồi xử lý như `absolute`, máy không biết `fixed`, và hai kiểu
-"đo không được" của Opera Mobile 12. Chỗ này không thể thử bằng mắt trên máy tính
+`test-pin.js` chạy chính `public/s60.js` trên sáu chiếc "máy giả": máy dán thật,
+máy nhận `fixed` rồi xử lý như `absolute`, máy không biết `fixed`, hai kiểu "đo
+không được", và một máy khai tên Opera Mobile — máy này đo cái gì cũng đẹp như
+máy dán thật mà vẫn phải ra "không dán", vì Presto chỉ nhảy về chỗ đúng sau khi
+ngừng cuộn. Chỗ này không thể thử bằng mắt trên máy tính
 vì trình duyệt nào trên máy tính cũng dán đúng, nên mọi lỗi chỉ lộ ra trên điện
 thoại. Hai bài đầu cần máy chủ đang chạy; hai bài sau thì không.
 

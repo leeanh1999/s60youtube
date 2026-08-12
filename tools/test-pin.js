@@ -9,18 +9,23 @@
  * chan trang, con do sai theo huong nguoc lai thi hai thanh troi mat khi cuon —
  * dung loi da gap tren Opera Mobile 12.
  *
- * Nen dung bon "may gia" o day, moi may bat chuoc dung mot kieu cua doi that,
+ * Nen dung may "may gia" o day, moi may bat chuoc dung mot kieu cua doi that,
  * roi chay chinh file s60.js that tren chung:
  *
  *  1. dan-dung  — dan that, va do cai gi cung dung (Nokia Browser doi Belle,
- *                 va moi trinh duyet may tinh).
+ *                 va moi trinh duyet may tinh). Chi may nay moi duoc dan.
  *  2. dan-gia   — nhan 'fixed' roi xu ly nhu 'absolute': cuon la thanh troi.
- *                 Day la may PHAI khong dan, vi dan vao con te hon.
- *  3. opera-so  — cuon that nhung so cuon cua window khong nhich (khung nhin
- *                 rieng cua Opera Mobile 12).
- *  4. opera-toa — so cuon nhich nhung toa do getBoundingClientRect khong theo.
+ *  3. khong-dan — khong biet 'fixed', ha xuong 'static'.
+ *  4. opera-so  — cuon that nhung so cuon cua window khong nhich.
+ *  5. opera-toa — so cuon nhich nhung toa do getBoundingClientRect khong theo.
+ *  6. presto    — do cai gi cung dep nhu may dan that, nhung ten may la Opera
+ *                 Mobile. Presto khong dan that: cuon thi lop dan di theo trang
+ *                 roi nhay ve cho dung sau khi ngung cuon. Phai nhan ra bang
+ *                 ten may va bo han viec dan — de dan thi thanh vua troi vua
+ *                 nhay giat, con te hon khong dan.
  *
- * Hai may Opera phai ra "co dan": do khong duoc thi nghe theo loi may khai.
+ * Ba may 3-4-5 cung phai ra "khong dan": do khong duoc thi coi nhu khong dan,
+ * chi dan khi co bang chung.
  */
 const fs = require('fs');
 const path = require('path');
@@ -45,6 +50,12 @@ function machine(kind) {
     if (glued && kind !== 'khong-dan') return 0;
     return -scrolled;
   };
+
+  // Presto khai ten Opera Mobile; may khac khai ten Nokia Browser doi Belle.
+  const userAgent =
+    kind === 'presto'
+      ? 'Opera/9.80 (S60; SymbOS; Opera Mobi/SYB-1202211823; U; vi) Presto/2.10.254 Version/12.00'
+      : 'Mozilla/5.0 (Symbian/3; Series60/5.3 NokiaN8-00) AppleWebKit/535.1 (KHTML, like Gecko) NokiaBrowser/8.3.1.4 Mobile Safari/535.1';
 
   const element = (tag, className) => {
     const el = {
@@ -84,6 +95,7 @@ function machine(kind) {
 
   const store = {};
   const window = {
+    navigator: { userAgent },
     // May 'opera-so' cuon that nhung khong bao lai so cuon.
     pageYOffset: 0,
     scrollTo(_x, y) {
@@ -120,27 +132,40 @@ function run(kind) {
   };
 }
 
+// 'nho' la thu phai nam trong localStorage sau khi chay. May Presto khong do gi
+// nen cung khong nho gi: ten may da du de tra loi, va no khong doi.
 const WANTED = [
-  ['dan-dung', true],
-  ['dan-gia', false],
-  ['opera-so', true],
-  ['opera-toa', true],
-  ['khong-dan', false],
+  { kind: 'dan-dung', pin: true, remember: '1' },
+  { kind: 'dan-gia', pin: false, remember: '0' },
+  { kind: 'khong-dan', pin: false, remember: '0' },
+  { kind: 'opera-so', pin: false, remember: '0' },
+  { kind: 'opera-toa', pin: false, remember: '0' },
+  { kind: 'presto', pin: false, remember: undefined },
 ];
 
 let failed = 0;
-for (const [kind, wanted] of WANTED) {
+for (const { kind, pin, remember } of WANTED) {
   const got = run(kind);
   const ok =
-    got.pinned === wanted &&
+    got.pinned === pin &&
     got.leftBehind === 0 &&
-    got.remembered === (wanted ? '1' : '0') &&
-    (!wanted || (got.padTop === '46px' && got.padBottom === '58px'));
+    got.remembered === remember &&
+    (!pin || (got.padTop === '46px' && got.padBottom === '58px'));
   if (!ok) failed += 1;
   console.log(
-    `${ok ? 'OK  ' : '!!  '}${kind.padEnd(10)} dan=${got.pinned} (can ${wanted})` +
+    `${ok ? 'OK  ' : '!!  '}${kind.padEnd(10)} dan=${got.pinned} (can ${pin})` +
       ` nho=${got.remembered} chua=${got.padTop}/${got.padBottom} o-bo-lai=${got.leftBehind}`
   );
+}
+
+// May Presto khong duoc cuon thu: no chua kip cuon la trang da giat mot cai.
+const presto = machine('presto');
+vm.runInNewContext(SOURCE, { window: presto.window, document: presto.document });
+if (presto.window.pageYOffset !== 0) {
+  console.log('!!  may Presto van bi cuon thu du khong can do');
+  failed += 1;
+} else {
+  console.log('OK  may Presto khong bi cuon thu');
 }
 
 // Do lai lan hai phai lay ngay ket qua da nho, khong cuon thu nua.
@@ -159,5 +184,5 @@ if (failed) {
   console.log(`\n${failed} cho sai — xem cac dong co !!`);
   process.exitCode = 1;
 } else {
-  console.log('\nPhep do dan thanh: dung tren ca nam kieu may.');
+  console.log(`\nPhep do dan thanh: dung tren ca ${WANTED.length} kieu may.`);
 }

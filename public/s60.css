@@ -821,6 +821,10 @@ a.go .ic {
    nhan 'position: fixed' roi xu ly nhu 'absolute', cuon xuong la thanh troi mat.
    Khong do dat thi bo qua ca khoi nay, hai thanh nam trong dong chay nhu cu.
 
+   Opera Mobile va Opera Mini cung khong duoc dan, du chung khai la biet 'fixed':
+   nen Presto cho lop dan di theo trang trong luc cuon roi nhay ve cho dung chung
+   nua giay sau khi ngung cuon. s60.js nhan chung ra bang ten may. */
+
    Cho trong o dinh va day trang do s60.js chua bang padding cua <body>: chi no
    moi biet thanh cao bao nhieu diem sau khi may da ve xong.
 

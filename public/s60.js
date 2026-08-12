@@ -46,13 +46,23 @@
   }
 
   /**
-   * May co NHAN thuoc tinh 'fixed' khong. Chi la loi may khai, chua noi duoc no
-   * lam dung hay khong — nhung khi khong do duoc gi thi loi khai con hon khong.
+   * May "nhay": nhan 'position: fixed' nhung khi cuon thi lop dan van di theo
+   * trang, roi chung nua giay sau khi tay roi man hinh no moi nhay ve cho dung.
+   * Do la cach Presto duoc viet — nen cua Opera Mobile va Opera Mini. Tren may
+   * kieu nay dan la te nhat: thanh vua troi theo trang vua nhay giat, va no
+   * nhay den de len giua noi dung chu khong phai cho da chua san.
+   *
+   * Cho nay do bang JavaScript khong ra: luc dang do thi trang khong cuon, ma
+   * may van bao hieu 'fixed' that. Nen phai nhan theo ten may. Nhan theo ten la
+   * viec thuong phai tranh, rieng day thi duoc: Presto la mot nen da dung han
+   * tu 2013, khong ban nao ra them de ma doi tinh nay.
+   *
+   * Opera doi Blink (OPR/...) khong mang ten nao trong so nay nen khong bi tinh
+   * vao — no dan dung nhu moi trinh duyet moi.
    */
-  function knowsFixed(box) {
-    if (!window.getComputedStyle) return false;
-    var style = window.getComputedStyle(box, null);
-    return !!style && style.position === 'fixed';
+  function hops() {
+    var ua = (window.navigator && window.navigator.userAgent) || '';
+    return /Opera Mobi|Opera Mini|Presto/i.test(ua);
   }
 
   /**
@@ -66,12 +76,10 @@
    * dung so diem vua cuon — no la thuoc do cua chinh phep do. Thuoc do dung roi
    * thi o 'fixed' khong nhich nghia la may dan that.
    *
-   * O 'absolute' khong troi thi phep do khong noi len dieu gi ca, va day chinh
-   * la Opera Mobile 12: no cuon ben trong mot khung nhin rieng nen so cuon cua
-   * window va toa do getBoundingClientRect khong an khop nhau. Truoc kia cho
-   * "do khong duoc" bi coi la "khong dan duoc", nen tren Opera hai thanh troi
-   * mat theo trang. Gio gap the thi nghe theo loi may khai: no bao hieu 'fixed'
-   * la cho dan, vi Opera Mobile 12 dan dung.
+   * O 'absolute' khong troi thi phep do khong noi len dieu gi ca, va luc do cau
+   * tra loi la KHONG dan: chi dan khi co bang chung dan duoc that. Tin theo loi
+   * may khai thi vua dung phai nhung may cuon bang khung nhin rieng — dung ho
+   * "nhay" ke tren.
    */
   function pinWorks() {
     if (!window.scrollTo || !document.createElement('div').getBoundingClientRect) return false;
@@ -92,7 +100,7 @@
     // duoc (may cuon bang khung nhin rieng, hoac cuon co da).
     var trusted = moved > 0 && Math.abs(looseAfter - looseBefore + moved) < 2;
     var slip = gluedAfter - gluedBefore;
-    var ok = trusted ? slip < 1 && slip > -1 : knowsFixed(glued);
+    var ok = trusted && slip < 1 && slip > -1;
 
     document.body.removeChild(glued);
     document.body.removeChild(loose);
@@ -128,9 +136,8 @@
    * Ket qua do nho lai theo tung may, de moi trang sau do khong phai cuon thu
    * lai lan nua. May tat luu tru thi do lai moi lan, cung khong sao.
    *
-   * Ten khoa mang so 2: ban do dau tien tra lai "khong dan duoc" tren Opera
-   * Mobile 12, va ket qua sai do da nam trong may nguoi dung. Doi ten khoa la
-   * may do lai mot lan bang cach do moi.
+   * Ten khoa mang so 2: cach do da doi mot lan, ma ket qua cua ban do cu con
+   * nam trong may nguoi dung. Doi ten khoa la may do lai mot lan bang cach moi.
    */
   var MEMORY = 's60-pin2';
 
@@ -172,6 +179,11 @@
 
   function setUpPins() {
     if (!document.body || (!bar && !nav)) return;
+    // May "nhay" thi khong dan gi ca, cung khong do va khong nho gi: hai thanh
+    // nam trong dong chay nhu trang thuong, cuon la chung di theo trang deu dan
+    // — thanh tren cuon mat, chan trang doi o cuoi. Khong bang dan, nhung hon
+    // han mot thanh vua troi vua nhay giat de len giua danh sach.
+    if (hops()) return;
 
     var known = recall();
     if (known === '0') return;
