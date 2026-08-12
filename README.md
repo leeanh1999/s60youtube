@@ -269,11 +269,14 @@ việc bắt buộc.
 ## Dùng trên điện thoại
 
 - Lần đầu vào **Đăng nhập** để nối tài khoản (xem mục trên).
-- Trang chính có ô tìm kiếm và 9 chủ đề gợi ý.
-- Dán thẳng link YouTube vào ô tìm kiếm cũng mở đúng video đó.
+- Trang chính là danh sách gợi ý (nếu đã đăng nhập) và 9 chủ đề gợi ý.
+- Tìm kiếm nằm ở **kính lúp góc phải thanh trên**: bấm vào là khung tìm kiếm bật
+  ra ngay tại chỗ, không phải rời trang đang xem.
+- Dán thẳng link YouTube vào khung đó cũng mở đúng video đó.
 - Phím **lên / xuống** nhảy hẳn sang khối video kế tiếp, không phải lết con trỏ
   từng chút như mặc định của trình duyệt.
-- Phím tắt: `0` về trang chính, `1`–`9` chọn mục, `*` vào ô tìm, `#` sang trang sau.
+- Phím tắt: `0` về trang chính, `1`–`9` chọn mục, `*` mở khung tìm, `#` sang trang
+  sau.
 
 Trang video mở ra là có sẵn khung phát ngay trên trang. Bấm nút phát là xem được
 luôn: máy chỉ kéo phần đang xem chứ không tải cả file, xem xong không còn gì
@@ -362,20 +365,32 @@ thẳng trong trang, CSS3 cơ bản và JavaScript — nên biểu tượng trê
 vẽ SVG chứ không phải ký tự đặc biệt (font máy thiếu ký tự là hiện ra ô vuông,
 còn SVG lỗi thì chỉ là khoảng trống).
 
-Thanh bốn ô ở chân trang **dán xuống đáy màn hình**, cuộn thế nào cũng còn đó.
-Chỗ này không dám tin `position: fixed`: nhiều bản WebKit đời Symbian nhận thuộc
-tính đó rồi xử lý như `absolute` — thanh dán vào trang chứ không vào khung nhìn,
-cuộn xuống là nó trôi mất lên trên, tính ra còn tệ hơn không dán. Nên `s60.js`
-**đo thật**: đặt một ô tí hon dán sát đỉnh, cuộn đi hai điểm rồi xem toạ độ của
-nó so với khung nhìn có đổi không, đo xong trả lại chỗ cũ ngay. Đúng thì mới đặt
-lớp `fixnav` vào `<body>`, chừa sẵn khoảng trống ở cuối trang cho khỏi che chữ,
-và thu thanh gọn lại (E6 chỉ cao 480 điểm nên thanh ăn 42 điểm là vừa). Đo sai
-thì bỏ qua, thanh nằm cuối trang như cũ. Kết quả đo nhớ trong `localStorage` nên
-các trang sau không phải cuộn thử lại. Phím lên/xuống cũng biết chừa: khối vừa
-nhảy tới mà nằm sau thanh thì trang cuộn thêm đúng phần bị che.
+Thanh đỏ trên đầu và thanh bốn ô ở chân trang **dán vào khung nhìn**, cuộn thế
+nào cũng còn đó. Chỗ này không dám tin `position: fixed`: nhiều bản WebKit đời
+Symbian nhận thuộc tính đó rồi xử lý như `absolute` — thanh dán vào trang chứ
+không vào khung nhìn, cuộn xuống là nó trôi mất, tính ra còn tệ hơn không dán.
+Nên `s60.js` **đo thật**: đặt một ô tí hon dán sát đỉnh, cuộn đi hai điểm rồi xem
+toạ độ của nó so với khung nhìn có đổi không, đo xong trả lại chỗ cũ ngay. Đúng
+thì mới đặt lớp `fixnav` vào `<body>`, chừa sẵn khoảng trống ở đỉnh và ở cuối
+trang cho khỏi che chữ, và thu hai thanh gọn lại (E6 chỉ cao 480 điểm, hai thanh
+ăn chừng 80 điểm là vừa). Đo sai thì bỏ qua, hai thanh nằm trong dòng chảy như
+cũ. Kết quả đo nhớ trong `localStorage` nên các trang sau không phải cuộn thử
+lại. Phím lên/xuống cũng biết chừa: khối vừa nhảy tới mà nằm khuất sau thanh nào
+thì trang cuộn thêm đúng phần bị che.
 
-Cả hai phần trên nằm trong `public/s60.js`; tắt JavaScript đi thì trang vẫn dùng
-được đủ như cũ, chỉ mất đúng hai cái tiện đó.
+Ô tìm kiếm thu thành **kính lúp ở góc phải thanh trên**, bấm vào là khung tìm bật
+ra ngay dưới thanh và con trỏ nhảy sẵn vào ô nhập (phím `*` cũng mở được, phím `C`
+đóng lại). Làm vậy vì bề ngang là thứ đắt nhất trên hai màn này: một ô nhập chiếm
+gần hết dòng đầu mà chín trong mười lần vào trang là để xem, không phải để gõ.
+
+Khung đó cũng phải dán mới dùng được, nên nó chỉ bật khi phép đo trên nói máy dán
+đúng. Máy không dán được — hoặc tắt JavaScript — thì kính lúp là **liên kết thường
+sang `/search`**, và trang đó có ô nhập thật. Tức là mất JavaScript vẫn tìm được,
+chỉ tốn thêm một lần tải trang. Cũng vì thế trang `/search` giữ nguyên ô nhập
+trong trang chứ không thu thành biểu tượng như các trang khác.
+
+Ba phần trên nằm trong `public/s60.js`; tắt JavaScript đi thì trang vẫn dùng được
+đủ như cũ, chỉ mất đúng ba cái tiện đó.
 
 Biến môi trường:
 

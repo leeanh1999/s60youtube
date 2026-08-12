@@ -105,6 +105,9 @@ h2 .ic {
   margin-right: 7px;
 }
 
+/* Kinh lup va nut Quay lai: hai o nho ben phai thanh. Trong HTML kinh lup dung
+   truoc nen no ra ngoai cung — goc phai la cho ngon tay va con tro toi de nhat. */
+.bar .find,
 .bar .back {
   float: right;
   margin-left: 8px;
@@ -117,6 +120,7 @@ h2 .ic {
   font-size: 0.78em;
 }
 
+.bar .find .ic,
 .bar .back .ic {
   width: 0.85em;
   height: 0.85em;
@@ -764,12 +768,30 @@ a.go .ic {
   font-weight: bold;
 }
 
-/* Dan chan trang xuong day khung nhin. Lop 'fixnav' do s60.js dat vao, va chi
-   dat sau khi da do duoc rang may dan dung: nhieu ban WebKit doi Symbian nhan
-   'position: fixed' roi xu ly nhu 'absolute', cuon xuong la thanh troi mat.
-   Khong do dat thi bo qua ca khoi nay, thanh nam cuoi trang nhu cu.
+/* Dan thanh tren va chan trang vao khung nhin. Lop 'fixnav' do s60.js dat vao,
+   va chi dat sau khi da do duoc rang may dan dung: nhieu ban WebKit doi Symbian
+   nhan 'position: fixed' roi xu ly nhu 'absolute', cuon xuong la thanh troi mat.
+   Khong do dat thi bo qua ca khoi nay, hai thanh nam trong dong chay nhu cu.
 
-   Nen phai kin va co vien tren: chu ben duoi truot qua ngay sau lung no. */
+   Cho trong o dinh va day trang do s60.js chua bang padding cua <body>: chi no
+   moi biet thanh cao bao nhieu diem sau khi may da ve xong.
+
+   Nen phai kin va co vien: chu truot qua ngay sau lung hai thanh nay. */
+body.fixnav .bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  /* Rong 100% ma con dem 8 diem hai ben thi thanh dai hon trang 16 diem, trang
+     sinh ra thanh cuon ngang va nut ben phai bi cat. Tinh ca dem vao be rong. */
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  z-index: 3;
+  /* Da dan thi thanh an cho suot ca man hinh — E6 chi cao 480 diem. */
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
 body.fixnav .nav {
   position: fixed;
   left: 0;
@@ -790,6 +812,39 @@ body.fixnav .nav a .ic {
   width: 1.25em;
   height: 1.25em;
   margin-bottom: 1px;
+}
+
+/* ---------- khung tim kiem bat ra ---------- */
+
+/* Mac dinh dong: khong co JavaScript thi kinh lup o thanh tren la lien ket
+   thuong sang /search, trang do co o nhap that. s60.js dat lop 'on' vao day de
+   mo, va chi lam vay khi da do duoc rang may dan dung — khong dan duoc thi
+   khung se treo lo lung giua trang, tha de no sang /search cho chac.
+   Vi tri dinh do s60.js dat, vi chi no biet thanh tren cao bao nhieu. */
+#pop {
+  display: none;
+}
+
+#pop.on {
+  display: block;
+  position: fixed;
+  left: 0;
+  width: 100%;
+  z-index: 4;
+  padding: 5px 0 6px 0;
+  background: #f4f6f8;
+  border-bottom: 2px solid #8c0000;
+}
+
+/* Dau ‹ la chu chu khong phai hinh SVG: no nhe hon, va font may nao cung co
+   (cho khac trong trang cung dang dung dau ›). */
+#pop .popx {
+  display: block;
+  margin: 0 6px;
+  padding: 2px 0;
+  text-align: right;
+  font-size: 0.78em;
+  color: #4a5058;
 }
 
 /* ---------- man hep: N8 va ho 640x360 khi xem doc ---------- */

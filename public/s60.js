@@ -1,8 +1,10 @@
-/* Hai phan them cho trang, deu la phan them: khong co JavaScript thi trang van
- * chay day du, chi mat dung hai tien do.
+/* Ba phan them cho trang, deu la phan them: khong co JavaScript thi trang van
+ * chay day du, chi mat dung ba tien do.
  *
- *  1. Dan chan trang xuong day khung nhin (neu may lam duoc that).
- *  2. Phim len/xuong nhay sang khoi video ke tiep.
+ *  1. Dan thanh tren va chan trang vao khung nhin (neu may lam duoc that).
+ *  2. Kinh lup o thanh tren mo khung tim kiem ngay tai cho, thay vi phai sang
+ *     trang /search.
+ *  3. Phim len/xuong nhay sang khoi video ke tiep.
  *
  * Viet bang ES3 (var, khong arrow, khong template string) cho hop voi may cu:
  * WebKit 533 gap mot chu 'const' la chet ca file, ma chet im lang.
@@ -10,10 +12,20 @@
 (function () {
   if (!document.getElementsByTagName) return;
 
-  /* ---------- 1. chan trang dan day khung nhin ---------- */
+  /* ---------- 1. dan thanh tren va chan trang ---------- */
 
-  // Thanh dang dan; con null nghia la van nam cuoi trang nhu thuong.
-  var pinned = null;
+  // Hai thanh dang dan; con null nghia la van nam trong dong chay nhu thuong.
+  var pinnedBar = null;
+  var pinnedNav = null;
+
+  /** Phan tu dau tien mang mot ten lop, khong can querySelector. */
+  function firstOf(tag, name) {
+    var nodes = document.getElementsByTagName(tag);
+    for (var i = 0; i < nodes.length; i++) {
+      if ((' ' + nodes[i].className + ' ').indexOf(' ' + name + ' ') > -1) return nodes[i];
+    }
+    return null;
+  }
 
   /**
    * Co dan that hay khong. Phai do chu khong the tin: nhieu ban WebKit doi
@@ -93,21 +105,24 @@
     }
   }
 
-  /** Thanh dan che mat phan duoi trang, nen chua san cho no o cuoi. */
-  function spare(nav) {
-    document.body.style.paddingBottom = nav.offsetHeight + 'px';
+  /** Hai thanh dan de len trang, nen chua san cho o dinh va o day. */
+  function spare(bar, nav) {
+    var style = document.body.style;
+    if (bar) style.paddingTop = bar.offsetHeight + 'px';
+    if (nav) style.paddingBottom = nav.offsetHeight + 'px';
   }
 
-  function pin(nav) {
+  function pin(bar, nav) {
     document.body.className += ' fixnav';
-    spare(nav);
-    pinned = nav;
+    spare(bar, nav);
+    pinnedBar = bar;
+    pinnedNav = nav;
 
     // Do ngay sau khi doi lop thi con vai diem sai: hinh SVG trong thanh chua
     // kip nhan co moi. Do lai mot nhip sau la dung han.
     if (window.setTimeout) {
       window.setTimeout(function () {
-        spare(nav);
+        spare(bar, nav);
       }, 0);
     }
 
@@ -116,37 +131,91 @@
       window.addEventListener(
         'resize',
         function () {
-          spare(nav);
+          spare(bar, nav);
         },
         false
       );
     }
   }
 
-  function setUpNav() {
+  function setUpPins() {
     if (!document.body) return;
-    var tables = document.getElementsByTagName('table');
-    var nav = null;
-    for (var i = 0; i < tables.length; i++) {
-      if ((' ' + tables[i].className + ' ').indexOf(' nav ') > -1) nav = tables[i];
-    }
-    if (!nav) return;
+    var bar = firstOf('div', 'bar');
+    var nav = firstOf('table', 'nav');
+    if (!bar && !nav) return;
 
     var known = recall();
+    if (known === '0') return;
     if (known === '1') {
-      pin(nav);
+      pin(bar, nav);
       return;
     }
-    if (known === '0') return;
 
     var ok = measurePin();
     memorize(ok);
-    if (ok) pin(nav);
+    if (ok) pin(bar, nav);
   }
 
-  setUpNav();
+  setUpPins();
 
-  /* ---------- 2. dieu huong bang phim ---------- */
+  /* ---------- 2. kinh lup mo khung tim kiem ---------- */
+
+  /**
+   * Khung tim kiem dan ngay duoi thanh tren nen chi mo khi da dan duoc that.
+   * May khong dan duoc thi de kinh lup lam lien ket thuong sang /search — trang
+   * do co o nhap that, con hon la mo mot khung treo lo lung giua trang.
+   */
+  function setUpFind() {
+    var link = firstOf('a', 'find');
+    var pop = document.getElementById('pop');
+    if (!pinnedBar || !link || !pop) return;
+
+    var box = pop.getElementsByTagName('input')[0];
+    var close = firstOf('a', 'popx');
+
+    function stop(event) {
+      if (!event) return;
+      if (event.preventDefault) event.preventDefault();
+      event.returnValue = false;
+    }
+
+    function open(event) {
+      pop.style.top = pinnedBar.offsetHeight + 'px';
+      pop.className = 'on';
+      if (box) {
+        try {
+          box.focus();
+        } catch (err) {
+          /* May khong cho dat con tro thi nguoi dung tu bam vao o. */
+        }
+      }
+      stop(event);
+      return false;
+    }
+
+    function shut(event) {
+      pop.className = '';
+      stop(event);
+      return false;
+    }
+
+    // Bam kinh lup lan nua la dong: khong co chuot de bam ra ngoai, va nut Dong
+    // thi nam duoi khung — dang mo ma bam lai cai vua bam la phan xa tu nhien.
+    link.onclick = function (event) {
+      return pop.className === 'on' ? shut(event) : open(event);
+    };
+    if (close) close.onclick = shut;
+    // Phim C tren may Nokia bao ve trinh duyet la Esc (27) — dong khung cho gon.
+    if (box) {
+      box.onkeydown = function (event) {
+        if ((event.keyCode || event.which) === 27) shut(event);
+      };
+    }
+  }
+
+  setUpFind();
+
+  /* ---------- 3. dieu huong bang phim ---------- */
 
   if (!document.addEventListener) return;
 
@@ -169,14 +238,19 @@
     return !!(el.offsetWidth || el.offsetHeight);
   }
 
-  /** Cac diem dung theo dung thu tu tren trang. Bo qua logo o thanh tren. */
+  /**
+   * Cac diem dung theo dung thu tu tren trang. Bo qua logo va kinh lup o thanh
+   * tren: hai cai do co phim tat rieng (0 va *) va nam trong thanh dan luon thay,
+   * de chung trong hang thi moi trang deu phai bam qua chung truoc khi toi video.
+   */
   function stops() {
     var list = [];
     var nodes = document.getElementsByTagName('a');
     for (var i = 0; i < nodes.length; i++) {
       var el = nodes[i];
       if (!el.getAttribute('href')) continue;
-      if ((' ' + el.className + ' ').indexOf(' brand ') > -1) continue;
+      var mark = ' ' + el.className + ' ';
+      if (mark.indexOf(' brand ') > -1 || mark.indexOf(' find ') > -1) continue;
       if (!shown(el)) continue;
       list.push(el);
     }
@@ -193,14 +267,23 @@
   }
 
   /**
-   * Thanh dan nam de len phan duoi khung nhin, nen khoi vua nhay toi co the
-   * nam ngay duoi no: cuon them dung phan bi che.
+   * Hai thanh dan de len dinh va day khung nhin, nen khoi vua nhay toi co the
+   * nam khuat sau chung: cuon them dung phan bi che.
+   *
+   * Do lai toa do sau moi lan cuon, va xet dinh sau cung: khoi cao hon cho
+   * trong thi tha de ho phan duoi, con phan dau thi phai thay.
    */
-  function clearNav(el) {
-    if (!pinned || !el.getBoundingClientRect || !window.scrollBy) return;
-    var room = document.documentElement.clientHeight - pinned.offsetHeight;
-    var over = el.getBoundingClientRect().bottom - room;
-    if (over > 0) window.scrollBy(0, Math.ceil(over));
+  function clearBars(el) {
+    if (!el.getBoundingClientRect || !window.scrollBy) return;
+    if (pinnedNav) {
+      var room = document.documentElement.clientHeight - pinnedNav.offsetHeight;
+      var under = el.getBoundingClientRect().bottom - room;
+      if (under > 0) window.scrollBy(0, Math.ceil(under));
+    }
+    if (pinnedBar) {
+      var over = pinnedBar.offsetHeight - el.getBoundingClientRect().top;
+      if (over > 0) window.scrollBy(0, -Math.ceil(over));
+    }
   }
 
   /** Tra ve true khi da nhay duoc; false thi de trinh duyet cuon nhu thuong. */
@@ -225,7 +308,7 @@
         // can, nho vay danh sach khong giat len giat xuong.
         if (el.scrollIntoViewIfNeeded) el.scrollIntoViewIfNeeded();
         else if (el.scrollIntoView) el.scrollIntoView(direction < 0);
-        clearNav(el);
+        clearBars(el);
         return true;
       }
       next += direction;
