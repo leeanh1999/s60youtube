@@ -46,8 +46,13 @@ services:
       # NAS chip ARM (Realtek RTD1296/RTD1619B) ma hoa rat cham.
       # Doi sang ultrafast de nhanh hon nhieu, doi lai file to hon mot chut.
       - FFMPEG_PRESET=ultrafast
-      # yt-dlp cu se hong khi YouTube doi API; tu cap nhat luc khoi dong.
+      # yt-dlp cu se hong khi YouTube doi API; tu cap nhat luc khoi dong
+      # (kem ca yt-dlp-ejs, bo giai cau do JavaScript cua YouTube).
       - YTDLP_AUTO_UPDATE=1
+      # Bo giai JavaScript da co san trong anh. Neu no cu hon ban yt-dlp dang
+      # chay thi yt-dlp tai ban dung tu GitHub. Dat 0 de cam han viec tai do —
+      # luc do NAS khong ra duoc Internet van chay, nhung phai chiu ban co san.
+      # - YTDLP_REMOTE_EJS=0
 
     healthcheck:
       # Kiem tra ben trong container nen van la 8080, khong doi theo cong ngoai.

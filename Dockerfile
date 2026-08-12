@@ -3,13 +3,15 @@ FROM node:22-alpine
 
 # ffmpeg de chuyen ma, python3 + yt-dlp de lay luong, tini de nhan tin hieu dung.
 # Dung ffmpeg cua he dieu hanh thay vi goi ffmpeg-static, vi goi do chi co ban x86.
+# yt-dlp-ejs la bo giai cau do JavaScript cua YouTube: thieu no thi may da dang
+# nhap khong lay duoc luong nao (Node lam noi chay san trong anh nay).
 RUN apk add --no-cache \
       ffmpeg \
       python3 \
       py3-pip \
       tini \
       ca-certificates \
- && pip install --no-cache-dir --break-system-packages --upgrade yt-dlp
+ && pip install --no-cache-dir --break-system-packages --upgrade yt-dlp yt-dlp-ejs
 
 # CI truyen vao de trang Gioi thieu bao duoc dang chay ban nao —
 # co the doi chieu sau khi cap nhat tren NAS.

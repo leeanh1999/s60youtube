@@ -100,6 +100,14 @@ function sendPage(res, html, status = 200) {
 /** Doi loi ky thuat sang cau tieng Viet de hieu tren man hinh nho. */
 function friendlyError(err) {
   const message = String(err?.message || err);
+  if (/THIEU_BO_GIAI_JS/.test(message)) {
+    return (
+      'Máy chủ thiếu bộ giải câu đố JavaScript của YouTube nên không mở được' +
+      ' luồng cho máy đã đăng nhập. Cài trên máy chủ:' +
+      ' python -m pip install --upgrade yt-dlp-ejs (chạy Docker thì khởi động' +
+      ' lại container, nó tự cài).'
+    );
+  }
   if (/Sign in to confirm|not a bot|LOGIN_REQUIRED|cookies/i.test(message)) {
     return 'YouTube đang đòi đăng nhập. Vào mục Đăng nhập trên chính máy này để nối lại tài khoản (cookie cũ có thể đã hết hạn).';
   }
@@ -107,7 +115,11 @@ function friendlyError(err) {
     return 'Video này không xem được (riêng tư, bị gỡ hoặc chặn theo khu vực).';
   }
   if (/KHONG_CO_DINH_DANG|Requested format is not available|No video formats/i.test(message)) {
-    return 'YouTube không trả về luồng nào tải thẳng được cho video này. Thử video khác; nếu video nào cũng lỗi thì yt-dlp đã cũ, hãy khởi động lại container để nó tự cập nhật.';
+    return (
+      'YouTube không trả về luồng nào tải thẳng được cho video này. Thử video' +
+      ' khác; nếu video nào cũng lỗi thì máy chủ đang thiếu bộ giải JavaScript' +
+      ' (yt-dlp-ejs) hoặc yt-dlp đã cũ — khởi động lại container để nó tự cài lại.'
+    );
   }
   if (/members-only|join this channel|Premieres in|This live event/i.test(message)) {
     return 'Video này chỉ dành cho thành viên kênh, hoặc là buổi phát trực tiếp chưa bắt đầu.';

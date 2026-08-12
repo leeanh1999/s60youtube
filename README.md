@@ -16,15 +16,19 @@ Vì sao phải làm vòng như vậy:
 | Thành phần | Ghi chú |
 | --- | --- |
 | Node.js 18 trở lên | đã kiểm tra trên Node 24 |
-| Python 3 + yt-dlp | `python -m pip install --upgrade yt-dlp` |
+| Python 3 + yt-dlp | `python -m pip install --upgrade yt-dlp yt-dlp-ejs` |
 | ffmpeg | tự có sẵn qua gói `ffmpeg-static` khi `npm install` |
 | Máy tính và điện thoại chung một WiFi | |
+
+`yt-dlp-ejs` là bộ giải câu đố JavaScript của YouTube. Xem video khi **chưa**
+đăng nhập thì không cần nó, nhưng máy đã nạp cookie thì thiếu nó là không lấy
+được luồng nào — xem [Khi gặp trục trặc](#khi-gặp-trục-trặc).
 
 ## Cài đặt
 
 ```bash
 npm install
-python -m pip install --upgrade yt-dlp
+python -m pip install --upgrade yt-dlp yt-dlp-ejs
 ```
 
 ## Chạy bằng Docker trên NAS Synology
@@ -54,8 +58,8 @@ Vài điểm cần biết:
   cập nhật hay dựng lại container đều không mất.
 - Cổng mở ra ngoài là **9080**. Muốn đổi thì sửa số bên trái trong `ports`, số
   bên phải (`8080`) là cổng bên trong container, cứ để nguyên.
-- `YTDLP_AUTO_UPDATE=1` cho container tự cập nhật yt-dlp mỗi lần khởi động.
-  YouTube đổi API liên tục, yt-dlp cũ là hỏng ngay, nên cứ để bật.
+- `YTDLP_AUTO_UPDATE=1` cho container tự cập nhật yt-dlp (và `yt-dlp-ejs`) mỗi
+  lần khởi động. YouTube đổi API liên tục, yt-dlp cũ là hỏng ngay, nên cứ để bật.
 - Mỗi máy vào trang dùng cookie YouTube của riêng nó. Muốn mở cổng ra Internet
   thì đọc mục [Mở ra Internet cho nhiều người](#mở-ra-internet-cho-nhiều-người).
 
@@ -467,7 +471,8 @@ Biến môi trường:
 | `TRUST_PROXY` | trống | Đặt `1` khi có reverse proxy đứng trước, để đếm số lần nhập sai theo đúng IP người dùng |
 | `REQUIRE_SECURE_LINK` | trống | Đặt `1` để từ chối nhận cookie khi trang `/link` không đi qua HTTPS |
 | `FFMPEG_PATH` | tự dò | Chỉ thẳng tới ffmpeg (Docker đặt `/usr/bin/ffmpeg`) |
-| `YTDLP_AUTO_UPDATE` | trống | Đặt `1` để container tự cập nhật yt-dlp lúc khởi động |
+| `YTDLP_AUTO_UPDATE` | trống | Đặt `1` để container tự cập nhật yt-dlp và `yt-dlp-ejs` lúc khởi động |
+| `YTDLP_REMOTE_EJS` | `1` | Cho yt-dlp tải bộ giải JavaScript từ GitHub khi bản cài sẵn thiếu hoặc quá cũ; đặt `0` để cấm hẳn |
 
 ## Khi gặp trục trặc
 
@@ -488,6 +493,29 @@ máy đó đã quá `DEVICE_TTL_DAYS` ngày không dùng. Nạp lại là xong.
 
 **"Không kết nối được tới YouTube."** Máy chủ không ra được mạng. Nếu mạng công ty
 chặn YouTube thì phải bật VPN trên máy tính (điện thoại thì không cần).
+
+**Vừa nạp cookie đăng nhập xong là video nào cũng báo "YouTube không trả về
+luồng nào", trong khi trước đó chưa đăng nhập vẫn xem được.** Máy chủ thiếu
+`yt-dlp-ejs`. Khi không có cookie, yt-dlp lấy luồng bằng máy khách `android_vr`
+và địa chỉ ra thẳng, không khoá. Có cookie thì máy khách đó bị bỏ (nó không nhận
+cookie) và yt-dlp chuyển sang `tv`/`web creator` — hai cái này bắt giải một đoạn
+JavaScript của YouTube trước, không giải được thì danh sách định dạng rỗng. Cài
+bộ giải là xong:
+
+```bash
+python -m pip install --upgrade yt-dlp yt-dlp-ejs
+```
+
+Chạy Docker thì chỉ cần khởi động lại container (ảnh đã cài sẵn, và
+`YTDLP_AUTO_UPDATE=1` giữ cho nó theo kịp yt-dlp). Muốn xem đúng lỗi gì thì chạy
+tay trong container:
+
+```bash
+docker exec s60youtube yt-dlp --cookies /data/devices/<mã máy>.txt \
+  -F "https://www.youtube.com/watch?v=jNQXAC9IVRw"
+```
+
+Thấy dòng `challenge solving failed` hay `wiki/EJS` là đúng bệnh này.
 
 **Bản nhẹ chờ lâu, không phải vài giây như nói ở trên.** Video đó không có bản
 H.264 nên máy chủ buộc phải mã hoá thật. Chạy `docker exec s60youtube node
