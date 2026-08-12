@@ -52,6 +52,7 @@ function check(path, body) {
 }
 
 (async () => {
+  let found = 0;
   for (const p of PATHS) {
     const started = Date.now();
     try {
@@ -59,6 +60,7 @@ function check(path, body) {
       const body = await res.text();
       const links = (body.match(/watch\?v=/g) || []).length;
       const problems = check(p, body);
+      found += problems.length;
       console.log(
         `[${p}] HTTP ${res.status} ${res.headers.get('content-type')} ` +
           `${body.length}B ${Date.now() - started}ms links=${links}` +
@@ -67,5 +69,11 @@ function check(path, body) {
     } catch (err) {
       console.log(`[${p}] LOI ${err.cause?.message || err.message}`);
     }
+  }
+  // Bao that bai de CI dung lai: khong thi may Nokia moi la noi phat hien ra
+  // trang da hong, ma luc do anh Docker da phat hanh xong.
+  if (found) {
+    console.log(`\n${found} cho khong hop voi may Symbian — xem cac dong co !!`);
+    process.exitCode = 1;
   }
 })();

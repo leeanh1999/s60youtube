@@ -83,7 +83,10 @@ const codeOf = (body) => (body.match(/\/qr\?c=([A-Z0-9]+)/) || [])[1];
   check('co ma ghep noi', Boolean(code), `code=${code}`);
   check('may duoc phat ma thiet bi', /^[0-9a-f]{32}$/.test(nokia.jar.get('did') || ''));
   check('co the meta refresh', /http-equiv="refresh"/.test(login.body));
-  check('khong co JavaScript', !/<script/i.test(login.body));
+  // Phan nhay khoi bang phim nam trong file /s60.js rieng va chi la phan them.
+  // Cai phai giu la trang khong co script chen thang vao HTML: co nhu vay thi
+  // may tat JavaScript hay tai file loi van dang nhap duoc binh thuong.
+  check('khong co script noi tuyen', !/<script(?![^>]*\bsrc=)/i.test(login.body));
   check('ma hien dang ABC-123', /class="code">[A-Z0-9]{3}-[A-Z0-9]{3}</.test(login.body));
 
   console.log('2. Anh QR');
