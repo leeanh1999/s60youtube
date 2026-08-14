@@ -318,10 +318,30 @@ trong bộ nhớ máy. Trình duyệt của Belle (Nokia Browser 7.4 trở lên)
 `<video>` với H.264/MP4 nên làm được như vậy; máy đời cũ hơn không hiểu thẻ này
 sẽ thấy một liên kết thường ở chỗ đó.
 
-Khung phát lấy bản gộp sẵn cao nhất trong mức **Độ phân giải** đã chọn ở
-**Cài đặt** — mặc định 360p, mức mọi máy Symbian mở thẳng được. Mức đã chọn đi
-trong chính địa chỉ luồng (`/stream/<mã>?h=720`) chứ không đọc từ cookie: trình
-phát của Nokia mở liên kết đó ở ngoài trình duyệt nên không gửi cookie theo.
+### Chọn độ phân giải ngay trên trang video
+
+Ngay dưới khung phát là một hàng các mức xem được của **chính video đó**, bấm
+một cái là khung phát đổi sang mức ấy (`/watch?v=<mã>&q=720`). Không phải cài
+đặt, không nhớ gì cho lần sau: mỗi video một lựa chọn.
+
+Hàng này khác nhau tuỳ máy, vì đằng sau hai mức là hai đường hoàn toàn khác:
+
+| Mức | Đường đi | Tua được | Ai thấy |
+| --- | --- | --- | --- |
+| 360p (và 720p ở video cũ) | YouTube có sẵn file MP4 gộp cả hình lẫn tiếng, máy chủ dọn thẳng đi | Có | Mọi máy |
+| 480p, 720p, 1080p | Hình và tiếng nằm rời, máy chủ ghép ngay lúc phát | Không | Máy đời mới |
+
+Mức mặc định luôn là bản **gộp sẵn** cao nhất — nhẹ nhất và tua được. Máy Nokia
+thì chặn ở 360p cho vừa màn 640×480; máy tính hay điện thoại đời mới lấy bản gộp
+sẵn cao nhất còn lại, rồi muốn nét hơn thì bấm sang 720p hay 1080p.
+
+Đường ghép (`/hd/<mã>/<độ phân giải>`) cho ffmpeg chép hai luồng vào chung một
+vỏ MP4 **phân mảnh** rồi đổ thẳng ra máy, không qua file nào: bấm là chạy. Chỉ
+chép chứ không mã hoá nên NAS chip ARM vẫn kịp. Đổi lại vỏ phân mảnh không có
+chỉ mục cho cả file nên **không tua được**, và máy Symbian không đọc được nó —
+vì vậy các mức này chỉ hiện cho máy đời mới, nhận theo tên máy trong `User-Agent`.
+Muốn vừa nét vừa tua được thì dùng mục **Tạo bản 720p tua được** ở dưới: cũng
+ghép, nhưng ghép ra file thật nên chờ vài giây.
 
 Dưới khung phát còn mấy lựa chọn:
 
@@ -329,7 +349,7 @@ Dưới khung phát còn mấy lựa chọn:
 | --- | --- | --- |
 | Nghe ngay — chỉ tiếng | Nghe nhạc, tốn rất ít dung lượng | Không |
 | Bản nhẹ 240p | Mạng yếu, xem online hay khựng | Vài giây |
-| Bản 720p — máy đời mới | Máy đời mới, khi YouTube không còn bản 720p gộp sẵn | Vài giây |
+| Tạo bản 720p tua được | Máy đời mới, muốn nét mà vẫn tua được | Vài giây |
 
 **Nghe ngay** không chờ giây nào vì YouTube đã sẵn luồng AAC trong vỏ MP4
 (itag 140) — đúng thứ máy Symbian nghe được, nên máy chủ chỉ dọn thẳng nó đi.
@@ -340,11 +360,9 @@ mà YouTube vốn đã có sẵn luồng hình H.264 240p và luồng tiếng AA
 chỉ cần chép hai luồng đó vào chung một vỏ MP4 (`-c copy`). Chép dữ liệu thì
 nghẽn ở mạng chứ không đụng CPU, xong trong vài giây kể cả trên NAS chip ARM.
 
-**Bản 720p** chỉ hiện khi bạn đã chọn xem ở mức 720p, nên máy Symbian để mặc
-định không phải lướt qua nó. Nó cũng là ghép chứ không mã hoá, chỉ khác chỗ lấy
-luồng hình H.264 720p thay vì 240p. Cần tới nó vì YouTube nay hiếm khi còn giữ
-bản **gộp sẵn** trên 360p: luồng 720p vẫn có, nhưng hình và tiếng nằm rời hai
-file nên phải chép chung vào một vỏ MP4 mới mở thẳng được.
+**Tạo bản 720p tua được** chỉ hiện cho máy đời mới — màn 640×480 của Symbian
+không dùng tới 720p. Nó cũng là ghép chứ không mã hoá, chỉ khác chỗ lấy luồng
+hình H.264 720p thay vì 240p, và ghép ra file thật nên có chỉ mục để tua.
 
 Chỉ khi YouTube không phát hành bản H.264 nào cho video đó (hiếm, thường là
 video mới chỉ có VP9/AV1) thì mới phải mã hoá thật. Lúc đó trang sẽ tự làm mới
@@ -405,10 +423,9 @@ bằng `em` nên đổi cỡ chữ là chúng to nhỏ theo, giữ đúng tỉ l
 ảnh thu nhỏ (mạng 2G/EDGE nên tắt — lúc đó khối gom lại còn một cột chữ) và đổi
 số kết quả mỗi trang. Tất cả lưu bằng cookie trên máy.
 
-Cùng địa chỉ này còn hay được mở bằng máy đời mới (điện thoại Android, máy tính)
-để tìm nhanh một video, nên **Cài đặt** có thêm mức **Độ phân giải**: 360p, 480p
-hay 720p. Chọn cao không làm hỏng máy yếu — video nào không còn bản gộp sẵn ở
-mức đó thì trang lấy bản cao nhất còn lại và nói rõ ngay dưới khung phát.
+Độ phân giải thì không nằm ở đây: nó là chuyện của từng video (video này có mức
+nào, máy đang xem đọc được mức nào) chứ không phải một thói quen chung, nên chọn
+ngay trên trang video — xem [Chọn độ phân giải ngay trên trang video](#chọn-độ-phân-giải-ngay-trên-trang-video).
 
 Trình duyệt Symbian^3 trở lên (Nokia Browser 7.x/8.x, nền WebKit 533–535) đọc
 được HTML5, CSS3 cơ bản và JavaScript. **Riêng SVG thì không**: bản WebKit ấy

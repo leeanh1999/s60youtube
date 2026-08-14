@@ -470,6 +470,57 @@ h2 .ic {
   height: auto;
 }
 
+/* ---------- hang chon do phan giai ---------- */
+
+/* Nam ngay duoi khung phat: moi muc mot o bam duoc, muc dang xem to nen do.
+   Ca hang tren mot dong nen phim trai/phai di duoc trong do (xem s60.js), va
+   o phai du to cho dau ngon tay tren may cam ung. */
+.qual {
+  margin: 6px;
+  padding: 3px;
+  background: #ffffff;
+  border: 1px solid #d3d8dd;
+  border-radius: 6px;
+  -webkit-border-radius: 6px;
+  font-size: 0.8em;
+}
+
+.qual .lb,
+.qual a,
+.qual .on {
+  display: inline-block;
+  margin: 3px;
+  padding: 5px 9px;
+}
+
+/* Chu "Do phan giai" chi la nhan, khong bam duoc — de mo hon cac o ben canh. */
+.qual .lb {
+  padding-left: 5px;
+  padding-right: 4px;
+  color: #6b7178;
+}
+
+.qual a {
+  border: 1px solid #b9bfc6;
+  border-radius: 5px;
+  -webkit-border-radius: 5px;
+  font-weight: bold;
+}
+
+.qual a:focus,
+.qual a:hover {
+  background: #fff6d5;
+  border-color: #c00000;
+}
+
+.qual .on {
+  background: #c00000;
+  color: #ffffff;
+  border: 1px solid #8c0000;
+  border-radius: 5px;
+  -webkit-border-radius: 5px;
+}
+
 /* ---------- nut va danh sach lua chon ---------- */
 
 a.go {

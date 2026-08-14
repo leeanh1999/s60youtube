@@ -218,7 +218,50 @@ function makeSample(args, file) {
     check('moov nam dau file', firstBoxes(encoded.file).includes('moov'));
   }
 
-  console.log('5. Goi lai thi dung file da co, khong chay ffmpeg lan nua');
+  console.log('5. Xem thang o do phan giai cao: ghep ra duong truyen');
+  const piped = path.join(WORK, 'thang.mp4');
+  const writer = fs.createWriteStream(piped);
+  const live = media.remuxStream(`${base}/hinh240.mp4`, `${base}/tieng.m4a`);
+  let liveErr = '';
+  live.stderr.on('data', (chunk) => {
+    liveErr += chunk;
+  });
+  live.stdout.pipe(writer);
+  // Hai viec ket thuc khong theo thu tu nao ca: ffmpeg thoat, va file ghi xong.
+  // Phai doi ca hai thi moi vua biet ma thoat vua doc duoc file.
+  const liveCode = await new Promise((resolve) => {
+    let code = null;
+    let written = false;
+    const both = () => {
+      if (code !== null && written) resolve(code);
+    };
+    live.on('close', (value) => {
+      code = value;
+      both();
+    });
+    writer.on('finish', () => {
+      written = true;
+      both();
+    });
+  });
+  check('ffmpeg chay tron', liveCode === 0, liveErr.trim());
+  check('co du lieu ra', fs.existsSync(piped) && fs.statSync(piped).size > 0);
+  if (fs.existsSync(piped) && fs.statSync(piped).size > 0) {
+    const info = streamInfo(piped);
+    check('co luong hinh H.264', /Video: h264/.test(info), info.trim());
+    check('giu nguyen Main profile, tuc la chi chep chu khong ma hoa', /h264 \(Main\)/.test(info));
+    check('co luong tieng AAC', /Audio: aac/.test(info));
+    // Vo phan manh: 'moov' rong nam ngay dau (khong doi ghi xong ca file), roi
+    // du lieu di theo tung manh 'moof'. Thieu cai nay thi byte dau tien chi ra
+    // khi ffmpeg da tai xong het — tuc la khong con "bam la chay" nua.
+    check('moov nam dau file', firstBoxes(piped).includes('moov'));
+    check(
+      'co manh moof, tuc la vo MP4 phan manh',
+      fs.readFileSync(piped).includes('moof')
+    );
+  }
+
+  console.log('6. Goi lai thi dung file da co, khong chay ffmpeg lan nua');
   const again = media.startJob({
     videoId: 'TESTremux01',
     profileId: 'belle',

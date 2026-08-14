@@ -13,7 +13,7 @@ const path = require('path');
 const icons = require('../lib/icons');
 const render = require('../lib/render');
 
-const prefs = { thumbs: true, pageSize: 10, textSize: 'l', maxHeight: 360 };
+const prefs = { thumbs: true, pageSize: 10, textSize: 'l' };
 
 const videos = Array.from({ length: 6 }, (_, i) => ({
   id: `demoVideo${String(i).padStart(2, '0')}`.slice(0, 11),
@@ -34,15 +34,25 @@ const info = {
   duration: 245,
   views: 1234567,
   description: 'Dòng mô tả thứ nhất.\nDòng mô tả thứ hai dài hơn một chút.',
-  direct: { height: 360 },
   audioDirect: true,
 };
 
 const profiles = {
-  belle: { label: 'Bản nhẹ 360p', maxHeight: 360, ext: 'mp4' },
-  hd: { label: 'Bản 720p — máy đời mới', maxHeight: 720, needsHeight: 720, ext: 'mp4' },
+  belle: { label: 'Bản nhẹ 240p', maxHeight: 240, ext: 'mp4' },
+  hd: { label: 'Tạo bản 720p tua được', maxHeight: 720, modernOnly: true, ext: 'mp4' },
   audio: { label: 'Chỉ tiếng (m4a)', audioOnly: true, ext: 'm4a' },
 };
+
+/** Giong ket qua cua ytdlp.streamChoices cho mot video con du ban gop san. */
+const choice = (height, kind) => ({
+  height,
+  kind,
+  href: `/watch?v=${videos[0].id}&amp;q=${height}`,
+  src:
+    kind === 'san'
+      ? `/stream/${videos[0].id}/${height === 720 ? 22 : 18}?k=demo`
+      : `/hd/${videos[0].id}/${height}?k=demo`,
+});
 
 const pages = {
   'home.html': render.homePage({ prefs, warning: 'Máy này chưa nối tài khoản YouTube.' }),
@@ -57,14 +67,18 @@ const pages = {
       ' Xuất lại cookie khi đang mở youtube.com và đã đăng nhập là có.',
   }),
   'search.html': render.searchPage({ query: 'nhạc vàng', videos, prefs, nextPage: '2' }),
+  // May Symbian: chi thay ban gop san, khong thay muc phai ghep.
   'watch.html': render.watchPage({
     video: { id: videos[0].id, title: info.title, author: info.author, duration: 245 },
     info,
+    choices: [choice(360, 'san')],
+    chosen: choice(360, 'san'),
     related: videos.slice(1),
     prefs,
     profiles,
     ffmpegOk: true,
     streamKey: 'demo',
+    legacy: true,
   }),
   'convert.html': render.convertPage({
     video: { id: videos[0].id, title: info.title },
@@ -120,16 +134,18 @@ const pages = {
     prefs: { ...prefs, thumbs: false },
     nextPage: '2',
   }),
-  // May doi moi chon 720p: dia chi xem online mang theo muc do, va hien thêm
-  // muc nho may chu ghep ban 720p.
+  // May doi moi: co ca hang chon do phan giai, va dang xem muc phai ghep.
   'watch-hd.html': render.watchPage({
     video: { id: videos[0].id, title: info.title, author: info.author, duration: 245 },
-    info: { ...info, direct: { height: 720 } },
+    info,
+    choices: [choice(1080, 'ghep'), choice(720, 'ghep'), choice(480, 'ghep'), choice(360, 'san')],
+    chosen: choice(720, 'ghep'),
     related: videos.slice(1),
-    prefs: { ...prefs, maxHeight: 720 },
+    prefs,
     profiles,
     ffmpegOk: true,
     streamKey: 'demo',
+    legacy: false,
   }),
 };
 

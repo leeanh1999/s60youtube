@@ -24,28 +24,40 @@ app.disable('x-powered-by');
 app.disable('etag');
 if (config.TRUST_PROXY) app.set('trust proxy', true);
 
+// Man hinh E6 la 640x480; luong gop san cao nhat cua YouTube duoi muc do la
+// 360p (itag 18, H.264 baseline + AAC) — dung thu Belle mo thang duoc.
+const BELLE_MAX_HEIGHT = 360;
+
+/**
+ * May cu hay may doi moi. Hai cho can biet, va ca hai deu la chuyen "may nay
+ * doc duoc gi" chu khong phai so thich cua nguoi dung, nen khong hoi ma nhan
+ * theo ten may:
+ *
+ *  - Do phan giai cao phai ghep ngay luc phat, ma ban ghep do nam trong vo MP4
+ *    phan manh — trinh duyet Symbian khong doc duoc.
+ *  - Man hinh 640x480 (va 360x640 khi xem doc) khong dung toi 720p.
+ *
+ * Nhan nham theo huong nao cung chi mat hoac thua vai muc chon, khong hong
+ * trang: may cu van luon co duong 360p gop san o dau danh sach.
+ */
+function isLegacyDevice(req) {
+  const ua = String(req.headers['user-agent'] || '');
+  return /Symbian|Series ?60|S60|NokiaBrowser|MIDP|Opera Mini/i.test(ua);
+}
+
 // ---------- tuy chon nguoi dung (luu bang cookie) ----------
 
 const DEFAULT_PREFS = {
   thumbs: true,
   pageSize: config.PAGE_SIZE,
   textSize: render.DEFAULT_TEXT_SIZE,
-  // Mac dinh 360p cho vua may Symbian; xem render.VIDEO_HEIGHTS.
-  maxHeight: render.DEFAULT_VIDEO_HEIGHT,
 };
-
-/** Mot muc trong danh sach do phan giai, hoac null neu khong phai. */
-function videoHeight(value) {
-  const height = Number(value);
-  return render.VIDEO_HEIGHTS[height] ? height : null;
-}
 
 function readPrefs(req) {
   const prefs = { ...DEFAULT_PREFS };
   const jar = parseCookies(req.headers.cookie);
   if (jar.thumbs !== undefined) prefs.thumbs = jar.thumbs === '1';
   if (render.TEXT_SIZES[jar.textSize]) prefs.textSize = jar.textSize;
-  prefs.maxHeight = videoHeight(jar.maxHeight) || prefs.maxHeight;
   const pageSize = Number(jar.pageSize);
   if (Number.isFinite(pageSize) && pageSize >= 4 && pageSize <= 40) {
     prefs.pageSize = pageSize;
@@ -253,7 +265,7 @@ app.use(express.urlencoded({ extended: false, limit: '2mb' }));
 
 /** Duong dan tra ve file cho trinh phat, khong phai trang de nguoi doc. */
 function isMediaPath(pathname) {
-  return /^\/(stream|audio|file|thumb)\//.test(pathname) || pathname === '/qr';
+  return /^\/(stream|hd|audio|file|thumb)\//.test(pathname) || pathname === '/qr';
 }
 
 // Moi trang deu can tuy chon hien thi (co chu, anh thu nho) de dung layout,
@@ -374,6 +386,41 @@ app.get('/search', async (req, res) => {
 
 // ---------- trang xem ----------
 
+/**
+ * Bien danh sach do phan giai cua mot video thanh nhung muc bam duoc tren
+ * trang: moi muc mot dia chi xem thang, va mot dia chi quay lai chinh trang
+ * video de doi khung phat sang muc do.
+ *
+ * Muc dang xem la muc trong dia chi (?q=), khong co thi lay ban gop san cao
+ * nhat: no nhe nhat va tua duoc. Khong bao gio tu chon ban ghep — no chi ra
+ * khi nguoi dung that su bam vao, vi ghep thi khong tua duoc.
+ */
+function playChoices(videoId, formats, { legacy, streamKey, wanted }) {
+  const key = streamKey ? `?k=${encodeURIComponent(streamKey)}` : '';
+  const choices = ytdlp
+    .streamChoices(formats, { remux: !legacy && media.isAvailable() })
+    .map((choice) => ({
+      ...choice,
+      src:
+        choice.kind === 'san'
+          ? `/stream/${videoId}/${choice.id}${key}`
+          : `/hd/${videoId}/${choice.height}${key}`,
+      href: `/watch?v=${videoId}&amp;q=${choice.height}`,
+    }));
+
+  const ready = choices.filter((choice) => choice.kind === 'san');
+  const auto =
+    ready.find((choice) => !legacy || choice.height <= BELLE_MAX_HEIGHT) ||
+    ready[0] ||
+    // Video khong con ban gop san nao (thuong la ban moi chi co VP9/AV1): may
+    // doi moi van xem duoc bang duong ghep, con may cu thi danh chiu.
+    (legacy ? null : choices[0]) ||
+    null;
+
+  const chosen = choices.find((choice) => choice.height === wanted) || auto;
+  return { choices, chosen };
+}
+
 app.get('/watch', async (req, res) => {
   const prefs = req.prefs;
   const videoId = parseVideoId(req.query.v);
@@ -401,15 +448,22 @@ app.get('/watch', async (req, res) => {
       ? relatedResult.value.videos.slice(0, prefs.pageSize)
       : [];
 
+  const legacy = isLegacyDevice(req);
   let info = null;
+  let choices = [];
+  let chosen = null;
   let error = null;
   if (infoResult.status === 'fulfilled') {
     const raw = infoResult.value;
     info = {
       ...raw,
-      direct: ytdlp.pickProgressive(raw.formats, prefs.maxHeight),
       audioDirect: ytdlp.isBelleAudio(ytdlp.pickAudioOnly(raw.formats)),
     };
+    ({ choices, chosen } = playChoices(videoId, raw.formats, {
+      legacy,
+      streamKey: req.streamKey,
+      wanted: Number(req.query.q) || 0,
+    }));
   } else {
     // Giu nguyen van loi trong log de con lan ra nguyen nhan, con man hinh
     // dien thoai thi chi hien cau tieng Viet ngan gon.
@@ -422,11 +476,14 @@ app.get('/watch', async (req, res) => {
     render.watchPage({
       video: { id: videoId, title: info?.title || 'Video', author: '', duration: 0 },
       info,
+      choices,
+      chosen,
       related,
       prefs,
       profiles: media.PROFILES,
       ffmpegOk: media.isAvailable(),
       streamKey: req.streamKey,
+      legacy,
       error,
     })
   );
@@ -516,11 +573,9 @@ async function proxyFormat(req, res, id, format) {
   stream.pipe(res);
 }
 
-// Khong co :formatId thi tu chon luong cao nhat trong muc da chon (?h=...).
-// Trinh phat cua may mo dia chi nay ben ngoai trinh duyet nen khong gui cookie
-// theo — muc do phan giai phai nam trong chinh dia chi, khong doc tu tuy chon
-// duoc. Duong dan on dinh nhu vay thi trinh phat mo lai duoc sau khi thong tin
-// video het han trong bo nho dem.
+// Trang video dinh san ma luong (itag) vao dia chi cho tung muc do phan giai;
+// khong co :formatId thi tu chon luong hop voi Belle. Duong dan on dinh nhu vay
+// thi trinh phat mo lai duoc sau khi thong tin video het han trong bo nho dem.
 app.all('/stream/:id/:formatId?', async (req, res) => {
   const { id, formatId } = req.params;
   if (!isVideoId(id)) {
@@ -530,10 +585,9 @@ app.all('/stream/:id/:formatId?', async (req, res) => {
 
   try {
     const info = await ytdlp.getInfo(id, req.auth);
-    const maxHeight = videoHeight(req.query.h) || req.prefs.maxHeight;
     const format = formatId
       ? ytdlp.findFormat(info, formatId)
-      : ytdlp.pickProgressive(info.formats, maxHeight);
+      : ytdlp.pickProgressive(info.formats, BELLE_MAX_HEIGHT);
     if (!format) {
       sendPage(
         res,
@@ -561,6 +615,85 @@ app.all('/stream/:id/:formatId?', async (req, res) => {
       502
     );
   }
+});
+
+// ---------- xem o do phan giai cao (ghep ngay luc phat) ----------
+
+/**
+ * YouTube nay gan nhu chi con giu ban gop san o 360p; tu 480p tro len thi hinh
+ * va tieng nam roi hai file. Duong nay ghep chung ngay trong luc phat roi do
+ * thang ra may (xem media.remuxStream) — may doi moi bam mot cai la chay, khong
+ * phai cho tao file.
+ *
+ * Chi ghep chu khong ma hoa, nhung van la mot tien trinh ffmpeg cho moi nguoi
+ * xem: bo di ngay khi may kia ngat, khong thi no cu keo tiep ca video ve.
+ */
+app.all('/hd/:id/:height', async (req, res) => {
+  const { id } = req.params;
+  const height = Number(req.params.height);
+  if (!isVideoId(id) || !Number.isFinite(height) || height <= 0) {
+    res.status(400).end();
+    return;
+  }
+
+  const fail = (title, message, status) =>
+    sendPage(
+      res,
+      render.errorPage({ title, message, back: `/watch?v=${id}`, prefs: req.prefs }),
+      status
+    );
+
+  if (!media.isAvailable()) {
+    fail('Thiếu ffmpeg', 'Máy chủ chưa có ffmpeg nên không ghép được luồng.', 503);
+    return;
+  }
+
+  let video = null;
+  let audio = null;
+  try {
+    const info = await ytdlp.getInfo(id, req.auth);
+    video = ytdlp.pickVideoOnly(info.formats, height);
+    audio = ytdlp.pickAudioOnly(info.formats);
+  } catch (err) {
+    fail('Không phát được', friendlyError(err), 502);
+    return;
+  }
+
+  if (!ytdlp.isBelleVideo(video) || !ytdlp.isBelleAudio(audio)) {
+    fail(
+      'Không ghép được',
+      'Video này không có luồng H.264 và AAC để ghép thẳng. Hãy chọn mức 360p, hoặc tạo bản ở trang video.',
+      404
+    );
+    return;
+  }
+
+  res.set('Content-Type', 'video/mp4');
+  res.set('Content-Disposition', `inline; filename="${id}.mp4"`);
+  res.set('Cache-Control', 'no-store');
+  // Ban ghep khong co chi muc cho ca file nen khong tua duoc; noi thang ra de
+  // trinh duyet khong thu doi mot doan giua chung roi bao hong.
+  res.set('Accept-Ranges', 'none');
+
+  if (req.method === 'HEAD') {
+    res.end();
+    return;
+  }
+
+  const child = media.remuxStream(video.url, audio.url);
+  let tail = '';
+  child.stderr.on('data', (chunk) => {
+    tail = (tail + chunk).slice(-500);
+  });
+  child.on('error', (err) => {
+    console.warn(`[hd ${id}] khong chay duoc ffmpeg: ${err.message}`);
+    res.destroy();
+  });
+  child.on('close', (code) => {
+    if (code) console.warn(`[hd ${id}] ffmpeg thoat ${code}: ${tail.trim()}`);
+  });
+  res.on('close', () => child.kill('SIGKILL'));
+  child.stdout.pipe(res);
 });
 
 // ---------- nghe truc tiep (luong m4a cua YouTube, khong chuyen ma) ----------
@@ -897,15 +1030,13 @@ app.get('/settings', (req, res) => {
     const textSize = render.TEXT_SIZES[req.query.textSize]
       ? String(req.query.textSize)
       : DEFAULT_PREFS.textSize;
-    const maxHeight = videoHeight(req.query.maxHeight) || DEFAULT_PREFS.maxHeight;
     // Cung ly do nhu ma thiet bi: may Nokia chi doc 'Expires', khong doc 'Max-Age'.
     const options = cookies.keepFor();
     // append chu khong phai set: khong duoc de len cookie ma thiet bi.
     res.append('Set-Cookie', `thumbs=${thumbs ? 1 : 0}; ${options}`);
     res.append('Set-Cookie', `pageSize=${pageSize}; ${options}`);
     res.append('Set-Cookie', `textSize=${textSize}; ${options}`);
-    res.append('Set-Cookie', `maxHeight=${maxHeight}; ${options}`);
-    sendPage(res, render.settingsPage({ thumbs, pageSize, textSize, maxHeight }));
+    sendPage(res, render.settingsPage({ thumbs, pageSize, textSize }));
     return;
   }
 
