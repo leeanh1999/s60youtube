@@ -645,7 +645,23 @@ async function proxyFormat(req, res, id, format) {
   if (req.headers.range) headers.Range = req.headers.range;
 
   const audioOnly = Boolean(format.acodec && !format.vcodec);
-  const upstream = await fetch(format.url, { headers });
+  let upstream = await fetch(format.url, { headers });
+
+  // YouTube thinh thoang dua ra dia chi chet ngay tu dau (xem lib/ytdlp.js).
+  // Ban dang giu trong bo nho dem con han nhung khong dung duoc nua, nen hoi
+  // lai mot lan roi phat tiep — de trinh phat cua may cu bao "khong mo duoc"
+  // thi nguoi dung khong con cach nao khac ngoai bam lai va hy vong.
+  if (upstream.status === 403) {
+    upstream.body?.cancel?.();
+    const fresh = await ytdlp.refreshInfo(id, req.auth).catch(() => null);
+    const again = fresh && ytdlp.findFormat(fresh, format.id);
+    if (!again) {
+      res.status(502).end();
+      return;
+    }
+    upstream = await fetch(again.url, { headers });
+  }
+
   res.status(upstream.status === 206 ? 206 : upstream.status);
   res.set('Content-Type', audioOnly ? 'audio/mp4' : 'video/mp4');
   res.set('Content-Disposition', `inline; filename="${id}.${audioOnly ? 'm4a' : 'mp4'}"`);
@@ -746,9 +762,17 @@ app.all('/hd/:id/:height', async (req, res) => {
   let video = null;
   let audio = null;
   try {
-    const info = await ytdlp.getInfo(id, req.auth);
+    let info = await ytdlp.getInfo(id, req.auth);
     video = ytdlp.pickVideoOnly(info.formats, height);
     audio = ytdlp.pickAudioOnly(info.formats);
+    // ffmpeg tu di lay hai luong nay, gap dia chi chet la no thoat ngay va nguoi
+    // xem chi thay khung hinh den. Thu truoc mot cai roi hoi lai neu can — o day
+    // cho them vai giay van hon la hong han.
+    if (video && !(await ytdlp.servesWholeFile(video.url))) {
+      info = await ytdlp.refreshInfo(id, req.auth);
+      video = ytdlp.pickVideoOnly(info.formats, height);
+      audio = ytdlp.pickAudioOnly(info.formats);
+    }
   } catch (err) {
     fail('Không phát được', friendlyError(err), 502);
     return;
