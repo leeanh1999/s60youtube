@@ -13,7 +13,7 @@ const path = require('path');
 const icons = require('../lib/icons');
 const render = require('../lib/render');
 
-const prefs = { thumbs: true, pageSize: 10, textSize: 'l' };
+const prefs = { thumbs: true, pageSize: 10, textSize: 'l', maxHeight: 360 };
 
 const videos = Array.from({ length: 6 }, (_, i) => ({
   id: `demoVideo${String(i).padStart(2, '0')}`.slice(0, 11),
@@ -40,6 +40,7 @@ const info = {
 
 const profiles = {
   belle: { label: 'Bản nhẹ 360p', maxHeight: 360, ext: 'mp4' },
+  hd: { label: 'Bản 720p — máy đời mới', maxHeight: 720, needsHeight: 720, ext: 'mp4' },
   audio: { label: 'Chỉ tiếng (m4a)', audioOnly: true, ext: 'm4a' },
 };
 
@@ -118,6 +119,17 @@ const pages = {
     videos,
     prefs: { ...prefs, thumbs: false },
     nextPage: '2',
+  }),
+  // May doi moi chon 720p: dia chi xem online mang theo muc do, va hien thêm
+  // muc nho may chu ghep ban 720p.
+  'watch-hd.html': render.watchPage({
+    video: { id: videos[0].id, title: info.title, author: info.author, duration: 245 },
+    info: { ...info, direct: { height: 720 } },
+    related: videos.slice(1),
+    prefs: { ...prefs, maxHeight: 720 },
+    profiles,
+    ffmpegOk: true,
+    streamKey: 'demo',
   }),
 };
 

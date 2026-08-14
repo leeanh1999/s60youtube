@@ -318,12 +318,18 @@ trong bộ nhớ máy. Trình duyệt của Belle (Nokia Browser 7.4 trở lên)
 `<video>` với H.264/MP4 nên làm được như vậy; máy đời cũ hơn không hiểu thẻ này
 sẽ thấy một liên kết thường ở chỗ đó.
 
-Dưới khung phát còn hai lựa chọn:
+Khung phát lấy bản gộp sẵn cao nhất trong mức **Độ phân giải** đã chọn ở
+**Cài đặt** — mặc định 360p, mức mọi máy Symbian mở thẳng được. Mức đã chọn đi
+trong chính địa chỉ luồng (`/stream/<mã>?h=720`) chứ không đọc từ cookie: trình
+phát của Nokia mở liên kết đó ở ngoài trình duyệt nên không gửi cookie theo.
+
+Dưới khung phát còn mấy lựa chọn:
 
 | Lựa chọn | Dành cho | Phải chờ |
 | --- | --- | --- |
 | Nghe ngay — chỉ tiếng | Nghe nhạc, tốn rất ít dung lượng | Không |
 | Bản nhẹ 240p | Mạng yếu, xem online hay khựng | Vài giây |
+| Bản 720p — máy đời mới | Máy đời mới, khi YouTube không còn bản 720p gộp sẵn | Vài giây |
 
 **Nghe ngay** không chờ giây nào vì YouTube đã sẵn luồng AAC trong vỏ MP4
 (itag 140) — đúng thứ máy Symbian nghe được, nên máy chủ chỉ dọn thẳng nó đi.
@@ -333,6 +339,12 @@ hoá. Nokia ghi rõ E6 đọc được H.264 cả ba profile (base, main, high) 
 mà YouTube vốn đã có sẵn luồng hình H.264 240p và luồng tiếng AAC — nên ffmpeg
 chỉ cần chép hai luồng đó vào chung một vỏ MP4 (`-c copy`). Chép dữ liệu thì
 nghẽn ở mạng chứ không đụng CPU, xong trong vài giây kể cả trên NAS chip ARM.
+
+**Bản 720p** chỉ hiện khi bạn đã chọn xem ở mức 720p, nên máy Symbian để mặc
+định không phải lướt qua nó. Nó cũng là ghép chứ không mã hoá, chỉ khác chỗ lấy
+luồng hình H.264 720p thay vì 240p. Cần tới nó vì YouTube nay hiếm khi còn giữ
+bản **gộp sẵn** trên 360p: luồng 720p vẫn có, nhưng hình và tiếng nằm rời hai
+file nên phải chép chung vào một vỏ MP4 mới mở thẳng được.
 
 Chỉ khi YouTube không phát hành bản H.264 nào cho video đó (hiếm, thường là
 video mới chỉ có VP9/AV1) thì mới phải mã hoá thật. Lúc đó trang sẽ tự làm mới
@@ -392,6 +404,11 @@ bằng `em` nên đổi cỡ chữ là chúng to nhỏ theo, giữ đúng tỉ l
 được cắt ngắn hơn khi chữ to, để khối không cao gấp đôi ảnh. Ở đó cũng tắt được
 ảnh thu nhỏ (mạng 2G/EDGE nên tắt — lúc đó khối gom lại còn một cột chữ) và đổi
 số kết quả mỗi trang. Tất cả lưu bằng cookie trên máy.
+
+Cùng địa chỉ này còn hay được mở bằng máy đời mới (điện thoại Android, máy tính)
+để tìm nhanh một video, nên **Cài đặt** có thêm mức **Độ phân giải**: 360p, 480p
+hay 720p. Chọn cao không làm hỏng máy yếu — video nào không còn bản gộp sẵn ở
+mức đó thì trang lấy bản cao nhất còn lại và nói rõ ngay dưới khung phát.
 
 Trình duyệt Symbian^3 trở lên (Nokia Browser 7.x/8.x, nền WebKit 533–535) đọc
 được HTML5, CSS3 cơ bản và JavaScript. **Riêng SVG thì không**: bản WebKit ấy
@@ -687,6 +704,10 @@ vào HTML, có `<svg>` đặt thẳng trong trang (trình duyệt gốc không v
 mục [Cài đặt riêng](#cài-đặt-riêng)), hoặc `s60.js` lỡ viết bằng cú pháp ES6 —
 WebKit 535 gặp một chữ `const` là chết cả file mà chết im lặng. Nó cũng gọi thử
 một biểu tượng để chắc máy chủ còn tô được ảnh PNG.
+
+Với `s60.css` nó còn soi dấu chú thích lẻ: một chú thích đóng sớm (lỡ có `*/` ở
+giữa) thì trình duyệt không báo gì cả, nó bỏ đoạn chữ rồi **nuốt luôn quy tắc
+ngay sau đó** — nhìn mã nguồn vẫn thấy đủ mà trên máy thì mất một mục bố cục.
 
 `preview.js` dựng HTML của mọi trang ra thư mục `preview/` để xem trên máy tính,
 không cần chạy máy chủ hay gọi YouTube. Mở `preview/sizes.html` là thấy các

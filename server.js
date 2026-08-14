@@ -24,23 +24,28 @@ app.disable('x-powered-by');
 app.disable('etag');
 if (config.TRUST_PROXY) app.set('trust proxy', true);
 
-// Man hinh E6 la 640x480; luong gop san cao nhat cua YouTube duoi muc do la
-// 360p (itag 18, H.264 baseline + AAC) — dung thu Belle mo thang duoc.
-const BELLE_MAX_HEIGHT = 360;
-
 // ---------- tuy chon nguoi dung (luu bang cookie) ----------
 
 const DEFAULT_PREFS = {
   thumbs: true,
   pageSize: config.PAGE_SIZE,
   textSize: render.DEFAULT_TEXT_SIZE,
+  // Mac dinh 360p cho vua may Symbian; xem render.VIDEO_HEIGHTS.
+  maxHeight: render.DEFAULT_VIDEO_HEIGHT,
 };
+
+/** Mot muc trong danh sach do phan giai, hoac null neu khong phai. */
+function videoHeight(value) {
+  const height = Number(value);
+  return render.VIDEO_HEIGHTS[height] ? height : null;
+}
 
 function readPrefs(req) {
   const prefs = { ...DEFAULT_PREFS };
   const jar = parseCookies(req.headers.cookie);
   if (jar.thumbs !== undefined) prefs.thumbs = jar.thumbs === '1';
   if (render.TEXT_SIZES[jar.textSize]) prefs.textSize = jar.textSize;
+  prefs.maxHeight = videoHeight(jar.maxHeight) || prefs.maxHeight;
   const pageSize = Number(jar.pageSize);
   if (Number.isFinite(pageSize) && pageSize >= 4 && pageSize <= 40) {
     prefs.pageSize = pageSize;
@@ -402,7 +407,7 @@ app.get('/watch', async (req, res) => {
     const raw = infoResult.value;
     info = {
       ...raw,
-      direct: ytdlp.pickProgressive(raw.formats, BELLE_MAX_HEIGHT),
+      direct: ytdlp.pickProgressive(raw.formats, prefs.maxHeight),
       audioDirect: ytdlp.isBelleAudio(ytdlp.pickAudioOnly(raw.formats)),
     };
   } else {
@@ -511,8 +516,11 @@ async function proxyFormat(req, res, id, format) {
   stream.pipe(res);
 }
 
-// Khong co :formatId thi tu chon luong hop voi Belle. Duong dan on dinh nhu vay
-// thi trinh phat mo lai duoc sau khi thong tin video het han trong bo nho dem.
+// Khong co :formatId thi tu chon luong cao nhat trong muc da chon (?h=...).
+// Trinh phat cua may mo dia chi nay ben ngoai trinh duyet nen khong gui cookie
+// theo — muc do phan giai phai nam trong chinh dia chi, khong doc tu tuy chon
+// duoc. Duong dan on dinh nhu vay thi trinh phat mo lai duoc sau khi thong tin
+// video het han trong bo nho dem.
 app.all('/stream/:id/:formatId?', async (req, res) => {
   const { id, formatId } = req.params;
   if (!isVideoId(id)) {
@@ -522,9 +530,10 @@ app.all('/stream/:id/:formatId?', async (req, res) => {
 
   try {
     const info = await ytdlp.getInfo(id, req.auth);
+    const maxHeight = videoHeight(req.query.h) || req.prefs.maxHeight;
     const format = formatId
       ? ytdlp.findFormat(info, formatId)
-      : ytdlp.pickProgressive(info.formats, BELLE_MAX_HEIGHT);
+      : ytdlp.pickProgressive(info.formats, maxHeight);
     if (!format) {
       sendPage(
         res,
@@ -888,13 +897,15 @@ app.get('/settings', (req, res) => {
     const textSize = render.TEXT_SIZES[req.query.textSize]
       ? String(req.query.textSize)
       : DEFAULT_PREFS.textSize;
+    const maxHeight = videoHeight(req.query.maxHeight) || DEFAULT_PREFS.maxHeight;
     // Cung ly do nhu ma thiet bi: may Nokia chi doc 'Expires', khong doc 'Max-Age'.
     const options = cookies.keepFor();
     // append chu khong phai set: khong duoc de len cookie ma thiet bi.
     res.append('Set-Cookie', `thumbs=${thumbs ? 1 : 0}; ${options}`);
     res.append('Set-Cookie', `pageSize=${pageSize}; ${options}`);
     res.append('Set-Cookie', `textSize=${textSize}; ${options}`);
-    sendPage(res, render.settingsPage({ thumbs, pageSize, textSize }));
+    res.append('Set-Cookie', `maxHeight=${maxHeight}; ${options}`);
+    sendPage(res, render.settingsPage({ thumbs, pageSize, textSize, maxHeight }));
     return;
   }
 

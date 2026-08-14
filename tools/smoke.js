@@ -51,6 +51,13 @@ function check(path, body, type) {
     if (/display:\s*(flex|grid)|position:\s*sticky|var\(--/i.test(code)) {
       problems.push('co CSS ma Belle khong hieu');
     }
+    // Con dau chu thich sot lai sau khi da bo het cac cap /* */ nghia la co mot
+    // chu thich dong som hay quen dong. Trinh duyet khong bao gi ca: no bo qua
+    // doan chu roi nuot luon quy tac ngay sau do — mat mot muc bo cuc ma nhin
+    // ma nguon van thay du.
+    if (path.endsWith('.css') && /\/\*|\*\//.test(code)) {
+      problems.push('chu thich CSS dong som hoac quen dong');
+    }
     // Trinh duyet goc cua Symbian khong co bo ve SVG: dat <svg> thang vao trang
     // thi no khong bao loi gi ma cung khong ve gi. Bieu tuong phai la anh PNG.
     if (/<svg\b/i.test(code)) problems.push('co SVG dat thang trong trang');
