@@ -68,9 +68,15 @@ jobs:
           BASE=http://127.0.0.1:8080 node tools/test-login.js
 
       # Trang video khong duoc cho yt-dlp cho xong moi ve. Bai thu dung mot
-      # yt-dlp gia cham de do dung cho do.
+      # yt-dlp gia cham de do dung cho do. Chay trong container vi no dung san
+      # ca may chu (can express) — may chay CI khong cai goi nao.
       - name: Kiem thu toc do mo trang video
-        run: node tools/test-watch.js
+        run: docker exec test node /app/tools/test-watch.js
+
+      # YouTube thinh thoang tra ve lo dia chi chi phat duoc 60 giay dau. Bai thu
+      # dung mot googlevideo gia de do xem may chu co hoi lai lo khac khong.
+      - name: Kiem thu lo dia chi bi khoa
+        run: docker exec test node /app/tools/test-luong.js
 
       # Phep do 'position: fixed' chi lo sai tren dien thoai, nen thu bang may
       # gia: dan dung, dan gia, hai kieu do khong duoc, va may khai ten Opera
