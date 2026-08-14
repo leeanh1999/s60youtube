@@ -326,22 +326,41 @@ một cái là khung phát đổi sang mức ấy (`/watch?v=<mã>&q=720`). Khô
 
 Hàng này khác nhau tuỳ máy, vì đằng sau hai mức là hai đường hoàn toàn khác:
 
-| Mức | Đường đi | Tua được | Ai thấy |
-| --- | --- | --- | --- |
-| 360p (và 720p ở video cũ) | YouTube có sẵn file MP4 gộp cả hình lẫn tiếng, máy chủ dọn thẳng đi | Có | Mọi máy |
-| 480p, 720p, 1080p | Hình và tiếng nằm rời, máy chủ ghép ngay lúc phát | Không | Máy đời mới |
+| Mức | Đường đi | Ai thấy |
+| --- | --- | --- |
+| 360p (và 720p ở video cũ) | YouTube có sẵn file MP4 gộp cả hình lẫn tiếng, máy chủ dọn thẳng đi | Mọi máy |
+| 480p, 720p, 1080p | Hình và tiếng nằm rời, trình duyệt tự ghép lấy | Máy đời mới |
 
-Mức mặc định luôn là bản **gộp sẵn** cao nhất — nhẹ nhất và tua được. Máy Nokia
-thì chặn ở 360p cho vừa màn 640×480; máy tính hay điện thoại đời mới lấy bản gộp
-sẵn cao nhất còn lại, rồi muốn nét hơn thì bấm sang 720p hay 1080p.
+Mức mặc định luôn là bản **gộp sẵn** cao nhất — nhẹ nhất, và mọi máy đều mở
+được. Máy Nokia thì chặn ở 360p cho vừa màn 640×480; máy tính hay điện thoại đời
+mới lấy bản gộp sẵn cao nhất còn lại, rồi muốn nét hơn thì bấm sang 720p hay
+1080p. Mức thấp hơn bản gộp sẵn (144p, 240p) không hiện: bản gộp sẵn hơn chúng
+mọi đường.
 
-Đường ghép (`/hd/<mã>/<độ phân giải>`) cho ffmpeg chép hai luồng vào chung một
-vỏ MP4 **phân mảnh** rồi đổ thẳng ra máy, không qua file nào: bấm là chạy. Chỉ
-chép chứ không mã hoá nên NAS chip ARM vẫn kịp. Đổi lại vỏ phân mảnh không có
-chỉ mục cho cả file nên **không tua được**, và máy Symbian không đọc được nó —
-vì vậy các mức này chỉ hiện cho máy đời mới, nhận theo tên máy trong `User-Agent`.
-Muốn vừa nét vừa tua được thì dùng mục **Tạo bản 720p tua được** ở dưới: cũng
-ghép, nhưng ghép ra file thật nên chờ vài giây.
+### Mức cao ghép ở đâu
+
+Máy chủ **không** ghép. Trang video của máy đời mới nạp thêm `public/hd.js` (12KB,
+nén còn ~3KB) và làm đúng việc mà trình phát của chính YouTube làm: đưa thẳng hai
+luồng vào bộ giải mã của trình duyệt qua Media Source Extensions. Máy chủ chỉ còn
+chuyển tiếp byte — không tiến trình ffmpeg nào cho mỗi người xem, và **tua được**
+bình thường.
+
+Tua được là nhờ mỗi luồng của YouTube có sẵn một bảng chỉ mục (hộp `sidx` nằm
+ngay sau `moov`) nói đoạn thứ *i* dài bao nhiêu giây và nằm ở byte nào. Lấy vài
+chục KB đầu file là đọc được cả bảng, sau đó kéo thanh thời gian tới đâu thì xin
+đúng khúc byte của chỗ đó — qua `/stream/<mã>/<itag>`, vốn đã biết chuyển tiếp
+header `Range` lên YouTube từ trước. Chưa bấm phát thì chưa tải đoạn nào, và chỉ
+đệm trước 30 giây.
+
+Không chạy được JavaScript, hoặc trình duyệt không đọc nổi định dạng đó, thì thẻ
+`<video>` vẫn đang trỏ vào **đường lui** `/hd/<mã>/<độ phân giải>`: ở đó ffmpeg
+chép hai luồng vào chung một vỏ MP4 **phân mảnh** rồi đổ thẳng ra máy, bấm là
+chạy nhưng không tua được (vỏ phân mảnh không có chỉ mục cho cả file). `hd.js`
+chỉ giành lấy khung phát khi đã chắc chắn làm được, nên hỏng ở bước nào cũng chỉ
+lùi về đường này chứ không mất video.
+
+Muốn vừa nét vừa tua được mà không cần JavaScript thì dùng mục **Tạo bản 720p
+tua được** ở dưới: cũng ghép, nhưng ghép ra file thật nên chờ vài giây.
 
 Dưới khung phát còn mấy lựa chọn:
 
@@ -646,6 +665,14 @@ không cứu được, phải nạp lại).
 **"Không kết nối được tới YouTube."** Máy chủ không ra được mạng. Nếu mạng công ty
 chặn YouTube thì phải bật VPN trên máy tính (điện thoại thì không cần).
 
+**"YouTube vừa cắt ngang kết nối của máy chủ."** Trong log máy chủ nó hiện
+nguyên văn là `RetriableError: [canceled] http/2 stream closed with error code
+CANCEL`. YouTube chặn tạm theo địa chỉ IP khi thấy gọi quá dày trong ít phút —
+không phải hỏng gì bên mình, và cũng không phải cookie hết hạn. Lúc đang bị chặn
+thì xin đoạn byte ở giữa file cũng bị trả 403, nên video có thể khựng giữa
+chừng. Chờ vài phút là hết. Trình phát độ phân giải cao tự xin lại đoạn bị chặn
+(thưa dần, tối đa 5 lần) nên thường tự vượt qua được mà không đứng hình.
+
 **Vừa nạp cookie đăng nhập xong là video nào cũng báo "YouTube không trả về
 luồng nào", trong khi trước đó chưa đăng nhập vẫn xem được.** Máy chủ thiếu
 `yt-dlp-ejs`. Khi không có cookie, yt-dlp lấy luồng bằng máy khách `android_vr`
@@ -712,6 +739,7 @@ node tools/smoke.js
 node tools/test-login.js
 node tools/test-convert.js
 node tools/test-pin.js
+node tools/test-hd.js
 node tools/preview.js
 ```
 
@@ -746,7 +774,18 @@ không được", và một máy khai tên Opera Mobile — máy này đo cái g
 máy dán thật mà vẫn phải ra "không dán", vì Presto chỉ nhảy về chỗ đúng sau khi
 ngừng cuộn. Chỗ này không thể thử bằng mắt trên máy tính
 vì trình duyệt nào trên máy tính cũng dán đúng, nên mọi lỗi chỉ lộ ra trên điện
-thoại. Hai bài đầu cần máy chủ đang chạy; hai bài sau thì không.
+thoại.
+
+`test-hd.js` chạy chính `public/hd.js` trên một "máy giả" có `MediaSource`, với
+một đoạn phim mẫu được ffmpeg dựng đúng kiểu luồng DASH của YouTube (có bảng chỉ
+mục `sidx`) và dọn qua HTTP thật. Nó đọc lại bảng chỉ mục bằng một bộ đọc **riêng**
+viết trong chính bài thu, và máy giả không nhận bừa miếng nào: mỗi miếng `hd.js`
+nạp vào phải trùng từng byte với một đoạn thật trong file. Cuối bài, các đoạn lấy
+về được ghép lại rồi đưa cho ffmpeg giải — sai một byte offset là lộ ngay. Bài
+thu cũng ép hai trường hợp máy không ghép được, để chắc chắn khung phát vẫn nằm
+nguyên ở đường lui `/hd` và không gọi mạng lần nào.
+
+Hai bài đầu cần máy chủ đang chạy; ba bài sau thì không.
 
 ## Ghi chú
 

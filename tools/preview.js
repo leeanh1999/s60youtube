@@ -134,12 +134,21 @@ const pages = {
     prefs: { ...prefs, thumbs: false },
     nextPage: '2',
   }),
-  // May doi moi: co ca hang chon do phan giai, va dang xem muc phai ghep.
+  // May doi moi: co ca hang chon do phan giai, va dang xem muc phai ghep —
+  // khung phat mang theo dia chi hai luong roi cho public/hd.js.
   'watch-hd.html': render.watchPage({
     video: { id: videos[0].id, title: info.title, author: info.author, duration: 245 },
     info,
     choices: [choice(1080, 'ghep'), choice(720, 'ghep'), choice(480, 'ghep'), choice(360, 'san')],
     chosen: choice(720, 'ghep'),
+    mse: {
+      height: 720,
+      duration: 245,
+      video: `/stream/${videos[0].id}/136?k=demo`,
+      videoType: 'video/mp4; codecs="avc1.4d401f"',
+      audio: `/stream/${videos[0].id}/140?k=demo`,
+      audioType: 'audio/mp4; codecs="mp4a.40.2"',
+    },
     related: videos.slice(1),
     prefs,
     profiles,

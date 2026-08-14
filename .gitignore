@@ -12,6 +12,9 @@ node_modules/
 # File da chuyen ma, sinh ra luc chay
 cache/
 
+# Ban yt-dlp tu cap nhat, sinh ra luc chay
+ytdlp-cache/
+
 # Ban HTML xem thu tren may tinh (node tools/preview.js)
 preview/
 

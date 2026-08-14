@@ -160,6 +160,15 @@ function friendlyError(err) {
   if (/members-only|join this channel|Premieres in|This live event/i.test(message)) {
     return 'Video này chỉ dành cho thành viên kênh, hoặc là buổi phát trực tiếp chưa bắt đầu.';
   }
+  // YouTube cat ngang giua chung (thay vi tu choi thang) khi thay mot dia chi
+  // goi qua day trong thoi gian ngan. Vai phut sau la lai binh thuong, nen
+  // dung bao nguoi dung di kiem tra mang — khong phai loi ben minh.
+  if (/RetriableError|http\/2 stream closed|CANCEL \(0x8\)|Remote end closed/i.test(message)) {
+    return (
+      'YouTube vừa cắt ngang kết nối của máy chủ — thường là do gọi quá dày' +
+      ' trong ít phút. Chờ một lát rồi mở lại video này.'
+    );
+  }
   if (/timed out|ETIMEDOUT|ECONNRESET|fetch failed|Connection aborted/i.test(message)) {
     return 'Không kết nối được tới YouTube. Kiểm tra mạng hoặc VPN của máy chủ.';
   }
@@ -421,6 +430,30 @@ function playChoices(videoId, formats, { legacy, streamKey, wanted }) {
   return { choices, chosen };
 }
 
+/**
+ * Dia chi hai luong roi (hinh, tieng) de trinh duyet cua may doi moi tu ghep
+ * lay — xem public/hd.js. Ghep trong may thi tua duoc, va may chu khong phai
+ * chay ffmpeg cho tung nguoi xem nua, chi con chuyen tiep byte.
+ *
+ * Van tra ve du lieu nay ma khong biet may kia co lam duoc hay khong: trang cu
+ * do duong /hd vao the <video> nhu cu, chinh hd.js tu quyet dinh co thay hay
+ * khong. May khong chay duoc JavaScript thi khong mat gi.
+ */
+function remuxStreams(videoId, formats, { chosen, streamKey, duration }) {
+  if (!chosen || chosen.kind !== 'ghep') return null;
+  const audio = ytdlp.pickAudioOnly(formats);
+  if (!ytdlp.isBelleAudio(audio) || !chosen.codec) return null;
+  const key = streamKey ? `?k=${encodeURIComponent(streamKey)}` : '';
+  return {
+    height: chosen.height,
+    duration,
+    video: `/stream/${videoId}/${chosen.id}${key}`,
+    videoType: `video/mp4; codecs="${chosen.codec}"`,
+    audio: `/stream/${videoId}/${audio.id}${key}`,
+    audioType: `audio/mp4; codecs="${audio.acodec}"`,
+  };
+}
+
 app.get('/watch', async (req, res) => {
   const prefs = req.prefs;
   const videoId = parseVideoId(req.query.v);
@@ -452,6 +485,7 @@ app.get('/watch', async (req, res) => {
   let info = null;
   let choices = [];
   let chosen = null;
+  let mse = null;
   let error = null;
   if (infoResult.status === 'fulfilled') {
     const raw = infoResult.value;
@@ -464,6 +498,11 @@ app.get('/watch', async (req, res) => {
       streamKey: req.streamKey,
       wanted: Number(req.query.q) || 0,
     }));
+    mse = remuxStreams(videoId, raw.formats, {
+      chosen,
+      streamKey: req.streamKey,
+      duration: raw.duration,
+    });
   } else {
     // Giu nguyen van loi trong log de con lan ra nguyen nhan, con man hinh
     // dien thoai thi chi hien cau tieng Viet ngan gon.
@@ -478,6 +517,7 @@ app.get('/watch', async (req, res) => {
       info,
       choices,
       chosen,
+      mse,
       related,
       prefs,
       profiles: media.PROFILES,

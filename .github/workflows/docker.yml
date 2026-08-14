@@ -78,6 +78,12 @@ jobs:
       - name: Kiem thu chuyen ma
         run: docker exec test node /app/tools/test-convert.js
 
+      # Trinh phat do phan giai cao chi chay tren may doi moi va hong thi tu lui
+      # ve duong /hd, nen nhin ben ngoai khong biet. Thu bang may gia, tren mot
+      # doan phim mau co bang chi muc y nhu luong cua YouTube.
+      - name: Kiem thu trinh phat do phan giai cao
+        run: docker exec test node /app/tools/test-hd.js
+
       # Bieu tuong do may chu to tu hinh SVG ra PNG. Hinh nao viet sai thi chi
       # hong dung luc co trang goi toi no, nen to thu ca bo o day.
       - name: To thu toan bo bieu tuong
