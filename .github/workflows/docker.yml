@@ -67,6 +67,11 @@ jobs:
           BASE=http://127.0.0.1:8080 node tools/smoke.js
           BASE=http://127.0.0.1:8080 node tools/test-login.js
 
+      # Trang video khong duoc cho yt-dlp cho xong moi ve. Bai thu dung mot
+      # yt-dlp gia cham de do dung cho do.
+      - name: Kiem thu toc do mo trang video
+        run: node tools/test-watch.js
+
       # Phep do 'position: fixed' chi lo sai tren dien thoai, nen thu bang may
       # gia: dan dung, dan gia, hai kieu do khong duoc, va may khai ten Opera
       # Mobile (nen Presto khong dan that nen phai bo han viec dan).

@@ -156,6 +156,27 @@ const pages = {
     streamKey: 'demo',
     legacy: false,
   }),
+  // Trang ve truoc khi yt-dlp kip tra loi: phan chu lay tu InnerTube, khung
+  // phat dung duong /stream khong kem ma luong (xem server.js).
+  'watch-cho.html': render.watchPage({
+    video: {
+      id: videos[0].id,
+      title: info.title,
+      author: info.author,
+      views: '1.803.938.823 lượt xem',
+      description: info.description,
+      duration: 0,
+    },
+    info: null,
+    ready: false,
+    chosen: { height: 0, kind: 'san', src: `/stream/${videos[0].id}?k=demo` },
+    related: videos.slice(1),
+    prefs,
+    profiles,
+    ffmpegOk: true,
+    streamKey: 'demo',
+    legacy: false,
+  }),
 };
 
 const outDir = path.resolve(process.argv[2] || path.join(__dirname, '..', 'preview'));

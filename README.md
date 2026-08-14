@@ -318,6 +318,31 @@ trong bộ nhớ máy. Trình duyệt của Belle (Nokia Browser 7.4 trở lên)
 `<video>` với H.264/MP4 nên làm được như vậy; máy đời cũ hơn không hiểu thẻ này
 sẽ thấy một liên kết thường ở chỗ đó.
 
+### Trang video không chờ yt-dlp
+
+Một trang video cần hai thứ từ hai nguồn khác hẳn nhau về tốc độ: **danh sách
+luồng** phải hỏi yt-dlp (chạy hẳn một tiến trình Python rồi hỏi YouTube mấy
+lượt — vài giây trên NAS), còn **phần chữ** (tên video, kênh, lượt xem, mô tả,
+video liên quan) chỉ cần một lần gọi InnerTube, nửa giây, mà ta vẫn gọi sẵn để
+lấy danh sách video liên quan.
+
+Nên trang không chờ cho đủ cả hai. Quá `WATCH_WAIT_MS` (mặc định 1,2 giây) mà
+yt-dlp chưa xong thì trang về ngay với phần chữ, còn yt-dlp cứ chạy tiếp cho
+xong — kết quả rơi vào bộ nhớ đệm. Khung phát lúc đó trỏ vào `/stream/<mã>`
+**không kèm mã luồng**, để chính lúc trình phát kéo file thì máy chủ mới chọn
+luồng; đọc xong cái tiêu đề rồi bấm Phát thì thường yt-dlp đã xong từ trước.
+
+Được thêm ba thứ: người chỉ lướt vào xem tiêu đề rồi thoát thì máy chủ đỡ hẳn
+một lần gọi YouTube; mở lại video vừa xem thì trang hiện tức thì; và hai máy mở
+cùng một video cùng lúc vẫn chỉ tốn một lần chạy yt-dlp (bộ nhớ đệm giữ cả lần
+gọi đang dở).
+
+Cái mất: lần mở đầu tiên chưa có hàng chọn độ phân giải, nên máy đời mới được
+mời một dòng **Xem mức nét hơn (720p, 1080p)** — bấm vào là mở lại chính trang
+đó, lúc này đã đầy đủ. Máy Symbian thì không mất gì: nó vốn chỉ có một mức
+360p. Muốn quay về nết cũ (chờ cho đủ rồi mới vẽ trang) thì đặt
+`WATCH_WAIT_MS=60000`.
+
 ### Chọn độ phân giải ngay trên trang video
 
 Ngay dưới khung phát là một hàng các mức xem được của **chính video đó**, bấm
@@ -740,6 +765,7 @@ node tools/test-login.js
 node tools/test-convert.js
 node tools/test-pin.js
 node tools/test-hd.js
+node tools/test-watch.js
 node tools/preview.js
 ```
 
@@ -785,7 +811,13 @@ về được ghép lại rồi đưa cho ffmpeg giải — sai một byte offse
 thu cũng ép hai trường hợp máy không ghép được, để chắc chắn khung phát vẫn nằm
 nguyên ở đường lui `/hd` và không gọi mạng lần nào.
 
-Hai bài đầu cần máy chủ đang chạy; ba bài sau thì không.
+`test-watch.js` tự dựng máy chủ với một yt-dlp **giả chậm** (2 giây) và một
+InnerTube giả nhanh, rồi đo xem trang video có về ngay không — và về sớm thì có
+đủ tên video, mô tả, video liên quan, khung phát bấm được hay không. Nó cũng
+kiểm rằng mở trang bốn lần chỉ tốn một lần gọi YouTube, và rằng khi InnerTube
+hỏng thì trang chịu đợi yt-dlp chứ không trả về một trang trống.
+
+Hai bài đầu cần máy chủ đang chạy; bốn bài sau thì không.
 
 ## Ghi chú
 

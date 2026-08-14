@@ -454,6 +454,22 @@ function remuxStreams(videoId, formats, { chosen, streamKey, duration }) {
   };
 }
 
+/**
+ * Cho mot viec toi han thoi, khong xong thi tra ve dau nay va de no chay tiep.
+ * Khong huy: ket qua muon van co ich, no roi vao bo nho dem cho lan goi sau.
+ */
+const CHUA_KIP = Symbol('chua kip');
+
+function waitBriefly(promise, ms) {
+  let timer = null;
+  return Promise.race([
+    promise,
+    new Promise((resolve) => {
+      timer = setTimeout(() => resolve(CHUA_KIP), ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
+
 app.get('/watch', async (req, res) => {
   const prefs = req.prefs;
   const videoId = parseVideoId(req.query.v);
@@ -471,24 +487,53 @@ app.get('/watch', async (req, res) => {
     return;
   }
 
+  // Danh sach luong phai hoi yt-dlp, ma no chay han mot tien trinh Python roi
+  // hoi YouTube may lan: vai giay tren NAS. Phan chu cua trang thi chi can mot
+  // lan goi InnerTube (nua giay) — cai ma minh van goi de lay video lien quan.
+  //
+  // Nen khong bat trang cho cho du: yt-dlp cham qua thi ve trang ngay bang phan
+  // chu, con no cu chay tiep cho xong. Ket qua roi vao bo nho dem, nen luc
+  // nguoi dung doc xong cai tieu de va bam Phat thi duong /stream da co san,
+  // khong phai cho lan nua. Ai chi luot vao xem tieu de roi thoat thi may chu
+  // do han mot lan goi YouTube.
+  const pending = ytdlp.getInfo(videoId, req.auth);
+  // Giu nguyen van loi trong log de con lan ra nguyen nhan, con man hinh dien
+  // thoai thi chi hien cau tieng Viet ngan gon.
+  pending.catch((err) => console.warn(`[watch ${videoId}] ${err?.message || err}`));
+
   const [infoResult, relatedResult] = await Promise.allSettled([
-    ytdlp.getInfo(videoId, req.auth),
+    waitBriefly(pending, config.WATCH_WAIT_MS),
     innertube.related(videoId),
   ]);
 
+  const meta = relatedResult.status === 'fulfilled' ? relatedResult.value.video : null;
   const related =
     relatedResult.status === 'fulfilled'
       ? relatedResult.value.videos.slice(0, prefs.pageSize)
       : [];
 
+  // Ve som chi dang khi co cai de ve. InnerTube hong, hoac tra ve mot hinh thu
+  // minh khong doc duoc ten video trong do, thi trang chi con moi chu 'Video' —
+  // te hon han la doi yt-dlp them vai giay.
+  const outcome =
+    !meta?.title && infoResult.status === 'fulfilled' && infoResult.value === CHUA_KIP
+      ? await pending.then(
+          (value) => ({ status: 'fulfilled', value }),
+          (reason) => ({ status: 'rejected', reason })
+        )
+      : infoResult;
+
   const legacy = isLegacyDevice(req);
+  const key = req.streamKey ? `?k=${encodeURIComponent(req.streamKey)}` : '';
   let info = null;
   let choices = [];
   let chosen = null;
   let mse = null;
   let error = null;
-  if (infoResult.status === 'fulfilled') {
-    const raw = infoResult.value;
+  const ready = outcome.status === 'fulfilled' && outcome.value !== CHUA_KIP;
+
+  if (ready) {
+    const raw = outcome.value;
     info = {
       ...raw,
       audioDirect: ytdlp.isBelleAudio(ytdlp.pickAudioOnly(raw.formats)),
@@ -503,18 +548,28 @@ app.get('/watch', async (req, res) => {
       streamKey: req.streamKey,
       duration: raw.duration,
     });
+  } else if (outcome.status === 'rejected') {
+    error = friendlyError(outcome.reason);
   } else {
-    // Giu nguyen van loi trong log de con lan ra nguyen nhan, con man hinh
-    // dien thoai thi chi hien cau tieng Viet ngan gon.
-    console.warn(`[watch ${videoId}] ${infoResult.reason?.message || infoResult.reason}`);
-    error = friendlyError(infoResult.reason);
+    // Chua co danh sach luong. Duong /stream khong kem ma luong thi tu chon lay
+    // ban hop voi may goi — dung luc trinh phat that su keo file ve, luc do
+    // yt-dlp thuong da xong. Nho vay khung phat van bam duoc ngay.
+    chosen = { height: 0, kind: 'san', src: `/stream/${videoId}${key}` };
   }
 
   sendPage(
     res,
     render.watchPage({
-      video: { id: videoId, title: info?.title || 'Video', author: '', duration: 0 },
+      video: {
+        id: videoId,
+        title: meta?.title || 'Video',
+        author: meta?.author || '',
+        views: meta?.views || '',
+        description: meta?.description || '',
+        duration: 0,
+      },
       info,
+      ready,
       choices,
       chosen,
       mse,
