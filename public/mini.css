@@ -1,0 +1,436 @@
+/* Giao dien cho Opera Mini (xem lib/render.js, ham miniLayout).
+
+   Trang nay khong duoc ve tren dien thoai: may chu cua Opera ve ho bang nen
+   Presto roi gui xuong may mot anh chup bam duoc (OBML). Vi phai gui ca anh
+   chup qua mang 2G nen ban ve ay bo bot rat nhieu thu, va do la ly do file nay
+   ton tai thay vi vai dong de len s60.css:
+
+     - Bo goc (border-radius) khong ve. Vien don la vien don, cham cham va dut
+       quang cung ve thanh lien.
+     - line-height bo han — de cho vua duoc nhieu chu hon trong mot man hinh.
+       Can giua theo chieu doc bang line-height la khong bao gio dung.
+     - Co chu khong lay dung so minh xin: may chu chon trong vai co san cua
+       chinh chiec dien thoai do. Nen moi be ngang do bang 'em' deu la do theo
+       mot con so khong biet truoc — anh thu nho, khung chua anh, le chua cho
+       anh, tat ca deu phai do bang diem anh hoac bo han.
+     - Khong co :focus va khong co hoat hinh: mau cua muc dang chon la viec cua
+       chinh Opera Mini, trang khong ve duoc.
+
+   Nen o day chi con nhung thu ban ve nao cung lam dung: mau nen, mau chu, vien
+   lien, dem, chu dam, va float voi clear. Khong mot dong 'position' nao —
+   'fixed' bi coi nhu 'absolute' (dan vao trang chu khong vao khung nhin), ma
+   the video thi khong duoc phep chong hinh len chu. */
+
+body {
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+  color: #14161a;
+}
+
+/* Do bang phan tram chu khong phai diem anh: may nao doi duoc co chu thi ba
+   muc nay con cach nhau, may nao khong thi ca ba ve cung mot co — van doc duoc,
+   chi la muc Cai dat khong con tac dung (trang Cai dat co noi ro cho nay). */
+body.t-m {
+  font-size: 85%;
+}
+
+body.t-xl {
+  font-size: 125%;
+}
+
+a {
+  color: #0b3fbf;
+  text-decoration: none;
+}
+
+/* Do bang diem anh vi co chu o day khong biet truoc. Anh goc 32 diem, thu ve
+   16 thi may nao thu nho tho den dau cung con ra hinh. */
+.ic {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+  border: 0;
+}
+
+/* ---------- thanh tren ---------- */
+
+/* Mot dong chu tren nen do, khong bang khong float: bang de can giua theo chieu
+   doc thi o day khong con y nghia (khong co line-height de ma can), con hai muc
+   nam hai dau dong thi tren man 128 diem la dong do tu gay lam doi. */
+.bar {
+  padding: 5px 6px;
+  background: #c00000;
+  border-bottom: 2px solid #8c0000;
+}
+
+.bar a {
+  color: #ffffff;
+  font-weight: bold;
+}
+
+.bar .ic {
+  margin-right: 5px;
+}
+
+.bar .back {
+  margin-left: 12px;
+  font-weight: normal;
+}
+
+/* ---------- o tim kiem ---------- */
+
+/* Tren Opera Mini o nay nam san trong moi trang chu khong nap ra tu kinh lup:
+   mo mot khung bang JavaScript thi phai goi ra proxy mot lan, ma mot lan goi
+   qua 2G la vai giay — dat hon han mot dong o nhap nam san. */
+.search {
+  margin: 5px 6px;
+  padding: 0;
+}
+
+.search input {
+  width: 60%;
+}
+
+.search button {
+  font-weight: bold;
+  background: #c00000;
+  color: #ffffff;
+  border: 1px solid #8c0000;
+}
+
+/* ---------- tieu de ---------- */
+
+h1 {
+  margin: 0 0 3px 0;
+  font-size: 115%;
+}
+
+h2 {
+  margin: 12px 6px 4px 6px;
+  padding-left: 6px;
+  font-size: 100%;
+  color: #33383d;
+  border-left: 4px solid #c00000;
+}
+
+h1 .ic,
+h2 .ic {
+  margin-right: 5px;
+}
+
+.head {
+  margin: 6px;
+  padding: 6px;
+  background: #f4f6f8;
+  border: 1px solid #d3d8dd;
+}
+
+.head .by,
+.head .facts {
+  margin-top: 3px;
+  font-size: 85%;
+  color: #4a5058;
+}
+
+.head .facts span {
+  margin-right: 12px;
+}
+
+/* ---------- danh sach video ---------- */
+
+/* Anh ben trai, chu chay ben phai va vong xuong duoi anh — bang float chu
+   khong bang khoi neo goc: neo goc thi phai chua san le trai dung bang be ngang
+   anh, ma be ngang do lai phu thuoc co chu ma may chon.
+
+   Muc sau 'clear: both' de no bat dau duoi cai anh cua muc truoc; khong thi hai
+   the video ngan lien nhau se chen vao cung mot vung anh. */
+.feed {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feed li {
+  clear: both;
+  margin: 0;
+  padding: 6px;
+  border-bottom: 1px solid #d3d8dd;
+}
+
+.card {
+  display: block;
+  color: #14161a;
+}
+
+.card img {
+  float: left;
+  margin: 2px 6px 2px 0;
+  border: 0;
+}
+
+.card .ti {
+  display: block;
+  font-weight: bold;
+  color: #0b2f8f;
+}
+
+.card .mt {
+  display: block;
+  font-size: 85%;
+  color: #6b7178;
+}
+
+.live-t {
+  padding: 0 4px;
+  background: #c00000;
+  color: #ffffff;
+  font-weight: bold;
+}
+
+/* ---------- danh sach lua chon ---------- */
+
+.opts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.opts li {
+  clear: both;
+  margin: 0;
+  padding: 8px 6px;
+  border-bottom: 1px solid #d3d8dd;
+}
+
+.opts li a .ic {
+  margin-right: 6px;
+}
+
+.opts li a .lb {
+  font-weight: bold;
+}
+
+.opts li a .m,
+.opts li.m {
+  display: block;
+  color: #6b7178;
+  font-size: 85%;
+}
+
+/* ---------- nut va hang chon do phan giai ---------- */
+
+/* Le cua khoi da nam o chinh cai nut/lien ket ben trong, nen the <p> boc ngoai
+   khong duoc them le cua rieng no nua. */
+.play,
+.more {
+  margin: 0;
+  padding: 0;
+}
+
+a.go {
+  display: block;
+  margin: 6px;
+  padding: 10px 6px;
+  background: #c00000;
+  color: #ffffff;
+  font-weight: bold;
+  text-align: center;
+  border: 1px solid #8c0000;
+}
+
+a.go .ic {
+  margin-right: 6px;
+}
+
+.qual {
+  margin: 8px 6px;
+  font-size: 90%;
+}
+
+.qual .lb {
+  margin-right: 4px;
+  color: #6b7178;
+}
+
+.qual a,
+.qual .on {
+  margin-right: 4px;
+  padding: 3px 6px;
+  border: 1px solid #b9bfc6;
+  font-weight: bold;
+}
+
+.qual .on {
+  background: #c00000;
+  color: #ffffff;
+  border-color: #8c0000;
+}
+
+.more a {
+  display: block;
+  margin: 6px;
+  padding: 8px 6px;
+  background: #f4f6f8;
+  border: 1px solid #d3d8dd;
+  text-align: center;
+  font-weight: bold;
+}
+
+.more a .ic {
+  margin-right: 6px;
+}
+
+/* ---------- khoi van ban ---------- */
+
+.desc,
+.warn,
+.err,
+.ok {
+  margin: 6px;
+  padding: 6px;
+  font-size: 90%;
+  border: 1px solid #d3d8dd;
+  background: #f4f6f8;
+}
+
+.warn .ic,
+.err .ic,
+.ok .ic {
+  margin-right: 5px;
+}
+
+.warn {
+  background: #fff9e0;
+  border-color: #e0bf00;
+}
+
+.err {
+  background: #ffeceb;
+  border-color: #c00000;
+}
+
+.ok {
+  background: #ecfaec;
+  border-color: #2f9e2f;
+}
+
+.hint {
+  margin: 8px 6px;
+  color: #6b7178;
+  font-size: 85%;
+}
+
+.empty {
+  margin: 10px 6px;
+  color: #6b7178;
+}
+
+/* ---------- trang chuyen ma ---------- */
+
+.stat {
+  margin: 8px 6px 4px 6px;
+  font-weight: bold;
+}
+
+/* Thanh tien do la mot khoi mau trong mot cai khung: khong bo goc, khong hoat
+   hinh, chi la be ngang tinh theo phan tram — ban ve nao cung lam dung. */
+.pbar {
+  margin: 0 6px;
+  height: 12px;
+  background: #ffffff;
+  border: 1px solid #b9bfc6;
+}
+
+.pfill {
+  height: 12px;
+  background: #c00000;
+  font-size: 1px;
+}
+
+/* ---------- trang dang nhap ---------- */
+
+.code {
+  margin: 6px;
+  padding: 8px 4px;
+  border: 2px solid #c00000;
+  text-align: center;
+  font-weight: bold;
+  font-size: 140%;
+}
+
+.url {
+  margin: 6px;
+  padding: 6px;
+  background: #f4f6f8;
+  border: 1px solid #d3d8dd;
+  font-size: 85%;
+  word-wrap: break-word;
+}
+
+/* ---------- bang thong tin ---------- */
+
+.info {
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+}
+
+.info td {
+  padding: 5px 6px;
+  font-size: 90%;
+  vertical-align: top;
+  border-bottom: 1px solid #e6eaee;
+}
+
+.info td.lb {
+  width: 45%;
+  color: #6b7178;
+}
+
+/* ---------- bieu mau cai dat ---------- */
+
+.form .row {
+  margin: 6px;
+  padding: 6px;
+  border: 1px solid #d3d8dd;
+}
+
+.form .row label {
+  font-weight: bold;
+}
+
+.form .row .m {
+  display: block;
+  margin-top: 3px;
+  color: #6b7178;
+  font-size: 85%;
+}
+
+.form .submit {
+  padding: 6px;
+}
+
+.form .submit button {
+  padding: 8px 12px;
+  background: #c00000;
+  color: #ffffff;
+  font-weight: bold;
+  border: 1px solid #8c0000;
+}
+
+/* ---------- chan trang ---------- */
+
+/* Bon o thanh mot dong chu ngan cach bang dau cham giua. Bang bon cot thi tren
+   man 128 diem moi o chi con 30 diem, nhan nao cung gay lam ba dong. */
+.nav {
+  margin: 12px 6px;
+  padding: 8px 0 0 0;
+  border-top: 1px solid #c3c9cf;
+  font-size: 90%;
+}
+
+.nav .on {
+  color: #c00000;
+  font-weight: bold;
+}

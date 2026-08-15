@@ -45,6 +45,41 @@ function isLegacyDevice(req) {
   return /Symbian|Series ?60|S60|NokiaBrowser|MIDP|Opera Mini/i.test(ua);
 }
 
+/**
+ * Opera Mini khong ve trang tren dien thoai: may chu cua Opera tai trang ve, ve
+ * ho bang nen Presto, roi gui xuong may mot ANH CHUP bam duoc (dinh dang OBML).
+ * Dien thoai chi con viec hien anh do va bao lai xem nguoi dung bam vao dau.
+ *
+ * Nen mot nua nhung gi trang nay dua ra deu vo nghia voi no:
+ *
+ *  - JavaScript chay tren may chu cua Opera vai giay luc tai trang roi dung
+ *    han, khong co gi chay tiep trong may. s60.js do 'position: fixed', mo
+ *    khung tim kiem, bat phim len/xuong — ca ba deu can chay luc nguoi dung
+ *    bam, tuc la ca ba deu khong co that.
+ *  - Trang khong tu lam moi duoc: het meta refresh lan setTimeout. Trang doi
+ *    dang nhap va trang chuyen ma phai co duong bam lam moi that.
+ *  - Ban ghi Presto bo bot CSS de anh chup nhe di: bo goc khong ve, line-height
+ *    bo han, co chu chi chon trong vai co san cua may. Bo cuc nao do bang 'em'
+ *    hay chong hinh len nhau la sai cho ngay.
+ *  - Khong phat duoc video trong trang.
+ *
+ * Nhan ra bang hai duong. Header X-OperaMini-* la do chinh proxy cua Opera them
+ * vao, khong gia duoc va con dung ca khi ban Opera Mini tren Android khai mot
+ * ten may kieu Chrome; ten may (User-Agent) la duong du phong cho cac ban cu.
+ * Nhan nham theo huong nao cung khong lam hong trang: hai duong deu ra du chuc
+ * nang, chi khac cach bay ra.
+ */
+function isOperaMini(req) {
+  if (
+    req.headers['x-operamini-phone-ua'] ||
+    req.headers['x-operamini-features'] ||
+    req.headers['x-operamini-phone']
+  ) {
+    return true;
+  }
+  return /Opera Mini/i.test(String(req.headers['user-agent'] || ''));
+}
+
 // ---------- tuy chon nguoi dung (luu bang cookie) ----------
 
 const DEFAULT_PREFS = {
@@ -52,6 +87,14 @@ const DEFAULT_PREFS = {
   pageSize: config.PAGE_SIZE,
   textSize: render.DEFAULT_TEXT_SIZE,
 };
+
+/**
+ * Trang gui cho Opera Mini di ca luot xuong may duoi dang mot anh chup, va anh
+ * do to bao nhieu thi may phai nho bay nhieu — dai qua thi Opera cat trang lam
+ * nhieu phan, moi phan la mot lan goi ra proxy. Muoi hai video kem muoi hai anh
+ * la vua du cham nguong do, nen cat bot ngay tu day.
+ */
+const MINI_PAGE_SIZE = 8;
 
 function readPrefs(req) {
   const prefs = { ...DEFAULT_PREFS };
@@ -62,6 +105,10 @@ function readPrefs(req) {
   if (Number.isFinite(pageSize) && pageSize >= 4 && pageSize <= 40) {
     prefs.pageSize = pageSize;
   }
+  // Khong phai so thich cua nguoi dung ma la kha nang cua may, nhung moi trang
+  // deu can no dung luc dung khuon nen di chung duong voi cac tuy chon kia.
+  prefs.mini = isOperaMini(req);
+  if (prefs.mini) prefs.pageSize = Math.min(prefs.pageSize, MINI_PAGE_SIZE);
   return prefs;
 }
 
@@ -310,7 +357,10 @@ app.use((req, res, next) => {
 async function homeFeed(req) {
   if (!config.HOME_FEED || !cookies.status(req.device).ready) return {};
   try {
-    const videos = await ytdlp.getFeed('recommended', req.auth, config.PAGE_SIZE);
+    // Binh thuong la PAGE_SIZE; may nao chi cong duoc trang ngan hon (Opera
+    // Mini) thi da tu ha so do xuong trong readPrefs.
+    const limit = Math.min(config.PAGE_SIZE, req.prefs.pageSize);
+    const videos = await ytdlp.getFeed('recommended', req.auth, limit);
     if (videos.length) return { videos };
     return { note: feedEmptyNote(req) };
   } catch (err) {
@@ -1155,7 +1205,18 @@ app.get('/settings', (req, res) => {
     res.append('Set-Cookie', `thumbs=${thumbs ? 1 : 0}; ${options}`);
     res.append('Set-Cookie', `pageSize=${pageSize}; ${options}`);
     res.append('Set-Cookie', `textSize=${textSize}; ${options}`);
-    sendPage(res, render.settingsPage({ thumbs, pageSize, textSize }));
+    // Bay ra nhung gia tri vua luu — tru so ket qua moi trang: qua Opera Mini
+    // thi readPrefs con ha no xuong nua, nen o day phai ha theo, khong thi
+    // trang bao mot dang ma lan sau mo ra lai chay mot dang khac.
+    sendPage(
+      res,
+      render.settingsPage({
+        thumbs,
+        pageSize: req.prefs.mini ? Math.min(pageSize, MINI_PAGE_SIZE) : pageSize,
+        textSize,
+        mini: req.prefs.mini,
+      })
+    );
     return;
   }
 

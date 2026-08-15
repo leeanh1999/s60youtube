@@ -13,6 +13,7 @@ const PATHS = process.argv.slice(2).length
       '/about',
       '/settings',
       '/s60.css',
+      '/mini.css',
       '/s60.js',
       '/i/home-red.png',
       '/khong-co-trang',

@@ -451,6 +451,7 @@ thật (`width=device-width`) rồi để `s60.css` tự chọn.
 | --- | --- | --- |
 | E6, E7, N97 | 640 điểm ngang | Chữ 20px, ảnh xem trước 8em (≈160 điểm) |
 | N8, C7, X7, C6-01 khi xem dọc | 360 điểm ngang | Chữ 16px, ảnh 6,4em (≈102 điểm), lề mỏng hơn |
+| Máy vào bằng Opera Mini | màn nào cũng vậy | Khuôn riêng, đơn giản hơn hẳn — xem [Mở bằng Opera Mini](#mở-bằng-opera-mini) |
 
 Ngưỡng đổi khuôn là 480 điểm. Điểm ảnh của N8 to hơn của E6 (210 so với 325 điểm
 mỗi inch) nên chữ 16px trên N8 đọc ra vẫn lớn hơn chữ 20px trên E6, mà bề ngang
@@ -601,6 +602,66 @@ xong.
 
 Ba phần trên nằm trong `public/s60.js`; tắt JavaScript đi thì trang vẫn dùng được
 đủ như cũ, chỉ mất đúng ba cái tiện đó.
+
+### Mở bằng Opera Mini
+
+Nhiều máy cũ vào web bằng **Opera Mini** chứ không bằng trình duyệt gốc, và Opera
+Mini không phải một trình duyệt nhỏ — nó là một **máy chiếu**. Điện thoại không
+tải trang: máy chủ của Opera tải hộ, vẽ hộ bằng nền Presto, rồi gửi xuống máy một
+**ảnh chụp bấm được** (định dạng OBML). Máy chỉ hiện ảnh đó và báo lại xem người
+dùng bấm vào đâu. Cả nửa số thứ trang này chuẩn bị cho máy Symbian vì thế đều rơi
+vào khoảng không:
+
+| Trang làm gì | Trên Opera Mini |
+| --- | --- |
+| `s60.js` đo rồi dán hai thanh, mở khung tìm, bắt phím lên/xuống | Script chỉ chạy vài giây trên máy chủ Opera lúc dựng ảnh rồi **dừng hẳn** — trong máy không có gì chạy tiếp |
+| `<meta refresh>` ở trang đăng nhập và trang chuyển mã | Ảnh chụp thì không tự đếm giờ: trang **nằm im mãi mãi** |
+| Thẻ `<video>` phát ngay trong trang | Không phát được gì trong trang |
+| Khối ảnh neo góc, mọi bề ngang đo bằng `em` | Presto **bỏ `line-height`**, không vẽ bo góc, và **chọn cỡ chữ theo máy** chứ không theo trang — bố cục đo bằng `em` là lệch |
+| `accesskey` và ô số 1–9 | Phím số là của menu Opera Mini |
+
+Nên máy chủ nhận ra Opera Mini và trả về một **khuôn riêng**: `miniLayout` trong
+`lib/render.js` với `public/mini.css`, không dính gì tới `s60.css` và `s60.js`.
+Cùng nội dung, cùng tên lớp, chỉ khác cách bày:
+
+- **Ô tìm nằm sẵn ở đầu mọi trang** thay cho kính lúp bật ra bằng JavaScript. Trên
+  máy này mỗi lần bấm là một lần đi vòng qua proxy của Opera, vài giây trên 2G —
+  một dòng ô nhập rẻ hơn hẳn một lần tải trang.
+- **Làm mới là một liên kết thật** đặt ngay đầu trang, ở những trang đang đợi việc
+  (đăng nhập, chuyển mã). Không có nó thì người dùng ngồi nhìn một tấm ảnh cũ.
+- **Ảnh xem trước đo bằng điểm ảnh và neo bằng `float`**, không phải khối neo góc
+  với lề trái đo bằng `em`: cỡ chữ do máy chọn nên khoảng chừa và cái ảnh nằm
+  trong đó không bao giờ khớp nhau. Thời lượng xuống dòng thông tin thay vì dán
+  lên góc ảnh.
+- **Khung phát thành một nút bấm** thẳng tới file — điện thoại giao nó cho trình
+  phát của máy. Trang nói rõ chỗ này, và mách sang mục *Nghe ngay — chỉ tiếng*.
+- **Không mã QR ở trang đăng nhập**: ảnh đi qua Opera bị nén thêm một lần cho nhẹ
+  đường truyền, mà mã QR nhoè đi là máy khác soi không ra. Mã chữ thì gõ tay vẫn
+  đúng.
+- **Nhiều nhất 8 video một trang** (`MINI_PAGE_SIZE` trong `server.js`): cả trang
+  đi xuống máy dưới dạng một ảnh, dài quá là Opera cắt ra làm nhiều phần và mỗi
+  phần lại là một lần chờ.
+- Chân trang bốn ô thành **một dòng chữ ngăn bằng dấu chấm giữa**: trên màn 128
+  điểm, bốn ô bảng thì mỗi ô còn 30 điểm, nhãn nào cũng gãy làm ba dòng.
+
+`mini.css` chỉ dùng những thứ bản vẽ nào cũng làm đúng — màu nền, màu chữ, viền
+liền, đệm, chữ đậm, `float` với `clear` — và **không một dòng `position` nào**:
+Presto nhận `fixed` rồi xử lý như `absolute`, tức thanh dán vào trang chứ không
+vào khung nhìn. `tools/test-mini.js` canh đúng chỗ đó: nó soi cả `mini.css` lẫn
+HTML của sáu trang, hỏng một điều kiện là báo lỗi.
+
+Nhận ra Opera Mini bằng **header do chính proxy của Opera thêm vào** —
+`X-OperaMini-Phone-UA`, `X-OperaMini-Features`, `X-OperaMini-Phone` — rồi mới tới
+tên máy. Header là đường chắc hơn: nó còn đúng cả khi bản Opera Mini trên Android
+khai một tên máy kiểu Chrome. Nhận nhầm theo hướng nào cũng không hỏng trang: hai
+khuôn đều ra đủ chức năng, chỉ khác cách bày.
+
+Một điều Opera Mini không giúp được: **proxy của Opera nằm ngoài Internet**, nên
+nó chỉ mở được máy chủ nào có địa chỉ công khai. Máy chủ trong mạng nhà
+(`192.168.x.x`) thì Opera Mini không với tới — lúc đó phải dùng trình duyệt gốc
+của máy, hoặc mở máy chủ ra Internet (đọc kỹ mục
+[Mở ra Internet cho nhiều người](#mở-ra-internet-cho-nhiều-người)). Nút phát cũng
+vậy: nó là đường đi thẳng từ điện thoại tới máy chủ, không qua Opera.
 
 ### Trang nặng bao nhiêu byte
 
@@ -757,6 +818,18 @@ thanh cũng đi theo trang tới đó, ngừng cuộn chừng nửa giây nó m�
 trong dòng chảy, cuộn đến đâu thấy đúng chỗ đó. Muốn có thanh dán thì mở bằng
 trình duyệt gốc của máy (Nokia Browser đời Belle) — máy đó dán thật.
 
+**Mở bằng Opera Mini thì trang trông khác hẳn.** Đúng như thiết kế: máy chủ nhận
+ra Opera Mini và trả về khuôn riêng — bố cục đơn giản hơn, ô tìm nằm sẵn ở đầu
+trang, không phím tắt, không tự làm mới, và video phát bằng một nút bấm chứ không
+bằng khung phát trong trang. Lý do từng chỗ nằm ở mục
+[Mở bằng Opera Mini](#mở-bằng-opera-mini). Muốn xem khuôn đầy đủ thì mở bằng
+trình duyệt gốc của máy.
+
+**Opera Mini báo không mở được trang.** Opera Mini đi vòng qua máy chủ của Opera
+ngoài Internet, nên nó chỉ với tới được máy chủ có địa chỉ công khai — máy chủ
+trong mạng nhà (`192.168.x.x`, `10.x.x.x`) thì không đường nào tới. Dùng trình
+duyệt gốc của máy, hoặc mở máy chủ ra Internet.
+
 ## Kiểm thử nhanh
 
 ```bash
@@ -766,6 +839,7 @@ node tools/test-convert.js
 node tools/test-pin.js
 node tools/test-hd.js
 node tools/test-watch.js
+node tools/test-mini.js
 node tools/preview.js
 ```
 
@@ -782,7 +856,8 @@ ngay sau đó** — nhìn mã nguồn vẫn thấy đủ mà trên máy thì m�
 
 `preview.js` dựng HTML của mọi trang ra thư mục `preview/` để xem trên máy tính,
 không cần chạy máy chủ hay gọi YouTube. Mở `preview/sizes.html` là thấy các
-trang trong khung 360×640 (N8) và 640×480 (E6) cạnh nhau. Đừng thu nhỏ cửa sổ
+trang trong khung 360×640 (N8), 640×480 (E6) và 240×320 (khuôn Opera Mini trên
+máy Java) cạnh nhau. Đừng thu nhỏ cửa sổ
 trình duyệt để thử màn 360: Chrome và Edge trên Windows không cho cửa sổ hẹp hơn
 chừng 500 điểm, chúng vẽ ở 492 điểm rồi cắt bớt — trang trông như bị tràn dù
 `@media` chưa hề được áp. Muốn thử tay thì dùng chế độ Responsive của devtools.
@@ -817,7 +892,16 @@ InnerTube giả nhanh, rồi đo xem trang video có về ngay không — và v�
 kiểm rằng mở trang bốn lần chỉ tốn một lần gọi YouTube, và rằng khi InnerTube
 hỏng thì trang chịu đợi yt-dlp chứ không trả về một trang trống.
 
-Hai bài đầu cần máy chủ đang chạy; bốn bài sau thì không.
+`test-mini.js` gọi sáu trang bằng đúng bộ header mà proxy của Opera thêm vào, rồi
+soi xem có sót thứ gì Opera Mini không chạy được không: thẻ `<script>`,
+`<meta refresh>`, `<video>`, `accesskey`, khung tìm kiếm ẩn. Nó đọc cả
+`public/mini.css` để chắc trong đó không có `position`, bo góc, `line-height` hay
+flexbox — những thứ nền Presto bỏ qua hoặc hiểu khác. Phần cuối kiểm chiều ngược
+lại: máy Symbian phải nhận y nguyên trang cũ, đủ `s60.js`, khung phát, mã QR và
+phím tắt. Chỗ này mắt không soi được, vì mọi trình duyệt trên máy tính đều vẽ
+đúng cả hai khuôn.
+
+Hai bài đầu cần máy chủ đang chạy; năm bài sau thì không.
 
 ## Ghi chú
 

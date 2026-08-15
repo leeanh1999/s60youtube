@@ -14,6 +14,9 @@ const icons = require('../lib/icons');
 const render = require('../lib/render');
 
 const prefs = { thumbs: true, pageSize: 10, textSize: 'l' };
+// Khuon danh cho Opera Mini: cung noi dung, khac cach bay ra (xem miniLayout
+// trong lib/render.js). Xem thu thi thu cua so con chung 240 diem.
+const mini = { ...prefs, pageSize: 8, mini: true };
 
 const videos = Array.from({ length: 6 }, (_, i) => ({
   id: `demoVideo${String(i).padStart(2, '0')}`.slice(0, 11),
@@ -156,6 +159,35 @@ const pages = {
     streamKey: 'demo',
     legacy: false,
   }),
+  // Opera Mini: mot cot chu, anh neo bang float, khong khung phat, o tim nam
+  // san o dau trang, chan trang la mot dong chu.
+  'mini-home.html': render.homePage({ prefs: mini, videos }),
+  'mini-search.html': render.searchPage({
+    query: 'nhạc vàng',
+    videos,
+    prefs: mini,
+    nextPage: '2',
+  }),
+  'mini-watch.html': render.watchPage({
+    video: { id: videos[0].id, title: info.title, author: info.author, duration: 245 },
+    info,
+    choices: [choice(360, 'san')],
+    chosen: choice(360, 'san'),
+    related: videos.slice(1),
+    prefs: mini,
+    profiles,
+    ffmpegOk: true,
+    streamKey: 'demo',
+    legacy: true,
+  }),
+  'mini-login.html': render.loginPage({
+    code: 'ABC123',
+    linkUrl: 'http://192.168.1.10:9080/link?c=ABC123',
+    status: { own: false, ready: false },
+    minutes: 9,
+    prefs: mini,
+  }),
+  'mini-settings.html': render.settingsPage(mini),
   // Trang ve truoc khi yt-dlp kip tra loi: phan chu lay tu InnerTube, khung
   // phat dung duong /stream khong kem ma luong (xem server.js).
   'watch-cho.html': render.watchPage({
@@ -183,7 +215,7 @@ const outDir = path.resolve(process.argv[2] || path.join(__dirname, '..', 'previ
 const publicDir = path.join(__dirname, '..', 'public');
 
 fs.mkdirSync(outDir, { recursive: true });
-for (const name of ['s60.css', 's60.js']) {
+for (const name of ['s60.css', 'mini.css', 's60.js']) {
   fs.copyFileSync(path.join(publicDir, name), path.join(outDir, name));
 }
 // Ô xám thay cho ảnh thật: chỉ cần đúng khung 16:9 để soi bố cục.
@@ -212,7 +244,7 @@ for (const [name, html] of Object.entries(pages)) {
   // Trang that lay tai nguyen tu goc dia chi; ban xem thu nam trong mot thu
   // muc nen phai doi sang duong dan tuong doi.
   const local = html
-    .replace(/"\/s60\.(css|js)(?:\?[^"]*)?"/g, '"s60.$1"')
+    .replace(/"\/(s60\.css|s60\.js|mini\.css)(?:\?[^"]*)?"/g, '"$1"')
     .replace(/"\/i\/([^"?]+)(?:\?[^"]*)?"/g, '"i/$1"')
     .replace(/"\/thumb\/[^"]*"/g, '"thumb.svg"');
   fs.writeFileSync(path.join(outDir, name), local);
@@ -265,6 +297,15 @@ const shown = [
   'watch.html',
   'settings.html',
 ];
+// Khuon Opera Mini do rieng o be ngang hep nhat con gap: may Java 240 diem.
+const MINI_SCREEN = ['Opera Mini — 240 x 320 (may Java)', 240, 320];
+const shownMini = [
+  'mini-home.html',
+  'mini-search.html',
+  'mini-watch.html',
+  'mini-login.html',
+  'mini-settings.html',
+];
 fs.writeFileSync(
   path.join(outDir, 'sizes.html'),
   `<!DOCTYPE html>
@@ -276,15 +317,17 @@ p { margin: 0; padding: 0 8px 4px 8px; font-size: 12px; color: #d7dbdf }
 iframe { border: 0; display: block; background: #fff; float: left; margin: 0 8px 8px 0 }
 .row { overflow: hidden; padding-left: 8px }
 </style></head><body>
-${SCREENS.map(
-  ([label, w, h]) => `<h2>${label}</h2>
-<p>${shown.join(' · ')}</p>
+${[...SCREENS.map((screen) => [screen, shown]), [MINI_SCREEN, shownMini]]
+  .map(
+    ([[label, w, h], files]) => `<h2>${label}</h2>
+<p>${files.join(' · ')}</p>
 <div class="row">
-${shown.map((f) => `<iframe src="${f}" width="${w}" height="${h}"></iframe>`).join('\n')}
+${files.map((f) => `<iframe src="${f}" width="${w}" height="${h}"></iframe>`).join('\n')}
 </div>`
-).join('\n')}
+  )
+  .join('\n')}
 </body></html>`
 );
-console.log(`sizes.html  doi chieu 360x640 va 640x480`);
+console.log(`sizes.html  doi chieu 360x640, 640x480 va 240x320 (Opera Mini)`);
 
 console.log(`\nDa ghi vao ${outDir}`);
