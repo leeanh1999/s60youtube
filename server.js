@@ -180,6 +180,15 @@ function sendPage(res, html, status = 200) {
   res.send(body);
 }
 
+/** Kem nguyen van cau cua yt-dlp (rut gon) — de con biet ly do that. */
+function ytdlpDetail(message) {
+  const raw = message
+    .replace(/^ERROR:\s*/, '')
+    .replace(/\s*Use --cookies.*$/i, '')
+    .trim();
+  return raw ? ` [yt-dlp: ${raw.slice(0, 160)}]` : '';
+}
+
 /** Doi loi ky thuat sang cau tieng Viet de hieu tren man hinh nho. */
 function friendlyError(err) {
   const message = String(err?.message || err);
@@ -191,8 +200,31 @@ function friendlyError(err) {
       ' lại container, nó tự cài).'
     );
   }
-  if (/Sign in to confirm|not a bot|LOGIN_REQUIRED|cookies/i.test(message)) {
-    return 'YouTube đang đòi đăng nhập. Vào mục Đăng nhập trên chính máy này để nối lại tài khoản (cookie cũ có thể đã hết hạn).';
+  if (/COOKIE_HET_HAN/.test(message)) {
+    return (
+      'Cookie YouTube của máy này đã hết hạn (Google xoay vòng nó sau khi bạn' +
+      ' dùng YouTube trên trình duyệt). Vào mục Đăng nhập trên chính máy này để' +
+      ' nạp cookie mới — xuất cookie từ cửa sổ ẩn danh rồi đóng cửa sổ đó ngay.'
+    );
+  }
+  if (/COOKIE_HONG/.test(message)) {
+    return 'File cookie của máy này hỏng hoặc sai định dạng. Vào mục Đăng nhập và nạp lại file cookies.txt (định dạng Netscape).';
+  }
+  if (/confirm your age|age-restricted|inappropriate for some users/i.test(message)) {
+    return 'Video giới hạn độ tuổi: cần đăng nhập bằng tài khoản đủ 18 tuổi (mục Đăng nhập trên máy này).';
+  }
+  if (/not a bot/i.test(message)) {
+    return (
+      'YouTube nghi máy chủ là bot (địa chỉ IP bị đánh dấu). Đăng nhập trong' +
+      ' mục Đăng nhập trên máy này, hoặc đổi mạng/VPN của máy chủ.' +
+      ytdlpDetail(message)
+    );
+  }
+  if (/Sign in to confirm|LOGIN_REQUIRED|Use --cookies/i.test(message)) {
+    return (
+      'YouTube đang đòi đăng nhập. Vào mục Đăng nhập trên chính máy này để nối' +
+      ' lại tài khoản (cookie cũ có thể đã hết hạn).' + ytdlpDetail(message)
+    );
   }
   if (/Video unavailable|Private video|removed/i.test(message)) {
     return 'Video này không xem được (riêng tư, bị gỡ hoặc chặn theo khu vực).';
@@ -261,7 +293,7 @@ function packedAsset(name) {
   return packedAssets.get(name);
 }
 
-app.get('/*', (req, res, next) => {
+app.get('/{*splat}', (req, res, next) => {
   const type = ASSET_TYPES[path.extname(req.path)];
   const name = path.basename(req.path);
   // Chi nhung file nam ngay trong public/, va chi khi may noi la doc duoc ban nen.
@@ -737,7 +769,7 @@ async function proxyFormat(req, res, id, format) {
 // Trang video dinh san ma luong (itag) vao dia chi cho tung muc do phan giai;
 // khong co :formatId thi tu chon luong hop voi Belle. Duong dan on dinh nhu vay
 // thi trinh phat mo lai duoc sau khi thong tin video het han trong bo nho dem.
-app.all('/stream/:id/:formatId?', async (req, res) => {
+app.all('/stream/:id{/:formatId}', async (req, res) => {
   const { id, formatId } = req.params;
   if (!isVideoId(id)) {
     res.status(400).end();
