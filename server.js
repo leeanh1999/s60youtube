@@ -353,7 +353,7 @@ app.use(express.urlencoded({ extended: false, limit: '2mb' }));
 
 /** Duong dan tra ve file cho trinh phat, khong phai trang de nguoi doc. */
 function isMediaPath(pathname) {
-  return /^\/(stream|hd|audio|ram|file|thumb)\//.test(pathname) || pathname === '/qr';
+  return /^\/(stream|hd|audio|file|thumb)\//.test(pathname) || pathname === '/qr';
 }
 
 // Moi trang deu can tuy chon hien thi (co chu, anh thu nho) de dung layout,
@@ -900,7 +900,7 @@ app.all('/hd/:id/:height', async (req, res) => {
 
 /**
  * Luong tieng cua YouTube (itag 140) la AAC dung chuan, nhung nam trong vo MP4
- * phan manh kieu DASH (moof/sidx) — trinh phat cua Symbian va RealPlayer khong
+ * phan manh kieu DASH (moof/sidx) — trinh phat cua Symbian khong
  * doc duoc, con trinh duyet thi tai ve. Nen chep no sang vo .m4a thuong bang
  * -c copy (chi chep du lieu, vai giay ke ca tren NAS) roi moi phat file do:
  * chi muc nam dau file nen tua duoc.
@@ -944,8 +944,8 @@ function sendConverted(res, id, job) {
   res.sendFile(job.file, { acceptRanges: true, cacheControl: false });
 }
 
-// Duong nay danh cho trinh phat ngoai (RealPlayer qua file .ram): no khong doc
-// trang cho, nen o day doi chep xong roi moi tra file. Duoi .m4a trong dia chi
+// Lien ket thang toi file tieng, cho trinh phat ngoai khong doc duoc trang
+// cho: doi chep xong roi moi tra file. Duoi .m4a trong dia chi
 // de file luon mang dung ten, ke ca khi may tu dat ten theo dia chi.
 app.all('/audio/:id', async (req, res) => {
   const id = req.params.id.replace(/\.m4a$/, '');
@@ -983,27 +983,6 @@ app.all('/audio/:id', async (req, res) => {
       502
     );
   }
-});
-
-/**
- * Thu nghiem: file .ram chi chua mot dong dia chi luong tieng. Symbian giao
- * no cho RealPlayer, ma RealPlayer tu keo luong ve phat — co the van phat tiep
- * khi tat man hinh, dieu ma khung phat trong trinh duyet khong lam duoc.
- * Dia chi phai day du va mang khoa phat: RealPlayer khong gui cookie.
- */
-app.get('/ram/:id', (req, res) => {
-  const id = req.params.id.replace(/\.ram$/, '');
-  if (!isVideoId(id)) {
-    res.status(400).end();
-    return;
-  }
-  const key = req.streamKey ? `?k=${encodeURIComponent(req.streamKey)}` : '';
-  res
-    .set('Content-Type', 'audio/x-pn-realaudio')
-    .set('Content-Disposition', `inline; filename="${id}.ram"`)
-    .set('Cache-Control', 'no-store')
-    // Buffer de Express khong gan them "; charset=utf-8" vao Content-Type.
-    .send(Buffer.from(`${publicBase(req)}/audio/${id}.m4a${key}\r\n`));
 });
 
 // ---------- chuyen ma cho may yeu ----------
