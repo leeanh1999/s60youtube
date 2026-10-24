@@ -23,6 +23,8 @@
  *                 roi nhay ve cho dung sau khi ngung cuon. Phai nhan ra bang
  *                 ten may va bo han viec dan — de dan thi thanh vua troi vua
  *                 nhay giat, con te hon khong dan.
+ *  7. presto-an — van la Presto nhung khai ten may tinh (Opera Mobile cho chon
+ *                 vay). Chi con window.opera de nhan ra.
  *
  * Ba may 3-4-5 cung phai ra "khong dan": do khong duoc thi coi nhu khong dan,
  * chi dan khi co bang chung.
@@ -44,6 +46,7 @@ function machine(kind) {
   const attached = [];
 
   const rectOf = (el) => {
+    // Presto do ra y nhu may dan dung — chinh vi vay ma phep do khong bat duoc no.
     const glued = el.style.position === 'fixed';
     if (kind === 'dan-gia') return -scrolled;
     if (kind === 'opera-toa') return 0; // toa do dung im du trang da cuon
@@ -53,7 +56,9 @@ function machine(kind) {
 
   // Presto khai ten Opera Mobile; may khac khai ten Nokia Browser doi Belle.
   const userAgent =
-    kind === 'presto'
+    kind === 'presto-an'
+      ? 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0 Safari/537.36'
+      : kind === 'presto'
       ? 'Opera/9.80 (S60; SymbOS; Opera Mobi/SYB-1202211823; U; vi) Presto/2.10.254 Version/12.00'
       : 'Mozilla/5.0 (Symbian/3; Series60/5.3 NokiaN8-00) AppleWebKit/535.1 (KHTML, like Gecko) NokiaBrowser/8.3.1.4 Mobile Safari/535.1';
 
@@ -96,6 +101,8 @@ function machine(kind) {
   const store = {};
   const window = {
     navigator: { userAgent },
+    // Moi ban Presto deu co doi tuong nay, khai ten gi cung vay.
+    opera: kind.startsWith('presto') ? { version: () => '12.00' } : undefined,
     // May 'opera-so' cuon that nhung khong bao lai so cuon.
     pageYOffset: 0,
     scrollTo(_x, y) {
@@ -141,6 +148,7 @@ const WANTED = [
   { kind: 'opera-so', pin: false, remember: '0' },
   { kind: 'opera-toa', pin: false, remember: '0' },
   { kind: 'presto', pin: false, remember: undefined },
+  { kind: 'presto-an', pin: false, remember: undefined },
 ];
 
 let failed = 0;

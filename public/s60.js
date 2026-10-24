@@ -59,10 +59,15 @@
    *
    * Opera doi Blink (OPR/...) khong mang ten nao trong so nay nen khong bi tinh
    * vao — no dan dung nhu moi trinh duyet moi.
+   *
+   * Ten may thi doi duoc: Opera Mobile cho chon khai ten la may tinh, ban cu
+   * con khai la MSIE. Nhung moi ban Presto deu de san doi tuong window.opera,
+   * khai ten gi cung con nguyen — Blink thi khong co.
    */
   function hops() {
+    if (window.opera) return true;
     var ua = (window.navigator && window.navigator.userAgent) || '';
-    return /Opera Mobi|Opera Mini|Presto/i.test(ua);
+    return /Opera Mobi|Opera Mini|Presto|\bOpera[\/ ]\d/i.test(ua);
   }
 
   /**
