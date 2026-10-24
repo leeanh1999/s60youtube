@@ -944,11 +944,93 @@ function sendConverted(res, id, job) {
   res.sendFile(job.file, { acceptRanges: true, cacheControl: false });
 }
 
+/**
+ * Thu nghiem tim kieu file RealPlayer cua E6 chiu: no bao "tap tin bi loi" voi
+ * file .m4a (nhan 'M4A ') qua .ram. Ca ba kieu duoi day deu la cung mot file
+ * da chep, chi khac nhan o dau file (hop ftyp), Content-Type va duoi:
+ *  - .mp4: nhan 'mp42' nhu luong video 360p E6 dang xem duoc;
+ *  - .3gp: nhan '3gp6', kieu ma trinh duyet Symbian giao cho RealPlayer vua
+ *    tai vua phat.
+ * Thieu duoi (hoac .m4a) thi van la file goc, nhu khung phat trong trang dang dung.
+ */
+const AUDIO_KINDS = {
+  m4a: { type: 'audio/mp4' },
+  mp4: { type: 'video/mp4', brand: 'mp42' },
+  '3gp': { type: 'video/3gpp', brand: '3gp6' },
+};
+
+/** Hop ftyp cua file, voi nhan 'M4A ' doi thanh nhan khac (cung so byte). */
+function relabelFtyp(file, brand) {
+  const head = Buffer.alloc(64);
+  const fd = fs.openSync(file, 'r');
+  try {
+    fs.readSync(fd, head, 0, head.length, 0);
+  } finally {
+    fs.closeSync(fd);
+  }
+  const size = head.readUInt32BE(0);
+  if (head.toString('latin1', 4, 8) !== 'ftyp' || size < 16 || size > head.length) return null;
+  const box = head.subarray(0, size);
+  // Nhan chinh o byte 8, cac nhan tuong thich tu byte 16; byte 12-15 la so phien ban.
+  for (let at = 8; at + 4 <= size; at += 4) {
+    if (at !== 12 && box.toString('latin1', at, at + 4) === 'M4A ') box.write(brand, at, 'latin1');
+  }
+  return box;
+}
+
+/**
+ * Tra file voi phan dau da thay bang `head`, co Range — trinh phat keo tung
+ * doan, nen khong the dung res.sendFile (no gui nguyen file goc).
+ */
+function sendWithHead(req, res, file, head, type, name) {
+  const total = fs.statSync(file).size;
+  let start = 0;
+  let end = total - 1;
+  const range = /^bytes=(\d*)-(\d*)$/.exec(String(req.headers.range || ''));
+  if (range && (range[1] || range[2])) {
+    if (range[1]) {
+      start = Number(range[1]);
+      if (range[2]) end = Math.min(Number(range[2]), total - 1);
+    } else {
+      start = Math.max(0, total - Number(range[2]));
+    }
+    if (start > end || start >= total) {
+      res.status(416).set('Content-Range', `bytes */${total}`).end();
+      return;
+    }
+    res.status(206).set('Content-Range', `bytes ${start}-${end}/${total}`);
+  }
+  res.set('Content-Type', type);
+  res.set('Content-Disposition', `inline; filename="${name}"`);
+  res.set('Accept-Ranges', 'bytes');
+  res.set('Cache-Control', 'no-store');
+  res.set('Content-Length', String(end - start + 1));
+  if (req.method === 'HEAD') {
+    res.end();
+    return;
+  }
+  if (start < head.length) {
+    res.write(head.subarray(start, Math.min(end + 1, head.length)));
+  }
+  const from = Math.max(start, head.length);
+  if (from > end) {
+    res.end();
+    return;
+  }
+  const stream = fs.createReadStream(file, { start: from, end });
+  res.on('close', () => stream.destroy());
+  stream.on('error', () => res.destroy());
+  stream.pipe(res);
+}
+
 // Lien ket thang toi file tieng, cho trinh phat ngoai khong doc duoc trang
-// cho: doi chep xong roi moi tra file. Duoi .m4a trong dia chi
-// de file luon mang dung ten, ke ca khi may tu dat ten theo dia chi.
+// cho: doi chep xong roi moi tra file. Duoi trong dia chi chon kieu file
+// (AUDIO_KINDS), va de file luon mang dung ten khi may tu dat ten theo dia chi.
+// ?tai=1 thi bao trinh duyet luu file ve may, de mo bang ung dung Nhac.
 app.all('/audio/:id', async (req, res) => {
-  const id = req.params.id.replace(/\.(m4a|mp4)$/, '');
+  const match = /^([\w-]{11})(?:\.(m4a|mp4|3gp))?$/.exec(req.params.id);
+  const id = match ? match[1] : '';
+  const kind = (match && match[2]) || 'm4a';
   if (!isVideoId(id)) {
     res.status(400).end();
     return;
@@ -968,6 +1050,18 @@ app.all('/audio/:id', async (req, res) => {
     await waitForJob(job, AUDIO_WAIT_MS);
     if (job.status !== 'done') {
       res.redirect(302, `/convert?v=${id}&p=audio`);
+      return;
+    }
+    const { type, brand } = AUDIO_KINDS[kind];
+    const head = brand ? relabelFtyp(job.file, brand) : null;
+    if (head) {
+      sendWithHead(req, res, job.file, head, type, `${id}.${kind}`);
+      return;
+    }
+    if (req.query.tai === '1') {
+      res.set('Content-Type', 'audio/mp4');
+      res.set('Content-Disposition', `attachment; filename="${id}.m4a"`);
+      res.sendFile(job.file, { acceptRanges: true, cacheControl: false });
       return;
     }
     sendConverted(res, id, job);
@@ -990,11 +1084,10 @@ app.all('/audio/:id', async (req, res) => {
  * RealPlayer, ma RealPlayer chay nen duoc: an trinh duyet di hay tat man hinh
  * van nghe tiep, dieu khung phat trong trang khong lam duoc.
  *
- * Ban truoc hong tren E6 voi dia chi '/audio/<ma>.m4a?k=...'. Doan la vi
- * RealPlayer doc phan sau dau hoi trong file .ram thanh tham so cua chinh no
- * (?title=, ?start=), va doan kieu file theo duoi dia chi — nen gio dia chi
- * ket thuc gon bang '.mp4', duoi ma RealPlayer cua Symbian nhan cho video.
- * Ben trong van la file .m4a chep tu luong tieng.
+ * Dia chi ket thuc gon bang '.mp4', khong '?...': RealPlayer co the doc phan
+ * sau dau hoi thanh tham so cua no. Ca '/audio/<ma>.m4a?k=...' lan
+ * '/audio/<ma>.mp4' (nhan 'M4A ') deu bi E6 bao "tap tin bi loi", nen gio
+ * '.mp4' tra file mang nhan 'mp42' (xem AUDIO_KINDS) — dang thu.
  *
  * Khong can khoa phat: muc nay chi hien khi file da chep xong, ma file san thi
  * /audio tra ve luon, khong hoi YouTube gi nua.
