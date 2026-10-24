@@ -147,7 +147,7 @@ setTimeout(async () => {
       som.html.includes(`src="/stream/${VIDEO}?k=`),
     (som.html.match(/<video[^>]*>/) || [''])[0]
   );
-  check('van co duong nghe chi tieng', som.html.includes(`/watch?v=${VIDEO}&amp;nghe=1`));
+  check('van co duong nghe chi tieng', som.html.includes(`/convert?v=${VIDEO}&amp;p=audio`));
   check('chua bay hang chon do phan giai', !som.html.includes('Độ phân giải<'));
 
   console.log('\n2. May tinh mo som thi duoc mach cho lay muc net hon');

@@ -607,9 +607,6 @@ app.get('/watch', async (req, res) => {
 
   const legacy = isLegacyDevice(req);
   const key = req.streamKey ? `?k=${encodeURIComponent(req.streamKey)}` : '';
-  // Nghe chi tieng cung phai di qua the <video> trong trang: lien ket tran toi
-  // file .m4a thi Symbian tai het ve roi moi mo, y nhu lien ket .mp4.
-  const listen = req.query.nghe === '1' && !prefs.mini;
   let info = null;
   let choices = [];
   let chosen = null;
@@ -641,11 +638,6 @@ app.get('/watch', async (req, res) => {
     // yt-dlp thuong da xong. Nho vay khung phat van bam duoc ngay.
     chosen = { height: 0, kind: 'san', src: `/stream/${videoId}${key}` };
   }
-  if (listen && !error) {
-    chosen = { height: 0, kind: 'nghe', src: `/audio/${videoId}.m4a${key}` };
-    choices = [];
-    mse = null;
-  }
 
   sendPage(
     res,
@@ -667,7 +659,6 @@ app.get('/watch', async (req, res) => {
       prefs,
       profiles: media.PROFILES,
       ffmpegOk: media.isAvailable(),
-      streamKey: req.streamKey,
       legacy,
       error,
     })
@@ -905,30 +896,81 @@ app.all('/hd/:id/:height', async (req, res) => {
   child.stdout.pipe(res);
 });
 
-// ---------- nghe truc tiep (luong m4a cua YouTube, khong chuyen ma) ----------
+// ---------- nghe chi tieng (chep luong AAC sang vo .m4a thuong) ----------
 
 /**
- * YouTube da san luong AAC trong vo MP4 (itag 140) — dung thu Symbian nghe duoc.
- * Don thang no di la xong ngay, khong ton mot giay CPU nao cua NAS. Chi khi
- * video khong co luong AAC nao moi phai nho toi ffmpeg.
+ * Luong tieng cua YouTube (itag 140) la AAC dung chuan, nhung nam trong vo MP4
+ * phan manh kieu DASH (moof/sidx) — trinh phat cua Symbian va RealPlayer khong
+ * doc duoc, con trinh duyet thi tai ve. Nen chep no sang vo .m4a thuong bang
+ * -c copy (chi chep du lieu, vai giay ke ca tren NAS) roi moi phat file do:
+ * chi muc nam dau file nen tua duoc.
  */
-// Duoi .m4a trong dia chi de file luon mang dung ten, ke ca khi may bo qua
-// Content-Disposition va tu dat ten theo dia chi.
+const AUDIO_WAIT_MS = 60 * 1000;
+
+/** Khoi dong (hoac lay lai) viec chep luong tieng sang vo .m4a thuong. */
+async function startAudioJob(id, auth) {
+  const existing = media.getJob(id, 'audio');
+  if (existing && existing.status !== 'error') return existing;
+  const info = await ytdlp.getInfo(id, auth);
+  const audio = ytdlp.pickAudioOnly(info.formats);
+  if (!ytdlp.isBelleAudio(audio)) return null;
+  return media.startJob({
+    videoId: id,
+    profileId: 'audio',
+    sources: [audio.url],
+    duration: info.duration,
+    copy: true,
+  });
+}
+
+function waitForJob(job, ms) {
+  return new Promise((resolve) => {
+    const until = Date.now() + ms;
+    const tick = () => {
+      if (job.status === 'done' || job.status === 'error' || Date.now() > until) {
+        resolve(job);
+        return;
+      }
+      setTimeout(tick, 500);
+    };
+    tick();
+  });
+}
+
+function sendConverted(res, id, job) {
+  const audioOnly = job.profile.ext === 'm4a';
+  res.set('Content-Type', audioOnly ? 'audio/mp4' : 'video/mp4');
+  res.set('Content-Disposition', `inline; filename="${id}.${audioOnly ? 'm4a' : 'mp4'}"`);
+  res.sendFile(job.file, { acceptRanges: true, cacheControl: false });
+}
+
+// Duong nay danh cho trinh phat ngoai (RealPlayer qua file .ram): no khong doc
+// trang cho, nen o day doi chep xong roi moi tra file. Duoi .m4a trong dia chi
+// de file luon mang dung ten, ke ca khi may tu dat ten theo dia chi.
 app.all('/audio/:id', async (req, res) => {
   const id = req.params.id.replace(/\.m4a$/, '');
   if (!isVideoId(id)) {
     res.status(400).end();
     return;
   }
+  if (!media.isAvailable()) {
+    res.status(503).end();
+    return;
+  }
 
   try {
-    const info = await ytdlp.getInfo(id, req.auth);
-    const audio = ytdlp.pickAudioOnly(info.formats);
-    if (!ytdlp.isBelleAudio(audio)) {
+    const job = await startAudioJob(id, req.auth);
+    if (!job) {
+      // Khong co luong AAC nao: phai ma hoa that, qua trang cho nhu thuong.
       res.redirect(302, `/convert?v=${id}&p=audio`);
       return;
     }
-    await proxyFormat(req, res, id, audio);
+    await waitForJob(job, AUDIO_WAIT_MS);
+    if (job.status !== 'done') {
+      res.redirect(302, `/convert?v=${id}&p=audio`);
+      return;
+    }
+    sendConverted(res, id, job);
   } catch (err) {
     sendPage(
       res,
@@ -1080,10 +1122,7 @@ app.get('/file/:id/:profileId', (req, res) => {
     res.redirect(302, `/convert?v=${id}&p=${profileId}`);
     return;
   }
-  const audioOnly = media.PROFILES[profileId].ext === 'm4a';
-  res.set('Content-Type', audioOnly ? 'audio/mp4' : 'video/mp4');
-  res.set('Content-Disposition', `inline; filename="${id}.${audioOnly ? 'm4a' : 'mp4'}"`);
-  res.sendFile(job.file, { acceptRanges: true, cacheControl: false });
+  sendConverted(res, id, job);
 });
 
 // ---------- dang nhap bang ma / QR ----------

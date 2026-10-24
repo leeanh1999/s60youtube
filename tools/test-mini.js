@@ -141,7 +141,7 @@ setTimeout(async () => {
   console.log('\n3. Trang video: phat bang lien ket, khong bang khung');
   const watch = await mini(`/watch?v=${VIDEO}`);
   check('co lien ket thang toi luong', /href="\/stream\/dQw4w9WgXcQ\/18/.test(watch.html));
-  check('co duong nghe chi tieng', watch.html.includes(`/audio/${VIDEO}`));
+  check('co duong nghe chi tieng', watch.html.includes(`/convert?v=${VIDEO}&amp;p=audio`));
   check('noi ro la khong phat trong trang', watch.html.includes('Opera Mini không phát được'));
 
   console.log('\n4. Cho lam moi bang tay o nhung trang dang doi viec');
