@@ -353,7 +353,7 @@ app.use(express.urlencoded({ extended: false, limit: '2mb' }));
 
 /** Duong dan tra ve file cho trinh phat, khong phai trang de nguoi doc. */
 function isMediaPath(pathname) {
-  return /^\/(stream|hd|audio|file|thumb)\//.test(pathname) || pathname === '/qr';
+  return /^\/(stream|hd|audio|ram|file|thumb)\//.test(pathname) || pathname === '/qr';
 }
 
 // Moi trang deu can tuy chon hien thi (co chu, anh thu nho) de dung layout,
@@ -948,7 +948,7 @@ function sendConverted(res, id, job) {
 // cho: doi chep xong roi moi tra file. Duoi .m4a trong dia chi
 // de file luon mang dung ten, ke ca khi may tu dat ten theo dia chi.
 app.all('/audio/:id', async (req, res) => {
-  const id = req.params.id.replace(/\.m4a$/, '');
+  const id = req.params.id.replace(/\.(m4a|mp4)$/, '');
   if (!isVideoId(id)) {
     res.status(400).end();
     return;
@@ -983,6 +983,34 @@ app.all('/audio/:id', async (req, res) => {
       502
     );
   }
+});
+
+/**
+ * File .ram chi chua mot dong dia chi file tieng. Symbian giao no cho
+ * RealPlayer, ma RealPlayer chay nen duoc: an trinh duyet di hay tat man hinh
+ * van nghe tiep, dieu khung phat trong trang khong lam duoc.
+ *
+ * Ban truoc hong tren E6 voi dia chi '/audio/<ma>.m4a?k=...'. Doan la vi
+ * RealPlayer doc phan sau dau hoi trong file .ram thanh tham so cua chinh no
+ * (?title=, ?start=), va doan kieu file theo duoi dia chi — nen gio dia chi
+ * ket thuc gon bang '.mp4', duoi ma RealPlayer cua Symbian nhan cho video.
+ * Ben trong van la file .m4a chep tu luong tieng.
+ *
+ * Khong can khoa phat: muc nay chi hien khi file da chep xong, ma file san thi
+ * /audio tra ve luon, khong hoi YouTube gi nua.
+ */
+app.get('/ram/:id', (req, res) => {
+  const id = req.params.id.replace(/\.ram$/, '');
+  if (!isVideoId(id)) {
+    res.status(400).end();
+    return;
+  }
+  res
+    .set('Content-Type', 'audio/x-pn-realaudio')
+    .set('Content-Disposition', `inline; filename="${id}.ram"`)
+    .set('Cache-Control', 'no-store')
+    // Buffer de Express khong gan them "; charset=utf-8" vao Content-Type.
+    .send(Buffer.from(`${publicBase(req)}/audio/${id}.mp4\r\n`));
 });
 
 // ---------- chuyen ma cho may yeu ----------
