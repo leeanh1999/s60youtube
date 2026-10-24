@@ -353,7 +353,7 @@ app.use(express.urlencoded({ extended: false, limit: '2mb' }));
 
 /** Duong dan tra ve file cho trinh phat, khong phai trang de nguoi doc. */
 function isMediaPath(pathname) {
-  return /^\/(stream|hd|audio|file|thumb)\//.test(pathname) || pathname === '/qr';
+  return /^\/(stream|hd|audio|ram|file|thumb)\//.test(pathname) || pathname === '/qr';
 }
 
 // Moi trang deu can tuy chon hien thi (co chu, anh thu nho) de dung layout,
@@ -607,6 +607,9 @@ app.get('/watch', async (req, res) => {
 
   const legacy = isLegacyDevice(req);
   const key = req.streamKey ? `?k=${encodeURIComponent(req.streamKey)}` : '';
+  // Nghe chi tieng cung phai di qua the <video> trong trang: lien ket tran toi
+  // file .m4a thi Symbian tai het ve roi moi mo, y nhu lien ket .mp4.
+  const listen = req.query.nghe === '1' && !prefs.mini;
   let info = null;
   let choices = [];
   let chosen = null;
@@ -637,6 +640,11 @@ app.get('/watch', async (req, res) => {
     // ban hop voi may goi — dung luc trinh phat that su keo file ve, luc do
     // yt-dlp thuong da xong. Nho vay khung phat van bam duoc ngay.
     chosen = { height: 0, kind: 'san', src: `/stream/${videoId}${key}` };
+  }
+  if (listen && !error) {
+    chosen = { height: 0, kind: 'nghe', src: `/audio/${videoId}.m4a${key}` };
+    choices = [];
+    mse = null;
   }
 
   sendPage(
@@ -904,8 +912,10 @@ app.all('/hd/:id/:height', async (req, res) => {
  * Don thang no di la xong ngay, khong ton mot giay CPU nao cua NAS. Chi khi
  * video khong co luong AAC nao moi phai nho toi ffmpeg.
  */
+// Duoi .m4a trong dia chi de file luon mang dung ten, ke ca khi may bo qua
+// Content-Disposition va tu dat ten theo dia chi.
 app.all('/audio/:id', async (req, res) => {
-  const { id } = req.params;
+  const id = req.params.id.replace(/\.m4a$/, '');
   if (!isVideoId(id)) {
     res.status(400).end();
     return;
@@ -931,6 +941,27 @@ app.all('/audio/:id', async (req, res) => {
       502
     );
   }
+});
+
+/**
+ * Thu nghiem: file .ram chi chua mot dong dia chi luong tieng. Symbian giao
+ * no cho RealPlayer, ma RealPlayer tu keo luong ve phat — co the van phat tiep
+ * khi tat man hinh, dieu ma khung phat trong trinh duyet khong lam duoc.
+ * Dia chi phai day du va mang khoa phat: RealPlayer khong gui cookie.
+ */
+app.get('/ram/:id', (req, res) => {
+  const id = req.params.id.replace(/\.ram$/, '');
+  if (!isVideoId(id)) {
+    res.status(400).end();
+    return;
+  }
+  const key = req.streamKey ? `?k=${encodeURIComponent(req.streamKey)}` : '';
+  res
+    .set('Content-Type', 'audio/x-pn-realaudio')
+    .set('Content-Disposition', `inline; filename="${id}.ram"`)
+    .set('Cache-Control', 'no-store')
+    // Buffer de Express khong gan them "; charset=utf-8" vao Content-Type.
+    .send(Buffer.from(`${publicBase(req)}/audio/${id}.m4a${key}\r\n`));
 });
 
 // ---------- chuyen ma cho may yeu ----------
