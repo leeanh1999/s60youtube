@@ -353,7 +353,7 @@ app.use(express.urlencoded({ extended: false, limit: '2mb' }));
 
 /** Duong dan tra ve file cho trinh phat, khong phai trang de nguoi doc. */
 function isMediaPath(pathname) {
-  return /^\/(stream|hd|audio|ram|file|thumb)\//.test(pathname) || pathname === '/qr';
+  return /^\/(stream|hd|audio|file|thumb)\//.test(pathname) || pathname === '/qr';
 }
 
 // Moi trang deu can tuy chon hien thi (co chu, anh thu nho) de dung layout,
@@ -907,26 +907,19 @@ app.all('/hd/:id/:height', async (req, res) => {
  */
 const AUDIO_WAIT_MS = 60 * 1000;
 
-/**
- * Khoi dong (hoac lay lai) viec lam file tieng:
- *  - 'audio': chep luong AAC sang vo .m4a thuong (-c copy), cho khung phat
- *    trong trang;
- *  - 'mp3': ma hoa sang MP3 cho RealPlayer (xem /ram).
- */
-async function startAudioJob(id, auth, profileId = 'audio') {
-  const existing = media.getJob(id, profileId);
+/** Khoi dong (hoac lay lai) viec chep luong tieng sang vo .m4a thuong. */
+async function startAudioJob(id, auth) {
+  const existing = media.getJob(id, 'audio');
   if (existing && existing.status !== 'error') return existing;
   const info = await ytdlp.getInfo(id, auth);
   const audio = ytdlp.pickAudioOnly(info.formats);
-  const copy = profileId === 'audio';
-  // Chep thang thi phai la AAC; ma hoa sang MP3 thi luong tieng nao cung duoc.
-  if (!audio || (copy && !ytdlp.isBelleAudio(audio))) return null;
+  if (!ytdlp.isBelleAudio(audio)) return null;
   return media.startJob({
     videoId: id,
-    profileId,
+    profileId: 'audio',
     sources: [audio.url],
     duration: info.duration,
-    copy,
+    copy: true,
   });
 }
 
@@ -944,22 +937,18 @@ function waitForJob(job, ms) {
   });
 }
 
-const FILE_TYPES = { m4a: 'audio/mp4', mp3: 'audio/mpeg', mp4: 'video/mp4' };
-
 function sendConverted(res, id, job) {
-  const { ext } = job.profile;
-  res.set('Content-Type', FILE_TYPES[ext] || 'application/octet-stream');
-  res.set('Content-Disposition', `inline; filename="${id}.${ext}"`);
+  const audioOnly = job.profile.ext === 'm4a';
+  res.set('Content-Type', audioOnly ? 'audio/mp4' : 'video/mp4');
+  res.set('Content-Disposition', `inline; filename="${id}.${audioOnly ? 'm4a' : 'mp4'}"`);
   res.sendFile(job.file, { acceptRanges: true, cacheControl: false });
 }
 
 // Lien ket thang toi file tieng, cho trinh phat ngoai khong doc duoc trang
-// cho: doi lam xong roi moi tra file. Duoi trong dia chi chon ban (.m4a hoac
-// .mp3), va de file luon mang dung ten khi may tu dat ten theo dia chi.
+// cho: doi chep xong roi moi tra file. Duoi .m4a trong dia chi
+// de file luon mang dung ten, ke ca khi may tu dat ten theo dia chi.
 app.all('/audio/:id', async (req, res) => {
-  const match = /^([\w-]{11})(?:\.(m4a|mp3))?$/.exec(req.params.id);
-  const id = match ? match[1] : '';
-  const profileId = match && match[2] === 'mp3' ? 'mp3' : 'audio';
+  const id = req.params.id.replace(/\.m4a$/, '');
   if (!isVideoId(id)) {
     res.status(400).end();
     return;
@@ -970,15 +959,15 @@ app.all('/audio/:id', async (req, res) => {
   }
 
   try {
-    const job = await startAudioJob(id, req.auth, profileId);
+    const job = await startAudioJob(id, req.auth);
     if (!job) {
       // Khong co luong AAC nao: phai ma hoa that, qua trang cho nhu thuong.
-      res.redirect(302, `/convert?v=${id}&p=${profileId}`);
+      res.redirect(302, `/convert?v=${id}&p=audio`);
       return;
     }
     await waitForJob(job, AUDIO_WAIT_MS);
     if (job.status !== 'done') {
-      res.redirect(302, `/convert?v=${id}&p=${profileId}`);
+      res.redirect(302, `/convert?v=${id}&p=audio`);
       return;
     }
     sendConverted(res, id, job);
@@ -994,32 +983,6 @@ app.all('/audio/:id', async (req, res) => {
       502
     );
   }
-});
-
-/**
- * File .ram chi chua mot dong dia chi file tieng. Symbian giao no cho
- * RealPlayer, ma RealPlayer chay nen duoc: an trinh duyet di hay tat man hinh
- * van nghe tiep, dieu khung phat trong trang khong lam duoc.
- *
- * Dia chi tro toi ban MP3: RealPlayer cua E6 bao "tap tin bi loi" voi moi ban
- * MP4/M4A da thu (nhan 'M4A ', 'mp42'). Dia chi ket thuc gon bang '.mp3',
- * khong '?...': RealPlayer co the doc phan sau dau hoi thanh tham so cua no.
- *
- * Khong can khoa phat: ban MP3 da duoc lam san tu luc trang "Da xong" hien ra
- * (xem /convert), nen thuong thi /audio tra file ngay, khong hoi YouTube nua.
- */
-app.get('/ram/:id', (req, res) => {
-  const id = req.params.id.replace(/\.ram$/, '');
-  if (!isVideoId(id)) {
-    res.status(400).end();
-    return;
-  }
-  res
-    .set('Content-Type', 'audio/x-pn-realaudio')
-    .set('Content-Disposition', `inline; filename="${id}.ram"`)
-    .set('Cache-Control', 'no-store')
-    // Buffer de Express khong gan them "; charset=utf-8" vao Content-Type.
-    .send(Buffer.from(`${publicBase(req)}/audio/${id}.mp3\r\n`));
 });
 
 // ---------- chuyen ma cho may yeu ----------
@@ -1073,8 +1036,7 @@ app.get('/convert', async (req, res) => {
           ytdlp.pickProgressive(info.formats, 720);
         if (!audio) throw new Error('Không tìm thấy luồng tiếng phù hợp.');
         sources.push(audio.url);
-        // Chi ban .m4a moi chep thang duoc luong AAC; ban MP3 phai ma hoa.
-        copy = profile.ext === 'm4a' && ytdlp.isBelleAudio(audio);
+        copy = ytdlp.isBelleAudio(audio);
       } else {
         const pair = ytdlp.pickForRemux(info.formats, profile.maxHeight);
         if (pair) {
@@ -1100,14 +1062,6 @@ app.get('/convert', async (req, res) => {
         duration: info.duration,
         copy,
       });
-    }
-
-    // Trang "Da xong" cua ban nghe co muc RealPlayer, ma RealPlayer can ban MP3:
-    // lam san ngay tu gio de luc bam vao thi file da co.
-    if (profileId === 'audio' && job.status === 'done') {
-      startAudioJob(videoId, req.auth, 'mp3').catch((err) =>
-        console.warn(`[mp3 ${videoId}] ${err?.message || err}`)
-      );
     }
 
     sendPage(
