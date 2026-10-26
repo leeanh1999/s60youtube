@@ -5,7 +5,6 @@ import java.util.Vector;
 import javax.microedition.media.Manager;
 import javax.microedition.media.Player;
 import javax.microedition.media.PlayerListener;
-import javax.microedition.media.control.VolumeControl;
 
 /**
  * Nghe nhac nen theo danh sach: moi bai la mot trinh phat chi tieng (.m4a)
@@ -55,9 +54,13 @@ final class Audio implements Runnable, PlayerListener {
     private boolean prepared;
     private long playedMs;
 
-    private Audio(String url, String title) {
+    /** Dang nghe ban .m4a may chu chep lai (luong goc khong mo duoc). */
+    private final boolean converted;
+
+    private Audio(String url, String title, boolean converted) {
         this.url = url;
         this.title = title;
+        this.converted = converted;
     }
 
     /** Bai dang nghe (co the dang dung tam), hoac null. */
@@ -119,6 +122,15 @@ final class Audio implements Runnable, PlayerListener {
     }
 
     private static void playIndex(int i) {
+        playIndex(i, false);
+    }
+
+    /**
+     * Mac dinh nghe luong tieng goc cua YouTube (may chu chi chuyen tiep). Luong
+     * do la MP4 chia doan (DASH) — may nao khong doc duoc thi failed() thu lai
+     * dung bai nay bang ban .m4a thuong ma may chu chep lai (/audio).
+     */
+    private static void playIndex(int i, boolean converted) {
         Audio old = current;
         current = null;
         if (old != null) {
@@ -129,7 +141,8 @@ final class Audio implements Runnable, PlayerListener {
             return;
         }
         index = i;
-        Audio audio = new Audio(server + "/audio/" + t[0] + ".m4a" + key, t[1]);
+        String path = converted ? "/audio/" + t[0] + ".m4a" : "/stream/" + t[0] + "/a";
+        Audio audio = new Audio(server + path + key, t[1], converted);
         current = audio;
         new Thread(audio).start();
         new Thread(new Runnable() {
@@ -181,7 +194,6 @@ final class Audio implements Runnable, PlayerListener {
             if (gone()) {
                 return;
             }
-            applyVolume(p);
             p.start();
         } catch (Throwable e) {
             failed("Lỗi: " + e.toString());
@@ -206,6 +218,10 @@ final class Audio implements Runnable, PlayerListener {
         }
         setStatus(text);
         if (current != this) {
+            return;
+        }
+        if (!converted) {
+            playIndex(index, true);
             return;
         }
         fails++;
@@ -238,8 +254,8 @@ final class Audio implements Runnable, PlayerListener {
 
     /**
      * Gan het bai (con duoi 60 giay hoac qua nua bai; khong biet do dai thi sau
-     * 30 giay nghe) thi nho may chu chuan bi bai sau: yt-dlp va chep .m4a mat
-     * vai giay, lam truoc thi het bai la sang bai moi ngay.
+     * 30 giay nghe) thi nho may chu chuan bi bai sau: yt-dlp mat vai
+     * giay tren NAS, lam truoc thi het bai la sang bai moi ngay.
      */
     private void maybePrepareNext() {
         if (prepared || !playing()) {
@@ -333,44 +349,6 @@ final class Audio implements Runnable, PlayerListener {
 
     void forward() {
         seek(STEP_US);
-    }
-
-    /** Dat lai muc am luong da nho tu lan truoc. */
-    static void applyVolume(Player p) {
-        if (Settings.volume < 0) {
-            return;
-        }
-        try {
-            VolumeControl control = (VolumeControl) p.getControl("VolumeControl");
-            if (control != null) {
-                control.setLevel(Settings.volume);
-            }
-        } catch (Exception ignored) {
-        }
-    }
-
-    /** Luu muc am luong moi cho lan phat sau (ca nghe nhac va xem video). */
-    static void rememberVolume(int level) {
-        if (level >= 0 && level != Settings.volume) {
-            Settings.volume = level;
-            Settings.save();
-        }
-    }
-
-    /** Doi am luong, tra ve muc moi (0-100) hoac -1 neu may khong cho. */
-    int volume(int delta) {
-        Player p = player;
-        if (p == null || closed) {
-            return -1;
-        }
-        VolumeControl control = (VolumeControl) p.getControl("VolumeControl");
-        if (control == null) {
-            return -1;
-        }
-        int level = control.setLevel(Math.max(0, Math.min(100, control.getLevel() + delta)));
-        rememberVolume(level);
-        setStatus("Âm lượng " + level);
-        return level;
     }
 
     public void playerUpdate(Player p, String event, Object data) {

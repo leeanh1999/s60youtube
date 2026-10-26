@@ -10,7 +10,6 @@ import javax.microedition.media.Manager;
 import javax.microedition.media.Player;
 import javax.microedition.media.PlayerListener;
 import javax.microedition.media.control.VideoControl;
-import javax.microedition.media.control.VolumeControl;
 
 /**
  * Phat ngay trong app bang MMAPI (JSR-135), co thanh dieu khien tu ve: tren la
@@ -23,7 +22,7 @@ import javax.microedition.media.control.VolumeControl;
  * khong thay.
  *
  * Phim: mem phai / C / Esc quay lai, mem trai / 5 / OK phat-dung, 4/6 lui/toi
- * 10 giay, len/xuong am luong.
+ * 10 giay. Am luong dung phim am luong cua may.
  */
 final class PlayerCanvas extends Canvas implements Runnable, PlayerListener, CommandListener {
 
@@ -104,7 +103,6 @@ final class PlayerCanvas extends Canvas implements Runnable, PlayerListener, Com
             }
             // Kich thuoc that cua phim chi biet sau prefetch.
             showVideo();
-            Audio.applyVolume(player);
             player.start();
             showVideo();
             poke();
@@ -376,8 +374,6 @@ final class PlayerCanvas extends Canvas implements Runnable, PlayerListener, Com
             seek(-STEP_US);
         } else if (key == KEY_NUM6 || action == RIGHT) {
             seek(STEP_US);
-        } else if (key == KEY_NUM2 || key == KEY_NUM8 || action == UP || action == DOWN) {
-            volume(key == KEY_NUM2 || action == UP ? 10 : -10);
         }
     }
 
@@ -470,18 +466,6 @@ final class PlayerCanvas extends Canvas implements Runnable, PlayerListener, Com
                 repaint();
             }
         });
-    }
-
-    private void volume(int delta) {
-        if (player == null) {
-            return;
-        }
-        VolumeControl control = (VolumeControl) player.getControl("VolumeControl");
-        if (control != null) {
-            int level = control.setLevel(Math.max(0, Math.min(100, control.getLevel() + delta)));
-            Audio.rememberVolume(level);
-            note("Âm lượng " + level);
-        }
     }
 
     private void note(String text) {

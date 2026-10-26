@@ -438,14 +438,17 @@ cách nhau bằng TAB.
 - **Phát video**: trang video có hai nút. **Xem trong app** phát bằng MMAPI, có
   thanh điều khiển: nút Quay lại, thanh thời gian (chạm để tua), lùi/tạm
   dừng/tới. Thanh tự ẩn sau vài giây; bấm phím hay chạm là hiện lại. Phím: mềm
-  phải/C quay lại, mềm trái/5/OK tạm dừng, 4/6 tua 10 giây, 2/8 hoặc lên/xuống
-  chỉnh âm lượng. **Xem bằng trình duyệt** mở trang `/app/play` có khung
+  phải/C quay lại, mềm trái/5/OK tạm dừng, 4/6 tua 10 giây. Âm lượng dùng phím
+  âm lượng của máy. **Xem bằng trình duyệt** mở trang `/app/play` có khung
   `<video>` giống trang web, nên xem online được (đưa thẳng link `.mp4` cho máy
   thì Symbian tải hết file về rồi mới mở).
-- **Nghe nhạc trong app**: mục **Nghe nhạc trong app** ở trang video phát bản
-  chỉ tiếng (`/audio/<mã>.m4a`) ở nền. Quay ra trang khác, tắt màn hình, hay chọn
+- **Nghe nhạc trong app**: mục **Nghe nhạc trong app** ở trang video phát nền
+  luồng tiếng gốc của YouTube qua `/stream/<mã>/a` (máy chủ chỉ chuyển tiếp, không
+  chạy ffmpeg). Luồng này là MP4 chia đoạn (DASH); máy nào báo lỗi thì app
+  thử lại đúng bài đó bằng bản `.m4a` máy chủ chép lại (`/audio/<mã>.m4a`). Quay ra trang khác, tắt màn hình, hay chọn
   **Ẩn app, vẫn nghe** (trong Menu) thì nhạc vẫn chạy. Trang **Đang nghe** (mục
-  đầu tiên của Menu khi có bài) có tạm dừng, tua 10 giây, âm lượng, dừng nghe.
+  đầu tiên của Menu khi có bài) có tạm dừng, tua 10 giây, dừng nghe; âm lượng
+  dùng phím của máy.
   Xem video trong app thì bài đang nghe dừng lại.
 - **Nghe theo danh sách**: nghe từ trang video thì sau bài đó app tự sang lần lượt
   các video liên quan. Trang chính và trang tìm kiếm có mục **Nghe lần lượt cả
@@ -453,12 +456,11 @@ cách nhau bằng TAB.
   bài nào là nghe bài đó). Bài nào không nghe được thì tự bỏ qua; hỏng 3 bài
   liền thì dừng.
 - Gần hết bài (còn dưới 60 giây hoặc đã qua nửa bài) app gọi `/api/prepare?v=<bài sau>`
-  để máy chủ chạy trước yt-dlp và chép tiếng sang `.m4a`, nên sang bài mới ít phải chờ.
+  để máy chủ chạy trước yt-dlp, nên sang bài mới ít phải chờ.
 - **Tìm kiếm**: ô tìm bo tròn tự vẽ, có lịch sử 8 lần tìm gần nhất (lưu trong máy).
   Máy có bàn phím QWERTY gõ thẳng vào ô; máy bàn phím số / cảm ứng, hoặc cần gõ
   tiếng Việt có dấu, thì bấm vào ô (hoặc **Gõ tiếng Việt có dấu**) để mở ô nhập của máy.
 - Menu chỉ còn Trang chính, Tìm kiếm, Cài đặt, Thoát; **Đăng nhập** nằm trong Cài đặt.
-- Âm lượng chỉnh trong app (khi nghe hay xem) được nhớ cho lần phát sau.
 - Phím gác máy trên Nokia chỉ ẩn app (`Nokia-MIDlet-no-exit: true` trong
   `.jad`/manifest), nhạc vẫn chạy; muốn thoát hẳn thì chọn **Thoát** trong Menu.
 - Menu dài hơn màn hình thì cuộn được (phím lên/xuống hoặc kéo).

@@ -430,7 +430,7 @@ public class S60Tube extends MIDlet
                         String path = Api.field(row, 1);
                         Audio.learnKey(path);
                         page.add(Item.of(Item.OPTION, "Nghe nhạc trong app").icon(Ui.ICON_NOTE)
-                                .sub("Tắt màn hình vẫn nghe, hết bài tự sang video liên quan")
+                                .sub("Tiếng gốc YouTube, tắt màn hình vẫn nghe, hết bài tự sang bài sau")
                                 .act("listen", id + "\t" + title));
                         page.add(Item.of(Item.OPTION, "Nghe bằng trình duyệt").icon(Ui.ICON_BROWSER)
                                 .sub("Khi nghe trong app bị lỗi").act("play", "web\t" + path + "\t" + title));
@@ -563,8 +563,6 @@ public class S60Tube extends MIDlet
         }
         page.add(Item.of(Item.OPTION, "Lùi 10 giây").icon(Ui.ICON_REWIND).act("a-rew", null));
         page.add(Item.of(Item.OPTION, "Tới 10 giây").icon(Ui.ICON_FORWARD).act("a-fwd", null));
-        page.add(Item.of(Item.OPTION, "To hơn").icon(Ui.ICON_NOTE).act("a-up", null));
-        page.add(Item.of(Item.OPTION, "Nhỏ hơn").icon(Ui.ICON_NOTE).act("a-down", null));
         page.add(Item.of(Item.OPTION, "Ẩn app, vẫn nghe").icon(Ui.ICON_BACK)
                 .sub("Tắt màn hình hay mở app khác vẫn nghe tiếp").act("a-hide", null));
         page.add(Item.of(Item.OPTION, "Dừng nghe").icon(Ui.ICON_EXIT).act("a-stop", null));
@@ -910,11 +908,6 @@ public class S60Tube extends MIDlet
             audio.rewind();
         } else if ("a-fwd".equals(a)) {
             audio.forward();
-        } else if ("a-up".equals(a) || "a-down".equals(a)) {
-            if (audio.volume("a-up".equals(a) ? 10 : -10) < 0) {
-                page.showToast("Máy không cho chỉnh âm lượng trong app — dùng phím âm lượng của máy.",
-                        Item.TONE_WARN);
-            }
         } else if ("a-stop".equals(a)) {
             Audio.stopAll();
             if ("listen".equals(page.kind)) {

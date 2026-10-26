@@ -777,9 +777,14 @@ app.all('/stream/:id{/:formatId}', async (req, res) => {
 
   try {
     const info = await ytdlp.getInfo(id, req.auth);
-    const format = formatId
-      ? ytdlp.findFormat(info, formatId)
-      : ytdlp.pickProgressive(info.formats, BELLE_MAX_HEIGHT);
+    // 'a' la luong chi tieng tot nhat (uu tien AAC) — app J2ME nghe thang bang
+    // duong nay, khong qua ffmpeg nhu /audio.
+    const format =
+      formatId === 'a'
+        ? ytdlp.pickAudioOnly(info.formats)
+        : formatId
+          ? ytdlp.findFormat(info, formatId)
+          : ytdlp.pickProgressive(info.formats, BELLE_MAX_HEIGHT);
     if (!format) {
       sendPage(
         res,
@@ -1421,7 +1426,7 @@ app.get('/api/search', async (req, res) => {
  *   M title author views description
  *   C height duong-dan   (chi ban gop san — E6 khong doc duoc ban ghep; height 0
  *                         la yt-dlp chua xong, may chu tu chon luc phat)
- *   A duong-dan          nghe chi tieng (.m4a)
+ *   A duong-dan          nghe chi tieng: luong tieng cua YouTube, chuyen tiep nguyen ban
  *   P profileId label    tao ban chuyen ma
  */
 app.get('/api/watch', async (req, res) => {
@@ -1469,16 +1474,13 @@ app.get('/api/watch', async (req, res) => {
       wanted: 0,
     });
     for (const choice of choices) lines.push(apiLine('C', choice.height, choice.src));
-    if (media.isAvailable() && ytdlp.isBelleAudio(ytdlp.pickAudioOnly(formats))) {
-      lines.push(apiLine('A', `/audio/${videoId}.m4a${key}`));
-    }
+    if (ytdlp.pickAudioOnly(formats)) lines.push(apiLine('A', `/stream/${videoId}/a${key}`));
   } else if (outcome.status === 'rejected') {
     lines.push(apiLine('E', friendlyError(outcome.reason)));
   } else {
     lines.push(apiLine('C', 0, `/stream/${videoId}${key}`));
-    // Gan nhu video nao cung co luong AAC; khong co thi /audio tu chuyen sang
-    // trang chuyen ma — app se bao loi va con nut nghe bang trinh duyet.
-    if (media.isAvailable()) lines.push(apiLine('A', `/audio/${videoId}.m4a${key}`));
+    // Gan nhu video nao cung co luong chi tieng; yt-dlp chay tiep trong luc nay.
+    lines.push(apiLine('A', `/stream/${videoId}/a${key}`));
   }
   if (outcome.status !== 'rejected' && media.isAvailable()) {
     for (const [id, profile] of Object.entries(media.PROFILES)) {
@@ -1515,9 +1517,9 @@ app.get('/app/play', (req, res) => {
 });
 
 /**
- * App sap nghe het bai thi goi day cho bai sau: chay truoc yt-dlp va buoc chep
- * tieng sang .m4a, de luc trinh phat mo /audio cua bai do la co file ngay.
- * Khong cho xong — tra loi luon:  J status
+ * App sap nghe het bai thi goi day cho bai sau: chay truoc yt-dlp (vai giay tren
+ * NAS) de luc trinh phat mo /stream/<ma>/a la co dia chi luong ngay. Khong cho
+ * xong — tra loi luon:  S ok
  */
 app.get('/api/prepare', (req, res) => {
   const videoId = parseVideoId(req.query.v);
@@ -1525,15 +1527,10 @@ app.get('/api/prepare', (req, res) => {
     sendApi(res, [apiLine('E', 'Thiếu mã video hợp lệ.')], 400);
     return;
   }
-  if (!media.isAvailable()) {
-    sendApi(res, [apiLine('E', 'Máy chủ chưa có ffmpeg.')], 503);
-    return;
-  }
-  const existing = media.getJob(videoId, 'audio');
-  startAudioJob(videoId, req.auth).catch((err) =>
-    console.warn(`[api/prepare ${videoId}] ${err?.message || err}`)
-  );
-  sendApi(res, [apiLine('J', existing ? existing.status : 'queued')]);
+  ytdlp
+    .getInfo(videoId, req.auth)
+    .catch((err) => console.warn(`[api/prepare ${videoId}] ${err?.message || err}`));
+  sendApi(res, [apiLine('S', 'ok')]);
 });
 
 /** J status progress position duong-dan — app hoi lai vai giay mot lan. */
