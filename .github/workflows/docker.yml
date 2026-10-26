@@ -4,6 +4,14 @@ on:
   push:
     branches: [main]
     tags: ['v*']
+    # Commit chi dung toi app J2ME hay tai lieu thi khong build anh moi: anh nao
+    # cung mang ma commit va ngay build, nen build lai la ra 'latest' khac va
+    # NAS phai tai, dung lai container ma may chu khong doi gi. (GitHub khong
+    # xet paths voi tag.)
+    paths-ignore:
+      - 'j2me/**'
+      - '.github/workflows/j2me.yml'
+      - '**/*.md'
   pull_request:
     branches: [main]
   workflow_dispatch:
