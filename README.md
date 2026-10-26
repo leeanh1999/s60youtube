@@ -443,9 +443,12 @@ cách nhau bằng TAB.
   `<video>` giống trang web, nên xem online được (đưa thẳng link `.mp4` cho máy
   thì Symbian tải hết file về rồi mới mở).
 - **Nghe nhạc trong app**: mục **Nghe nhạc trong app** ở trang video phát nền
-  luồng tiếng gốc của YouTube qua `/stream/<mã>/a` (máy chủ chỉ chuyển tiếp, không
-  chạy ffmpeg). Luồng này là MP4 chia đoạn (DASH); máy nào báo lỗi thì app
-  thử lại đúng bài đó bằng bản `.m4a` máy chủ chép lại (`/audio/<mã>.m4a`). Quay ra trang khác, tắt màn hình, hay chọn
+  luồng tiếng của YouTube qua `/stream/<mã>/a`. Luồng gốc là MP4 chia đoạn
+  (DASH: `ftyp moov sidx moof mdat moof mdat …`), trình phát của E6 nghe nó chậm
+  và giật. Máy chủ sắp lại thành một file `.m4a` thường "ảo" ngay lúc phát
+  (`lib/fmp4.js`): đọc `sidx` và phần `moof` đầu mỗi đoạn (~2 KB/đoạn) để dựng
+  một `moov` đủ bảng mẫu, còn dữ liệu tiếng vẫn xin thẳng YouTube theo Range.
+  Không ffmpeg, không ghi đĩa, không tải hết file trước; tua được. Quay ra trang khác, tắt màn hình, hay chọn
   **Ẩn app, vẫn nghe** (trong Menu) thì nhạc vẫn chạy. Trang **Đang nghe** (mục
   đầu tiên của Menu khi có bài) có tạm dừng, tua 10 giây, dừng nghe; âm lượng
   dùng phím của máy.
@@ -456,7 +459,7 @@ cách nhau bằng TAB.
   bài nào là nghe bài đó). Bài nào không nghe được thì tự bỏ qua; hỏng 3 bài
   liền thì dừng.
 - Gần hết bài (còn dưới 60 giây hoặc đã qua nửa bài) app gọi `/api/prepare?v=<bài sau>`
-  để máy chủ chạy trước yt-dlp, nên sang bài mới ít phải chờ.
+  để máy chủ chạy trước yt-dlp và dựng sẵn mục lục file `.m4a` ảo, nên sang bài mới ít phải chờ.
 - **Tìm kiếm**: ô tìm bo tròn tự vẽ, có lịch sử 8 lần tìm gần nhất (lưu trong máy).
   Máy có bàn phím QWERTY gõ thẳng vào ô; máy bàn phím số / cảm ứng, hoặc cần gõ
   tiếng Việt có dấu, thì bấm vào ô (hoặc **Gõ tiếng Việt có dấu**) để mở ô nhập của máy.

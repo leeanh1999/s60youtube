@@ -107,6 +107,12 @@ jobs:
 
       # Chay trong container de kiem luon ffmpeg cua anh: no phai co libx264
       # va muxer ipod thi hai muc chuyen ma moi ra duoc file.
+      # Luong chi tieng cua YouTube la MP4 chia doan; may chu sap lai thanh file
+      # .m4a "ao" lien mot khoi cho E6 (lib/fmp4.js). Dung ffmpeg cua anh de lam
+      # luong thu y het va doc lai file ra.
+      - name: Kiem thu file m4a ao
+        run: docker exec test node /app/tools/test-m4a.js
+
       - name: Kiem thu chuyen ma
         run: docker exec test node /app/tools/test-convert.js
 

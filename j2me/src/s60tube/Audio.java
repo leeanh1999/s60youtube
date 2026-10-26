@@ -126,9 +126,10 @@ final class Audio implements Runnable, PlayerListener {
     }
 
     /**
-     * Mac dinh nghe luong tieng goc cua YouTube (may chu chi chuyen tiep). Luong
-     * do la MP4 chia doan (DASH) — may nao khong doc duoc thi failed() thu lai
-     * dung bai nay bang ban .m4a thuong ma may chu chep lai (/audio).
+     * Nghe luong tieng cua YouTube qua /stream/<ma>/a: may chu sap lai luong
+     * MP4 chia doan (DASH) thanh mot file .m4a thuong ngay luc phat (lib/fmp4.js),
+     * khong ffmpeg, khong tai truoc. converted=true (/audio, ffmpeg chep ra file)
+     * chi con de danh, app khong tu dung toi.
      */
     private static void playIndex(int i, boolean converted) {
         Audio old = current;
@@ -218,10 +219,6 @@ final class Audio implements Runnable, PlayerListener {
         }
         setStatus(text);
         if (current != this) {
-            return;
-        }
-        if (!converted) {
-            playIndex(index, true);
             return;
         }
         fails++;
