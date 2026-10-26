@@ -25,11 +25,49 @@ public final class Api {
         return parse(new String(fetch(path), "UTF-8"));
     }
 
+    /** May chu tra loi ma loi: duong mang van tot, khong thu duong khac nua. */
+    static final class HttpError extends IOException {
+        HttpError(String message) {
+            super(message);
+        }
+    }
+
     public static byte[] fetch(String path) throws IOException {
+        String url = Settings.server + path;
+        if (!Device.BLACKBERRY) {
+            return fetchUrl(url);
+        }
+        if (Device.suffix != null) {
+            try {
+                return fetchUrl(url + Device.suffix);
+            } catch (HttpError e) {
+                throw e;
+            } catch (IOException e) {
+                // Vd. vua tat Wi-Fi: do lai tu dau.
+                Device.suffix = null;
+            }
+        }
+        IOException last = null;
+        for (int i = 0; i < Device.SUFFIXES.length; i++) {
+            try {
+                byte[] body = fetchUrl(url + Device.SUFFIXES[i]);
+                Device.suffix = Device.SUFFIXES[i];
+                return body;
+            } catch (HttpError e) {
+                Device.suffix = Device.SUFFIXES[i];
+                throw e;
+            } catch (IOException e) {
+                last = e;
+            }
+        }
+        throw last;
+    }
+
+    private static byte[] fetchUrl(String url) throws IOException {
         HttpConnection conn = null;
         InputStream in = null;
         try {
-            conn = (HttpConnection) Connector.open(Settings.server + path);
+            conn = (HttpConnection) Connector.open(url);
             conn.setRequestMethod(HttpConnection.GET);
             conn.setRequestProperty("User-Agent", UA);
             if (Settings.device.length() > 0) {
@@ -40,7 +78,7 @@ public final class Api {
             byte[] body = readAll(in, (int) conn.getLength());
             // Loi cua /api van co dong 'E' de hien; loi khac (proxy, 404) thi bao ma.
             if (code >= 400 && (body.length == 0 || body[0] != 'E')) {
-                throw new IOException("HTTP " + code);
+                throw new HttpError("HTTP " + code);
             }
             return body;
         } finally {

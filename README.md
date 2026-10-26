@@ -415,7 +415,7 @@ và hiện phần trăm; video dài thì chờ lâu, cứ để trang đó tự 
 File đã ghép nằm trong thư mục `cache/` **trên máy chủ**, tự xoá sau 6 tiếng
 không đụng tới.
 
-## App Java (J2ME) cho Nokia E6
+## App Java (J2ME) cho Nokia E6 và BlackBerry
 
 Thay vì mở trang web, có thể cài app `S60Tube.jar` lên máy. App vẫn nhờ máy chủ
 này làm mọi việc nặng, chỉ thay trang HTML bằng màn hình và phím mềm của máy.
@@ -435,9 +435,17 @@ cách nhau bằng TAB.
   `.jad`.
 - **Đăng nhập**: app hiện mã ghép nối, việc nộp cookie làm trên máy tính giống
   như với trang web.
-- **Cách phát**: mặc định mở trình phát của máy (giống bấm link trên trang web).
+- **Cách phát**: mặc định app mở trang `/app/play` bằng trình duyệt của máy.
+  Trang này có khung `<video>` giống trang web, nên trình duyệt xem online được.
+  Đưa thẳng link `.mp4` cho máy thì Symbian tải hết file về rồi mới mở.
   "Trong app (thử)" phát bằng MMAPI ngay trong app: phím 5 để tạm dừng, 4/6 để
   tua 10 giây, lên/xuống để chỉnh âm lượng.
+- **BlackBerry (vd. Bold 9900)**: phím Menu của máy có **Menu**, **Tìm kiếm** và
+  **Quay lại**; phím thoát là Quay lại. Ô tìm kiếm vẽ ngay trên màn hình: gõ bằng
+  bàn phím QWERTY, Enter để tìm, Del để xoá. Đang ở trang khác thì gõ một chữ cái
+  là mở luôn ô tìm kiếm. Muốn gõ tiếng Việt có dấu thì chọn **Dùng ô nhập của
+  máy**. App tự thử kết nối qua Wi-Fi (`;interface=wifi`), rồi mạng di động
+  (`;deviceside=true`), rồi cách mặc định của máy, và nhớ cách đã chạy được.
 
 Lấy file `.jar`/`.jad`:
 

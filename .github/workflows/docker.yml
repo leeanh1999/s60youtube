@@ -77,6 +77,8 @@ jobs:
           test "$(curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:8080/api/hello?k=x')" = 400
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/login)" = 400
           curl -fsS 'http://127.0.0.1:8080/api/search?q=https://youtu.be/dQw4w9WgXcQ' | grep -q '^G'
+          curl -fsS 'http://127.0.0.1:8080/app/play?s=%2Fstream%2FdQw4w9WgXcQ%2F18&t=x' | grep -q '<video'
+          test "$(curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:8080/app/play?s=http%3A%2F%2Fevil')" = 400
 
       # Trang video khong duoc cho yt-dlp cho xong moi ve. Bai thu dung mot
       # yt-dlp gia cham de do dung cho do. Chay trong container vi no dung san

@@ -1475,6 +1475,26 @@ app.get('/api/watch', async (req, res) => {
 });
 
 /** J status progress position duong-dan — app hoi lai vai giay mot lan. */
+/**
+ * Trang phat cho app: app mo no bang trinh duyet cua may. Chi nhan duong phat
+ * cua chinh may chu (/stream, /audio, /file) de khong thanh cho dan lien ket la.
+ */
+const APP_PLAY_RE = /^\/(stream|audio|file)\/([A-Za-z0-9_-]{11})(\.m4a|\/[A-Za-z0-9_-]{1,40})?(\?k=[0-9a-f]{24})?$/;
+
+app.get('/app/play', (req, res) => {
+  const src = String(req.query.s || '');
+  const match = APP_PLAY_RE.exec(src);
+  if (!match) {
+    res.status(400).type('text/plain').send('Đường phát không hợp lệ.');
+    return;
+  }
+  const title = String(req.query.t || '').slice(0, 200);
+  res
+    .set('Content-Type', 'text/html; charset=utf-8')
+    .set('Cache-Control', 'no-store')
+    .send(render.appPlayPage({ src, title, videoId: match[2], prefs: req.prefs }));
+});
+
 app.get('/api/convert', async (req, res) => {
   const videoId = parseVideoId(req.query.v);
   const profileId = String(req.query.p || '');

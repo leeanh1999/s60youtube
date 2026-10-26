@@ -31,6 +31,9 @@ final class PlayerCanvas extends Canvas implements Runnable, PlayerListener, Com
     private VideoControl video;
     private String status = "Đang mở…";
     private boolean closed;
+    private boolean started;
+    /** Khung hinh dang chiem tren man hinh; paint() khong to de len cho nay. */
+    private int vx, vy, vw, vh;
 
     PlayerCanvas(S60Tube app, String url, String title, Displayable back) {
         this.app = app;
@@ -40,65 +43,99 @@ final class PlayerCanvas extends Canvas implements Runnable, PlayerListener, Com
         setFullScreenMode(true);
         addCommand(cmdStop);
         setCommandListener(this);
-        new Thread(this).start();
+    }
+
+    /**
+     * Chi mo trinh phat khi man hinh nay da hien: goi initDisplayMode luc Canvas
+     * chua len man hinh thi co may chi hien man den (gap tren E6).
+     */
+    protected void showNotify() {
+        if (!started) {
+            started = true;
+            new Thread(this).start();
+        } else if (video != null) {
+            showVideo();
+        }
     }
 
     public void run() {
         try {
-            player = Manager.createPlayer(url);
+            player = Manager.createPlayer(Device.url(url));
             player.addPlayerListener(this);
             player.realize();
             video = (VideoControl) player.getControl("VideoControl");
             if (video != null) {
                 video.initDisplayMode(VideoControl.USE_DIRECT_VIDEO, this);
-                fitVideo();
-                video.setVisible(true);
             }
             status = "Đang đệm…";
             repaint();
             player.prefetch();
+            // Kich thuoc that cua phim chi biet sau prefetch.
+            showVideo();
             player.start();
+            showVideo();
         } catch (Throwable e) {
             close(e.toString());
         }
     }
 
+    private void showVideo() {
+        if (video == null) {
+            return;
+        }
+        fitVideo();
+        try {
+            video.setVisible(true);
+        } catch (Exception ignored) {
+        }
+        repaint();
+    }
+
     /** Giu ty le khung hinh, dat giua man hinh. */
     private void fitVideo() {
+        int sw = getWidth();
+        int sh = getHeight();
+        int w = sw;
+        int h = sh;
         try {
-            int sw = getWidth();
-            int sh = getHeight();
-            int vw = video.getSourceWidth();
-            int vh = video.getSourceHeight();
-            if (vw <= 0 || vh <= 0) {
-                video.setDisplayFullScreen(true);
-                return;
+            int srcW = video.getSourceWidth();
+            int srcH = video.getSourceHeight();
+            if (srcW > 0 && srcH > 0) {
+                h = srcH * sw / srcW;
+                if (h > sh) {
+                    h = sh;
+                    w = srcW * sh / srcH;
+                }
             }
-            int w = sw;
-            int h = vh * sw / vw;
-            if (h > sh) {
-                h = sh;
-                w = vw * sh / vh;
-            }
-            video.setDisplaySize(w, h);
             video.setDisplayLocation((sw - w) / 2, (sh - h) / 2);
+            video.setDisplaySize(w, h);
         } catch (Exception e) {
             // may khong cho dat co thi de mac dinh
         }
+        vx = (sw - w) / 2;
+        vy = (sh - h) / 2;
+        vw = w;
+        vh = h;
     }
 
     protected void sizeChanged(int w, int h) {
-        if (video != null) {
-            fitVideo();
-        }
+        showVideo();
     }
 
     protected void paint(Graphics g) {
+        int sw = getWidth();
+        int sh = getHeight();
         g.setColor(0x000000);
-        g.fillRect(0, 0, getWidth(), getHeight());
-        if (video != null && player != null && player.getState() == Player.STARTED) {
+        if (video != null && player != null && player.getState() == Player.STARTED && vw > 0) {
+            // Chi to vien den quanh khung: co may ve Canvas de len hinh, to kin
+            // man hinh la che mat phim.
+            g.fillRect(0, 0, sw, vy);
+            g.fillRect(0, vy + vh, sw, sh - vy - vh);
+            g.fillRect(0, vy, vx, vh);
+            g.fillRect(vx + vw, vy, sw - vx - vw, vh);
             return;
         }
+        g.fillRect(0, 0, sw, sh);
         g.setColor(0xffffff);
         Font font = Font.getFont(Font.FACE_SYSTEM, Font.STYLE_PLAIN, Font.SIZE_MEDIUM);
         g.setFont(font);
@@ -153,7 +190,9 @@ final class PlayerCanvas extends Canvas implements Runnable, PlayerListener, Com
             repaint();
         } else if (STARTED.equals(event) || "bufferingStopped".equals(event)) {
             status = "Đang phát";
-            repaint();
+            showVideo();
+        } else if ("sizeChanged".equals(event)) {
+            showVideo();
         }
     }
 

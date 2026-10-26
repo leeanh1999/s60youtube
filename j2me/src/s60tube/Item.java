@@ -22,6 +22,8 @@ final class Item {
     static final int PROGRESS = 9;
     static final int TEXT = 10;
     static final int INFO = 11;
+    /** O nhap chu tu ve (BlackBerry): title la chu da go, sub la chu mo khi trong. */
+    static final int INPUT = 12;
 
     static final int TONE_DESC = 0;
     static final int TONE_WARN = 1;
@@ -93,7 +95,7 @@ final class Item {
     }
 
     boolean focusable() {
-        return action != null && (type == CARD || type == OPTION || type == BUTTON || type == MORE);
+        return action != null && (type == CARD || type == OPTION || type == BUTTON || type == MORE || type == INPUT);
     }
 
     void setThumb(Image image) {
@@ -162,6 +164,9 @@ final class Item {
                 break;
             case PROGRESS:
                 h = Math.max(10, Ui.em * 2 / 3);
+                break;
+            case INPUT:
+                h = Ui.font.getHeight() + p * 2 + 2;
                 break;
             case INFO:
                 titleLines = Ui.wrap(title, Ui.bold, w - p * 2, 4);
@@ -279,6 +284,34 @@ final class Item {
                 Ui.box(g, x, top, w, h, Ui.CARD, Ui.LINE);
                 Ui.lines(g, titleLines, Ui.mono, Ui.TEXT, x + p, top + p);
                 break;
+            case INPUT: {
+                Ui.box(g, x, top, w, h, Ui.CARD, focused ? Ui.RED : Ui.LINE_SOFT);
+                if (focused) {
+                    Ui.box(g, x + 1, top + 1, w - 2, h - 2, Ui.CARD, Ui.RED);
+                }
+                int room = w - p * 2 - 3;
+                int ty = top + (h - Ui.font.getHeight()) / 2;
+                g.setFont(Ui.font);
+                if (title.length() == 0) {
+                    g.setColor(Ui.MUTED);
+                    g.drawString(Ui.ellipsis(sub, Ui.font, room), x + p + 4, ty, Graphics.TOP | Graphics.LEFT);
+                }
+                // Chu dai qua thi chi hien phan cuoi, cho dang go.
+                int start = 0;
+                while (start < title.length()
+                        && Ui.font.substringWidth(title, start, title.length() - start) > room) {
+                    start++;
+                }
+                String shown = title.substring(start);
+                g.setColor(Ui.TEXT);
+                g.drawString(shown, x + p, ty, Graphics.TOP | Graphics.LEFT);
+                if (focused) {
+                    int cx = x + p + Ui.font.stringWidth(shown) + 1;
+                    g.setColor(Ui.TEXT);
+                    g.fillRect(cx, ty, 2, Ui.font.getHeight());
+                }
+                break;
+            }
             case PROGRESS: {
                 Ui.box(g, x, top, w, h, Ui.CARD, Ui.LINE_SOFT);
                 int fill = (w - 2) * Math.max(0, Math.min(100, progress)) / 100;

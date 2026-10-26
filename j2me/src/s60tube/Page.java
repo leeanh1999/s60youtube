@@ -3,6 +3,9 @@ package s60tube;
 import java.util.Vector;
 
 import javax.microedition.lcdui.Canvas;
+import javax.microedition.lcdui.Command;
+import javax.microedition.lcdui.CommandListener;
+import javax.microedition.lcdui.Displayable;
 import javax.microedition.lcdui.Graphics;
 
 /**
@@ -13,13 +16,23 @@ import javax.microedition.lcdui.Graphics;
  * vua: E6 640x480 nam ngang, N8 360x640 dung, may 240x320 cua S60v3, va ca
  * luc xoay may (sizeChanged).
  */
-final class Page extends Canvas implements Runnable {
+final class Page extends Canvas implements Runnable, CommandListener {
 
     /** Ma phim mem: Nokia/Sony Ericsson -6/-7, Motorola -21/-22, Siemens. */
     private static final int[] LEFT_SOFT = {-6, -21, 21, -202, 105};
     private static final int[] RIGHT_SOFT = {-7, -22, 22, -203, 106};
     private static final int KEY_CLEAR = -8;
     private static final int KEY_CENTER = -5;
+    /** Ban phim QWERTY (BlackBerry, E6): Enter, Esc, xoa lui. */
+    private static final int KEY_ENTER = 10;
+    private static final int KEY_RETURN = 13;
+    private static final int KEY_ESC = 27;
+    private static final int KEY_BACKSPACE = 8;
+
+    // BlackBerry khong co phim mem: phim Menu mo cac Command nay, phim thoat goi BACK.
+    private static final Command CMD_MENU = new Command("Menu", Command.SCREEN, 1);
+    private static final Command CMD_SEARCH = new Command("Tìm kiếm", Command.SCREEN, 2);
+    private static final Command CMD_BACK = new Command("Quay lại", Command.BACK, 1);
 
     interface Host {
         void select(Page page, Item item);
@@ -29,6 +42,9 @@ final class Page extends Canvas implements Runnable {
         void rightSoft(Page page);
 
         void searchTap(Page page);
+
+        /** Go mot chu cai khi trang khong co o nhap: mo o tim kiem voi chu do. */
+        void typed(Page page, char ch);
     }
 
     private final Host host;
@@ -63,6 +79,22 @@ final class Page extends Canvas implements Runnable {
         this.host = host;
         this.title = title;
         setFullScreenMode(true);
+        if (Device.BLACKBERRY) {
+            addCommand(CMD_MENU);
+            addCommand(CMD_SEARCH);
+            addCommand(CMD_BACK);
+            setCommandListener(this);
+        }
+    }
+
+    public void commandAction(Command c, Displayable d) {
+        if (c == CMD_SEARCH) {
+            if (busy == null) {
+                host.searchTap(this);
+            }
+            return;
+        }
+        handleKey(c == CMD_MENU ? LEFT_SOFT[0] : RIGHT_SOFT[0], false);
     }
 
     // ---------- noi dung ----------
@@ -419,9 +451,10 @@ final class Page extends Canvas implements Runnable {
         // Phim co the den truoc lan ve dau tien — bo cuc phai co truoc khi tinh o chon.
         layout();
         boolean left = isIn(key, LEFT_SOFT);
-        boolean right = isIn(key, RIGHT_SOFT) || key == KEY_CLEAR;
+        boolean right = isIn(key, RIGHT_SOFT) || key == KEY_CLEAR || key == KEY_ESC;
         int act = left || right ? 0 : action(key);
-        boolean fire = key == KEY_CENTER || act == FIRE || (key == KEY_NUM5 && menu == null);
+        boolean fire = key == KEY_CENTER || key == KEY_ENTER || key == KEY_RETURN || act == FIRE
+                || (key == KEY_NUM5 && menu == null);
 
         if (busy != null) {
             if (right && !repeat) {
@@ -450,6 +483,10 @@ final class Page extends Canvas implements Runnable {
             repaint();
             return;
         }
+        if (typing(key, act)) {
+            repaint();
+            return;
+        }
 
         if (act == UP || key == KEY_NUM2) {
             move(-1);
@@ -474,6 +511,50 @@ final class Page extends Canvas implements Runnable {
             host.searchTap(this);
         }
         repaint();
+    }
+
+    /**
+     * Go chu tu ban phim QWERTY. Trang co o nhap (Item.INPUT) thi chu vao thang
+     * o do; trang khac thi go chu cai la mo o tim kiem. So, '*' va '#' van la
+     * phim dieu khien cua may ban phim so.
+     */
+    private boolean typing(int key, int act) {
+        Item input = null;
+        int at = -1;
+        for (int i = 0; i < items.size(); i++) {
+            Item item = (Item) items.elementAt(i);
+            if (item.type == Item.INPUT) {
+                input = item;
+                at = i;
+                break;
+            }
+        }
+        if (input != null) {
+            if (key == KEY_BACKSPACE || key == KEY_CLEAR) {
+                if (input.title.length() == 0) {
+                    return false;
+                }
+                input.title = input.title.substring(0, input.title.length() - 1);
+            } else if (key >= 32 && key != 127 && act != FIRE) {
+                if (input.title.length() >= 200) {
+                    return true;
+                }
+                input.title += (char) key;
+            } else {
+                return false;
+            }
+            focus = at;
+            reveal(input);
+            return true;
+        }
+        if (act == 0 && key < 65536 && key > 32) {
+            char ch = (char) key;
+            if (Character.isLowerCase(ch) || Character.isUpperCase(ch)) {
+                host.typed(this, ch);
+                return true;
+            }
+        }
+        return false;
     }
 
     private void pickMenu(int index) {

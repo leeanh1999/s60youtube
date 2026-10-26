@@ -261,14 +261,58 @@ public class S60Tube extends MIDlet implements Page.Host, CommandListener {
         });
     }
 
-    private void askSearch() {
+    /**
+     * O tim kiem. BlackBerry dung o tu ve tren trang (go thang bang ban phim
+     * QWERTY, Enter de tim) vi TextBox cua no khong bam OK duoc; may khac dung
+     * TextBox de go duoc tieng Viet. initial: chu cai vua go o trang khac.
+     */
+    private void askSearch(String initial) {
+        if (Device.BLACKBERRY) {
+            showSearchPage(initial);
+        } else {
+            askNativeSearch(initial != null ? initial : lastQuery);
+        }
+    }
+
+    private void askNativeSearch(String text) {
         if (searchBox == null) {
-            searchBox = new TextBox("Tìm trên YouTube", lastQuery, 200, TextField.ANY);
+            searchBox = new TextBox("Tìm trên YouTube", "", 200, TextField.ANY);
             searchBox.addCommand(cmdOk);
             searchBox.addCommand(cmdCancel);
             searchBox.setCommandListener(this);
         }
+        searchBox.setString(text);
         showNative(searchBox);
+    }
+
+    private void showSearchPage(String initial) {
+        Page page = current();
+        Item input = searchInput(page);
+        if (input == null) {
+            page = new Page(this, "Tìm kiếm");
+            page.kind = "search";
+            input = page.add(Item.of(Item.INPUT, lastQuery).act("search-go", null)
+                    .sub("Gõ từ khoá hoặc dán link YouTube"));
+            page.add(Item.of(Item.BUTTON, "Tìm").icon(Ui.ICON_SEARCH).act("search-go", null));
+            page.add(Item.of(Item.TEXT, "Gõ bằng bàn phím, bấm Enter để tìm, phím Del để xoá chữ."));
+            page.add(Item.of(Item.OPTION, "Dùng ô nhập của máy").icon(Ui.ICON_INFO).act("search-native", null)
+                    .sub("Khi cần gõ tiếng Việt có dấu"));
+            open(page);
+        }
+        if (initial != null) {
+            input.title = initial;
+        }
+        page.changed();
+    }
+
+    private static Item searchInput(Page page) {
+        for (int i = 0; i < page.items.size(); i++) {
+            Item item = (Item) page.items.elementAt(i);
+            if (item.type == Item.INPUT) {
+                return item;
+            }
+        }
+        return null;
     }
 
     private void search(final String query) {
@@ -381,9 +425,12 @@ public class S60Tube extends MIDlet implements Page.Host, CommandListener {
             display.setCurrent(new PlayerCanvas(this, url, title, from));
             return;
         }
+        // Dua thang file .mp4 thi Symbian tai het ve roi moi mo; trang co the
+        // <video> cua may chu thi trinh duyet xem online duoc (xem /app/play).
+        url = Settings.server + "/app/play?s=" + Api.encode(path) + "&t=" + Api.encode(title);
         try {
             if (platformRequest(url)) {
-                from.showToast("Đóng app để máy mở trình phát.", Item.TONE_WARN);
+                from.showToast("Đóng app để máy mở trình duyệt và phát.", Item.TONE_WARN);
             }
         } catch (Exception e) {
             from.showToast("Máy không mở được địa chỉ này:\n" + url + "\n" + e, Item.TONE_ERR);
@@ -394,7 +441,7 @@ public class S60Tube extends MIDlet implements Page.Host, CommandListener {
         display.setCurrent(back);
         if (error != null && back instanceof Page) {
             ((Page) back).showToast("Không phát được trong app: " + error
-                    + "\n\nVào Cài đặt → Cách phát, chọn “Trình phát của máy”.", Item.TONE_ERR);
+                    + "\n\nVào Cài đặt → Cách phát, chọn “Trình duyệt của máy”.", Item.TONE_ERR);
         }
     }
 
@@ -516,7 +563,7 @@ public class S60Tube extends MIDlet implements Page.Host, CommandListener {
                 .icon(Ui.ICON_GEAR).act("thumbs", null));
         page.add(Item.of(Item.HEAD, "Phát video"));
         page.add(Item.of(Item.OPTION, "Cách phát")
-                .sub(Settings.inApp ? "Trong app (thử) — 5 dừng, 4/6 tua" : "Trình phát của máy")
+                .sub(Settings.inApp ? "Trong app (thử) — 5 dừng, 4/6 tua" : "Trình duyệt của máy (xem online)")
                 .icon(Ui.ICON_PLAY).act("playmode", null));
         page.add(Item.of(Item.TEXT, APP + " " + getAppProperty("MIDlet-Version") + " · " + Settings.server));
         if (reuse == null) {
@@ -582,7 +629,13 @@ public class S60Tube extends MIDlet implements Page.Host, CommandListener {
     }
 
     public void searchTap(Page page) {
-        askSearch();
+        askSearch(null);
+    }
+
+    public void typed(Page page, char ch) {
+        if (!page.isBusy()) {
+            askSearch(String.valueOf(ch));
+        }
     }
 
     public void select(Page page, Item item) {
@@ -602,7 +655,18 @@ public class S60Tube extends MIDlet implements Page.Host, CommandListener {
         } else if ("about".equals(a)) {
             showAbout(page.title, v);
         } else if ("search".equals(a)) {
-            askSearch();
+            askSearch(null);
+        } else if ("search-go".equals(a)) {
+            Item input = searchInput(page);
+            String query = input != null ? input.title.trim() : "";
+            if (query.length() > 0) {
+                search(query);
+            } else {
+                askNativeSearch("");
+            }
+        } else if ("search-native".equals(a)) {
+            Item input = searchInput(page);
+            askNativeSearch(input != null ? input.title : lastQuery);
         } else if ("home".equals(a)) {
             goHome();
         } else if ("reload".equals(a)) {
