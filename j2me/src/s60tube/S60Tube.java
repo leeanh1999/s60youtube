@@ -3,20 +3,10 @@ package s60tube;
 import java.io.IOException;
 import java.util.Vector;
 
-import javax.microedition.lcdui.Alert;
-import javax.microedition.lcdui.AlertType;
-import javax.microedition.lcdui.Choice;
-import javax.microedition.lcdui.ChoiceGroup;
 import javax.microedition.lcdui.Command;
 import javax.microedition.lcdui.CommandListener;
 import javax.microedition.lcdui.Display;
 import javax.microedition.lcdui.Displayable;
-import javax.microedition.lcdui.Font;
-import javax.microedition.lcdui.Form;
-import javax.microedition.lcdui.Gauge;
-import javax.microedition.lcdui.Item;
-import javax.microedition.lcdui.List;
-import javax.microedition.lcdui.StringItem;
 import javax.microedition.lcdui.TextBox;
 import javax.microedition.lcdui.TextField;
 import javax.microedition.midlet.MIDlet;
@@ -24,53 +14,27 @@ import javax.microedition.midlet.MIDletStateChangeException;
 
 /**
  * App YouTube cho Nokia E6. Moi viec nang (tim kiem, lay luong, chuyen ma) van
- * do may chu lam; app chi thay trang HTML bang man hinh LCDUI va phim mem.
+ * do may chu lam; app ve giao dien giong ban web (xem Page, Item, Ui) va dung
+ * phim mem cua may.
  */
-public class S60Tube extends MIDlet implements CommandListener {
+public class S60Tube extends MIDlet implements Page.Host, CommandListener {
 
     private static final String APP = "S60Tube";
 
-    // Loai muc trong danh sach: video, trang sau, phat, chuyen ma, thong tin.
-    static final String VIDEO = "v";
-    static final String NEXT = "n";
-    static final String PLAY = "c";
-    static final String CONVERT = "p";
-    static final String INFO = "i";
-
-    private final Command cmdExit = new Command("Thoát", Command.EXIT, 9);
-    private final Command cmdBack = new Command("Quay lại", Command.BACK, 1);
     private final Command cmdOk = new Command("OK", Command.OK, 1);
-    private final Command cmdSearch = new Command("Tìm kiếm", Command.SCREEN, 2);
-    private final Command cmdHome = new Command("Trang chính", Command.SCREEN, 3);
-    private final Command cmdRefresh = new Command("Tải lại", Command.SCREEN, 4);
-    private final Command cmdLogin = new Command("Đăng nhập", Command.SCREEN, 5);
-    private final Command cmdSettings = new Command("Cài đặt", Command.SCREEN, 6);
-    private final Command cmdNewCode = new Command("Mã mới", Command.SCREEN, 2);
-    private final Command cmdCheck = new Command("Kiểm tra", Command.SCREEN, 3);
-    private final Command cmdPlay = new Command("Phát", Command.OK, 1);
+    private final Command cmdCancel = new Command("Huỷ", Command.BACK, 1);
 
     private Display display;
     private ThumbLoader thumbs;
     private final Vector history = new Vector();
 
-    /** Tang moi lan mo man hinh moi; ket qua mang ve tre (da bam Quay lai) thi bo. */
+    /** Tang moi khi bo mot viec dang cho; ket qua ve tre thi bo qua. */
     private int ticket;
 
-    private List home;
+    private Page home;
     private TextBox searchBox;
+    private TextBox serverBox;
     private String lastQuery = "";
-
-    private Form settingsForm;
-    private TextField serverField;
-    private ChoiceGroup thumbsChoice;
-    private ChoiceGroup playChoice;
-
-    private Form convertForm;
-    private Gauge convertGauge;
-    private StringItem convertText;
-    private String convertPath;
-    private String convertTitle;
-
     private String loginCode = "";
 
     protected void startApp() throws MIDletStateChangeException {
@@ -78,9 +42,18 @@ public class S60Tube extends MIDlet implements CommandListener {
             return;
         }
         display = Display.getDisplay(this);
+        String jadServer = getAppProperty("S60Tube-Server");
+        if (jadServer != null && jadServer.trim().length() > 0) {
+            Settings.defaultServer = Settings.normalize(jadServer);
+        }
         Settings.load();
+        Ui.setup();
         thumbs = new ThumbLoader();
         thumbs.start();
+        home = new Page(this, APP);
+        home.kind = "home";
+        home.rightLabel = "Thoát";
+        display.setCurrent(home);
         hello();
     }
 
@@ -95,71 +68,55 @@ public class S60Tube extends MIDlet implements CommandListener {
 
     // ---------- dieu huong ----------
 
-    private void show(Displayable screen) {
-        Displayable current = display.getCurrent();
-        if (current != null && current != screen && !(current instanceof Alert)
-                && !isLoading(current)) {
-            history.addElement(current);
+    /**
+     * Trang dang xem. Luc dang go chu (TextBox) hay xem phim thi la trang da mo
+     * cac thu do — nho trong lastPage.
+     */
+    private Page current() {
+        Displayable d = display.getCurrent();
+        if (d instanceof Page) {
+            return (Page) d;
         }
+        return lastPage != null ? lastPage : home;
+    }
+
+    /** Mo trang moi, giu trang dang xem de Quay lai. */
+    private void open(Page page) {
+        Page from = current();
+        if (from != page) {
+            history.addElement(from);
+        }
+        display.setCurrent(page);
+    }
+
+    /** Mo man hinh cua may (o nhap chu) — nho trang dang xem de quay ve. */
+    private void showNative(Displayable screen) {
+        lastPage = current();
         display.setCurrent(screen);
     }
 
     private void back() {
-        ticket++;
         if (history.isEmpty()) {
-            showHome();
+            if (current() == home) {
+                exit();
+            } else {
+                display.setCurrent(home);
+            }
             return;
         }
-        Displayable previous = (Displayable) history.lastElement();
+        Page previous = (Page) history.lastElement();
         history.removeElementAt(history.size() - 1);
         display.setCurrent(previous);
     }
 
-    private void showHome() {
+    private void goHome() {
         history.removeAllElements();
-        if (home == null) {
-            loadHome();
-        } else {
-            display.setCurrent(home);
-        }
+        display.setCurrent(home);
     }
 
-    private Form loading;
-
-    private boolean isLoading(Displayable d) {
-        return d == loading;
-    }
-
-    /** Hien man hinh cho roi chay viec mang tren luong rieng. */
-    private void work(String text, final Job job) {
-        if (loading == null) {
-            loading = new Form(APP);
-            loading.append(new Gauge(null, false, Gauge.INDEFINITE, Gauge.CONTINUOUS_RUNNING));
-            loading.append(new StringItem(null, ""));
-            loading.addCommand(cmdBack);
-            loading.setCommandListener(this);
-        }
-        ((StringItem) loading.get(1)).setText(text);
-        Displayable current = display.getCurrent();
-        if (current != null && current != loading && !(current instanceof Alert)) {
-            history.addElement(current);
-        }
-        display.setCurrent(loading);
-        final int mine = ++ticket;
-        new Thread() {
-            public void run() {
-                try {
-                    Vector rows = Api.get(job.path);
-                    if (mine == ticket) {
-                        job.done(rows);
-                    }
-                } catch (Throwable e) {
-                    if (mine == ticket) {
-                        fail("Không kết nối được máy chủ " + Settings.server + "\n" + e);
-                    }
-                }
-            }
-        }.start();
+    private void exit() {
+        destroyApp(true);
+        notifyDestroyed();
     }
 
     /** Viec mang: duong dan + viec lam khi co ket qua. */
@@ -173,95 +130,33 @@ public class S60Tube extends MIDlet implements CommandListener {
         abstract void done(Vector rows);
     }
 
-    /** Bao loi roi quay ve man hinh truoc man hinh cho. */
-    private void fail(String message) {
-        Displayable target;
-        if (display.getCurrent() == loading) {
-            target = history.isEmpty() ? null : (Displayable) history.lastElement();
-            if (target != null) {
-                history.removeElementAt(history.size() - 1);
+    /** Hien hop cho tren trang roi goi may chu tren luong rieng. */
+    private void work(final Page on, String text, final Job job) {
+        on.setBusy(text);
+        final int mine = ++ticket;
+        new Thread() {
+            public void run() {
+                try {
+                    Vector rows = Api.get(job.path);
+                    if (mine != ticket) {
+                        return;
+                    }
+                    on.setBusy(null);
+                    job.done(rows);
+                    on.changed();
+                } catch (Throwable e) {
+                    if (mine == ticket) {
+                        on.showToast("Không kết nối được máy chủ " + Settings.server + "\n" + e, Item.TONE_ERR);
+                    }
+                }
             }
-        } else {
-            target = display.getCurrent();
-        }
-        if (target == null) {
-            target = home != null ? (Displayable) home : settingsScreen();
-        }
-        alert(message, target);
-    }
-
-    private void alert(String message, Displayable next) {
-        Alert a = new Alert(APP, message, null, AlertType.ERROR);
-        a.setTimeout(Alert.FOREVER);
-        display.setCurrent(a, next);
-    }
-
-    private void info(String message, Displayable next) {
-        Alert a = new Alert(APP, message, null, AlertType.INFO);
-        a.setTimeout(3000);
-        display.setCurrent(a, next);
+        }.start();
     }
 
     /** Dong 'E' dau tien (neu co) — loi do may chu viet san bang tieng Viet. */
     private static String errorOf(Vector rows) {
         String[] row = Api.first(rows, 'E');
         return row == null ? null : Api.field(row, 1);
-    }
-
-    // ---------- khoi dong: xin ma thiet bi ----------
-
-    private void hello() {
-        work("Đang nối máy chủ…", new Job("/api/hello") {
-            void done(Vector rows) {
-                String[] d = Api.first(rows, 'D');
-                if (d == null) {
-                    fail(errorOf(rows) != null ? errorOf(rows) : "Máy chủ trả lời lạ — kiểm tra địa chỉ trong Cài đặt.");
-                    return;
-                }
-                if (!Api.field(d, 1).equals(Settings.device)) {
-                    Settings.device = Api.field(d, 1);
-                    Settings.save();
-                }
-                history.removeAllElements();
-                loadHome();
-            }
-        });
-    }
-
-    // ---------- danh sach video ----------
-
-    /** List kem bang muc: moi dong cua List ung voi mot String[]{loai, gia tri}. */
-    final class VideoList extends List {
-        final Vector entries = new Vector();
-
-        VideoList(String title) {
-            super(title, List.IMPLICIT);
-            setFitPolicy(Choice.TEXT_WRAP_ON);
-            setCommandListener(S60Tube.this);
-        }
-
-        void add(String text, String kind, String value) {
-            append(text, null);
-            entries.addElement(new String[] {kind, value});
-        }
-
-        /** Dong V: id, tieu de, kenh, thoi luong, luot xem. */
-        void addVideo(String[] row) {
-            String text = Api.field(row, 2);
-            String meta = join(Api.field(row, 3), join(Api.field(row, 4), Api.field(row, 5)));
-            if (meta.length() > 0) {
-                text += "\n" + meta;
-            }
-            int index = size();
-            add(text, VIDEO, Api.field(row, 1));
-            if (Settings.thumbs) {
-                thumbs.request(this, index, Api.field(row, 1));
-            }
-        }
-
-        String[] entry(int index) {
-            return index >= 0 && index < entries.size() ? (String[]) entries.elementAt(index) : null;
-        }
     }
 
     private static String join(String a, String b) {
@@ -274,39 +169,93 @@ public class S60Tube extends MIDlet implements CommandListener {
         return a + " · " + b;
     }
 
-    private void addVideos(VideoList list, Vector rows) {
-        for (int i = 0; i < rows.size(); i++) {
-            String[] row = (String[]) rows.elementAt(i);
-            if ("V".equals(row[0])) {
-                list.addVideo(row);
+    // ---------- khoi dong: xin ma thiet bi ----------
+
+    private void hello() {
+        history.removeAllElements();
+        display.setCurrent(home);
+        work(home, "Đang nối máy chủ…", new Job("/api/hello") {
+            void done(Vector rows) {
+                String[] d = Api.first(rows, 'D');
+                if (d == null) {
+                    String error = errorOf(rows);
+                    showError(home, error != null ? error
+                            : "Máy chủ trả lời lạ — kiểm tra địa chỉ trong Cài đặt.");
+                    return;
+                }
+                if (!Api.field(d, 1).equals(Settings.device)) {
+                    Settings.device = Api.field(d, 1);
+                    Settings.save();
+                }
+                loadHome();
             }
+        });
+    }
+
+    /** Bao loi tren trang chinh kem duong vao Cai dat — de con sua duoc dia chi. */
+    private void showError(Page page, String message) {
+        page.clear();
+        page.add(Item.of(Item.NOTE, message).tone(Item.TONE_ERR));
+        page.add(Item.of(Item.BUTTON, "Thử lại").icon(Ui.ICON_RELOAD).act("hello", null));
+        page.add(Item.of(Item.OPTION, "Cài đặt").sub(Settings.server).icon(Ui.ICON_GEAR).act("settings", null));
+    }
+
+    // ---------- danh sach video ----------
+
+    /** Dong V: id, tieu de, kenh, thoi luong, luot xem — thanh mot the .card. */
+    private void addVideo(Page page, String[] row) {
+        String id = Api.field(row, 1);
+        String duration = Api.field(row, 4);
+        Item card = Item.of(Item.CARD, Api.field(row, 2))
+                .sub(Api.field(row, 3))
+                .act("video", id);
+        if (Settings.thumbs) {
+            // Thoi luong nam tren goc anh nhu ban web; tat anh thi ve dong chu.
+            card.badge = duration;
+            card.meta(Api.field(row, 5));
+        } else {
+            card.meta(join(duration, Api.field(row, 5)));
+        }
+        page.add(card);
+        if (Settings.thumbs) {
+            thumbs.request(page, card, id);
         }
     }
 
-    private void addCommonCommands(Displayable screen) {
-        screen.addCommand(cmdSearch);
-        screen.addCommand(cmdLogin);
-        screen.addCommand(cmdSettings);
+    private int addVideos(Page page, Vector rows) {
+        int count = 0;
+        for (int i = 0; i < rows.size(); i++) {
+            String[] row = (String[]) rows.elementAt(i);
+            if ("V".equals(row[0])) {
+                addVideo(page, row);
+                count++;
+            }
+        }
+        return count;
     }
 
     private void loadHome() {
-        work("Đang tải trang chính…", new Job("/api/home") {
+        work(home, "Đang tải trang chính…", new Job("/api/home") {
             void done(Vector rows) {
-                VideoList list = new VideoList(APP);
-                list.addCommand(cmdExit);
-                list.addCommand(cmdRefresh);
-                addCommonCommands(list);
-                addVideos(list, rows);
-                if (list.size() == 0) {
-                    list.add("Tìm kiếm video…", INFO, "search");
+                home.clear();
+                boolean linked = true;
+                for (int i = 0; i < rows.size(); i++) {
+                    String[] row = (String[]) rows.elementAt(i);
+                    if ("W".equals(row[0])) {
+                        home.add(Item.of(Item.NOTE, Api.field(row, 1)).tone(Item.TONE_WARN));
+                        if (Api.field(row, 1).indexOf("chưa nối") >= 0) {
+                            linked = false;
+                        }
+                    }
                 }
-                home = list;
-                history.removeAllElements();
-                String[] warning = Api.first(rows, 'W');
-                if (warning != null) {
-                    info(Api.field(warning, 1), home);
-                } else {
-                    display.setCurrent(home);
+                if (!linked) {
+                    home.add(Item.of(Item.BUTTON, "Đăng nhập").icon(Ui.ICON_USER).act("login", null));
+                }
+                home.add(Item.of(Item.OPTION, "Tìm kiếm video").icon(Ui.ICON_SEARCH).act("search", null));
+                int start = home.items.size();
+                home.add(Item.of(Item.HEAD, "Gợi ý cho bạn"));
+                if (addVideos(home, rows) == 0) {
+                    home.items.removeElementAt(start);
                 }
             }
         });
@@ -316,43 +265,47 @@ public class S60Tube extends MIDlet implements CommandListener {
         if (searchBox == null) {
             searchBox = new TextBox("Tìm trên YouTube", lastQuery, 200, TextField.ANY);
             searchBox.addCommand(cmdOk);
-            searchBox.addCommand(cmdBack);
+            searchBox.addCommand(cmdCancel);
             searchBox.setCommandListener(this);
         }
-        show(searchBox);
+        showNative(searchBox);
     }
 
-    private void search(final String query, final String page) {
+    private void search(final String query) {
         lastQuery = query;
-        String path = "/api/search?q=" + Api.encode(query);
-        if (page != null) {
-            path += "&p=" + Api.encode(page);
-        }
-        work("Đang tìm “" + query + "”…", new Job(path) {
+        final Page page = new Page(this, query);
+        open(page);
+        loadResults(page, query, null);
+    }
+
+    /** Trang dau hoac trang tiep: trang tiep thi noi vao cuoi, bo nut "Trang sau" cu. */
+    private void loadResults(final Page page, final String query, final String token) {
+        String path = "/api/search?q=" + Api.encode(query) + (token != null ? "&p=" + Api.encode(token) : "");
+        work(page, token == null ? "Đang tìm “" + query + "”…" : "Đang tải thêm…", new Job(path) {
             void done(Vector rows) {
                 String[] go = Api.first(rows, 'G');
                 if (go != null) {
+                    back();
                     openVideo(Api.field(go, 1));
                     return;
                 }
                 String error = errorOf(rows);
                 if (error != null) {
-                    fail(error);
+                    page.showToast(error, Item.TONE_ERR);
                     return;
                 }
-                VideoList list = new VideoList(query);
-                list.addCommand(cmdBack);
-                list.addCommand(cmdHome);
-                addCommonCommands(list);
-                addVideos(list, rows);
+                if (token != null && !page.items.isEmpty()) {
+                    page.items.removeElementAt(page.items.size() - 1);
+                }
+                int count = addVideos(page, rows);
                 String[] next = Api.first(rows, 'N');
                 if (next != null) {
-                    list.add("Trang sau »", NEXT, Api.field(next, 1));
+                    page.add(Item.of(Item.MORE, "Trang sau").icon(Ui.ICON_NEXT).act("more", Api.field(next, 1)));
                 }
-                if (list.size() == 0) {
-                    list.add("Không thấy video nào.", INFO, "");
+                if (count == 0 && token == null) {
+                    page.add(Item.of(Item.NOTE, "Không thấy video nào cho “" + query + "”."));
+                    page.add(Item.of(Item.OPTION, "Tìm từ khác").icon(Ui.ICON_SEARCH).act("search", null));
                 }
-                display.setCurrent(list);
             }
         });
     }
@@ -360,128 +313,136 @@ public class S60Tube extends MIDlet implements CommandListener {
     // ---------- trang video ----------
 
     private void openVideo(final String id) {
-        work("Đang lấy video… (vài giây)", new Job("/api/watch?v=" + id) {
+        final Page page = new Page(this, "Video");
+        open(page);
+        work(page, "Đang lấy video… (vài giây)", new Job("/api/watch?v=" + id) {
             void done(Vector rows) {
                 String[] meta = Api.first(rows, 'M');
-                final String title = meta != null ? Api.field(meta, 1) : "Video";
-                VideoList list = new VideoList(title);
-                list.addCommand(cmdBack);
-                list.addCommand(cmdHome);
-                addCommonCommands(list);
+                String title = meta != null ? Api.field(meta, 1) : "Video";
+                String author = meta != null ? Api.field(meta, 2) : "";
+                String views = meta != null ? Api.field(meta, 3) : "";
+                String about = meta != null ? Api.field(meta, 4) : "";
+                page.title = title;
+                page.add(Item.of(Item.INFO, title).sub(author).meta(views));
 
-                StringBuffer about = new StringBuffer(title);
-                if (meta != null) {
-                    about.append('\n').append(join(Api.field(meta, 2), Api.field(meta, 3)));
-                    if (Api.field(meta, 4).length() > 0) {
-                        about.append("\n\n").append(Api.field(meta, 4));
-                    }
-                }
-
+                boolean first = true;
+                Vector profiles = new Vector();
                 for (int i = 0; i < rows.size(); i++) {
                     String[] row = (String[]) rows.elementAt(i);
                     if ("C".equals(row[0])) {
-                        list.add("▶ Xem " + Api.field(row, 1) + "p", PLAY, Api.field(row, 2) + "\t" + title);
+                        String label = "Xem " + Api.field(row, 1) + "p";
+                        Item play = Item.of(first ? Item.BUTTON : Item.OPTION, label).icon(Ui.ICON_PLAY)
+                                .act("play", Api.field(row, 2) + "\t" + title);
+                        page.add(play);
+                        first = false;
                     } else if ("A".equals(row[0])) {
-                        list.add("♪ Nghe chỉ tiếng (.m4a)", PLAY, Api.field(row, 1) + "\t" + title);
+                        page.add(Item.of(Item.OPTION, "Nghe chỉ tiếng (.m4a)").icon(Ui.ICON_NOTE)
+                                .sub("Nhẹ, nghe nhạc khi tắt màn hình").act("play", Api.field(row, 1) + "\t" + title));
                     } else if ("P".equals(row[0])) {
-                        list.add("⚙ " + Api.field(row, 2), CONVERT, id + "\t" + Api.field(row, 1) + "\t" + title);
+                        profiles.addElement(row);
                     } else if ("E".equals(row[0])) {
-                        list.add("⚠ " + Api.field(row, 1), INFO, Api.field(row, 1));
+                        page.add(Item.of(Item.NOTE, Api.field(row, 1)).tone(Item.TONE_ERR));
                     }
                 }
-                list.add("ℹ Thông tin video", INFO, about.toString());
-                addVideos(list, rows);
-                display.setCurrent(list);
+                if (!profiles.isEmpty()) {
+                    page.add(Item.of(Item.HEAD, "Tạo bản cho máy yếu"));
+                    for (int i = 0; i < profiles.size(); i++) {
+                        String[] row = (String[]) profiles.elementAt(i);
+                        page.add(Item.of(Item.OPTION, Api.field(row, 2)).icon(Ui.ICON_GEAR)
+                                .act("convert", id + "\t" + Api.field(row, 1) + "\t" + title));
+                    }
+                }
+                if (about.length() > 0) {
+                    page.add(Item.of(Item.OPTION, "Mô tả video").icon(Ui.ICON_INFO).act("about", about));
+                }
+                int start = page.items.size();
+                page.add(Item.of(Item.HEAD, "Video liên quan"));
+                if (addVideos(page, rows) == 0) {
+                    page.items.removeElementAt(start);
+                }
             }
         });
     }
 
-    private void showText(String title, String text) {
-        Form form = new Form(title);
-        form.append(new StringItem(null, text));
-        form.addCommand(cmdBack);
-        form.setCommandListener(this);
-        show(form);
+    private void showAbout(String title, String text) {
+        Page page = new Page(this, title);
+        page.add(Item.of(Item.INFO, title));
+        page.add(Item.of(Item.NOTE, text));
+        open(page);
     }
 
     // ---------- phat ----------
 
     private void play(String path, String title) {
         String url = Settings.server + path;
+        Page from = current();
         if (Settings.inApp) {
-            Displayable here = display.getCurrent();
-            display.setCurrent(new PlayerCanvas(this, url, title, here));
+            lastPage = from;
+            display.setCurrent(new PlayerCanvas(this, url, title, from));
             return;
         }
         try {
             if (platformRequest(url)) {
-                info("Đóng app để máy mở trình phát.", display.getCurrent());
+                from.showToast("Đóng app để máy mở trình phát.", Item.TONE_WARN);
             }
         } catch (Exception e) {
-            alert("Máy không mở được địa chỉ này:\n" + url + "\n" + e, display.getCurrent());
+            from.showToast("Máy không mở được địa chỉ này:\n" + url + "\n" + e, Item.TONE_ERR);
         }
     }
 
     void playerClosed(Displayable back, String error) {
-        if (error != null) {
-            alert("Không phát được trong app: " + error
-                    + "\n\nĐổi Cài đặt → Cách phát sang “Trình phát của máy”.", back);
-        } else {
-            display.setCurrent(back);
+        display.setCurrent(back);
+        if (error != null && back instanceof Page) {
+            ((Page) back).showToast("Không phát được trong app: " + error
+                    + "\n\nVào Cài đặt → Cách phát, chọn “Trình phát của máy”.", Item.TONE_ERR);
         }
-    }
-
-    Display display() {
-        return display;
     }
 
     // ---------- chuyen ma ----------
 
-    private void startConvert(final String id, final String profile, String title) {
-        convertTitle = title;
-        convertPath = null;
-        convertForm = new Form("Chuẩn bị video");
-        convertGauge = new Gauge("Tiến độ", false, 100, 0);
-        convertText = new StringItem(null, "Đang gửi yêu cầu…");
-        convertForm.append(new StringItem(null, title));
-        convertForm.append(convertGauge);
-        convertForm.append(convertText);
-        convertForm.addCommand(cmdBack);
-        convertForm.setCommandListener(this);
-        show(convertForm);
+    private void startConvert(final String id, final String profile, final String title) {
+        final Page page = new Page(this, "Chuẩn bị video");
+        page.add(Item.of(Item.INFO, title));
+        final Item status = page.add(Item.of(Item.TEXT, "Đang gửi yêu cầu…"));
+        final Item bar = page.add(new Item(Item.PROGRESS));
+        open(page);
 
-        final Form form = convertForm;
         new Thread() {
             public void run() {
-                while (display.getCurrent() == form || display.getCurrent() instanceof Alert) {
+                // Quay lai khoi trang thi thoi hoi; viec van chay tiep tren may chu.
+                while (current() == page || history.contains(page)) {
                     try {
                         Vector rows = Api.get("/api/convert?v=" + id + "&p=" + profile);
                         String error = errorOf(rows);
                         String[] job = Api.first(rows, 'J');
                         if (error != null || job == null) {
-                            convertText.setText(error != null ? error : "Máy chủ trả lời lạ.");
+                            page.add(Item.of(Item.NOTE, error != null ? error : "Máy chủ trả lời lạ.")
+                                    .tone(Item.TONE_ERR));
+                            page.changed();
                             return;
                         }
-                        String status = Api.field(job, 1);
+                        String state = Api.field(job, 1);
                         int progress = parseInt(Api.field(job, 2));
-                        convertGauge.setValue(Math.min(100, Math.max(0, progress)));
-                        if ("done".equals(status)) {
-                            convertPath = Api.field(job, 4);
-                            convertText.setText("Xong. Bấm Phát.");
-                            form.addCommand(cmdPlay);
-                            if (display.getCurrent() == form) {
-                                play(convertPath, convertTitle);
+                        bar.progress = progress;
+                        if ("done".equals(state)) {
+                            bar.progress = 100;
+                            status.title = "Xong — bấm Phát.";
+                            String path = Api.field(job, 4);
+                            page.add(Item.of(Item.BUTTON, "Phát").icon(Ui.ICON_PLAY).act("play", path + "\t" + title));
+                            page.changed();
+                            if (display.getCurrent() == page) {
+                                play(path, title);
                             }
                             return;
                         }
-                        if ("queued".equals(status)) {
-                            convertText.setText("Đang xếp hàng, thứ " + Api.field(job, 3) + "…");
-                        } else {
-                            convertText.setText("Đang chuyển mã " + progress + "%…");
-                        }
+                        status.title = "queued".equals(state)
+                                ? "Đang xếp hàng, thứ " + Api.field(job, 3) + "…"
+                                : "Đang chuẩn bị " + progress + "%…";
+                        page.changed();
                         Thread.sleep(3000);
                     } catch (IOException e) {
-                        convertText.setText("Mất kết nối: " + e + " — Quay lại rồi thử lần nữa.");
+                        status.title = "Mất kết nối: " + e + " — quay lại rồi thử lần nữa.";
+                        page.changed();
                         return;
                     } catch (InterruptedException e) {
                         return;
@@ -501,13 +462,18 @@ public class S60Tube extends MIDlet implements CommandListener {
 
     // ---------- dang nhap ----------
 
-    private void login(boolean fresh) {
+    private void login(final Page reuse, boolean fresh) {
+        final Page page = reuse != null ? reuse : new Page(this, "Đăng nhập");
+        if (reuse == null) {
+            open(page);
+        }
         String path = "/api/login?c=" + Api.encode(loginCode) + (fresh ? "&new=1" : "");
-        work("Đang lấy mã đăng nhập…", new Job(path) {
+        work(page, "Đang lấy mã đăng nhập…", new Job(path) {
             void done(Vector rows) {
                 String error = errorOf(rows);
+                page.clear();
                 if (error != null) {
-                    fail(error);
+                    page.add(Item.of(Item.NOTE, error).tone(Item.TONE_ERR));
                     return;
                 }
                 String[] code = Api.first(rows, 'K');
@@ -517,134 +483,182 @@ public class S60Tube extends MIDlet implements CommandListener {
                 boolean ready = state != null && "1".equals(Api.field(state, 1));
                 boolean own = state != null && "1".equals(Api.field(state, 2));
 
-                Form form = new Form("Đăng nhập");
-                StringItem status = new StringItem("Trạng thái", own
-                        ? "Đã nối tài khoản YouTube riêng."
-                        : ready ? "Đang dùng tài khoản chung của máy chủ." : "Chưa nối tài khoản.");
-                form.append(status);
-                StringItem codeItem = new StringItem("Mã ghép nối", loginCode);
-                codeItem.setFont(Font.getFont(Font.FACE_MONOSPACE, Font.STYLE_BOLD, Font.SIZE_LARGE));
-                codeItem.setLayout(Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-                form.append(codeItem);
-                form.append(new StringItem(null,
-                        "Trên máy tính, mở địa chỉ dưới đây, nhập mã trên và dán nội dung"
-                        + " file cookies.txt của YouTube. Mã còn hạn "
+                page.add(Item.of(Item.NOTE, own ? "Máy này đã nối tài khoản YouTube riêng."
+                        : ready ? "Đang dùng tài khoản chung của máy chủ."
+                        : "Máy này chưa nối tài khoản YouTube.")
+                        .tone(own ? Item.TONE_OK : Item.TONE_WARN));
+                page.add(Item.of(Item.HEAD, "Mã ghép nối"));
+                page.add(Item.of(Item.CODE, loginCode));
+                page.add(Item.of(Item.TEXT, "Trên máy tính, mở địa chỉ dưới đây, nhập mã trên rồi dán"
+                        + " nội dung file cookies.txt của YouTube. Mã còn hạn "
                         + (code != null ? Api.field(code, 2) : "?") + " phút."));
-                form.append(new StringItem("Địa chỉ", url != null ? Api.field(url, 1) : ""));
-                form.addCommand(cmdBack);
-                form.addCommand(cmdCheck);
-                form.addCommand(cmdNewCode);
-                form.setCommandListener(S60Tube.this);
-                display.setCurrent(form);
+                page.add(Item.of(Item.URL, url != null ? Api.field(url, 1) : ""));
+                page.add(Item.of(Item.BUTTON, "Kiểm tra lại").icon(Ui.ICON_RELOAD).act("login-check", null));
+                page.add(Item.of(Item.OPTION, "Lấy mã mới").icon(Ui.ICON_USER).act("login-new", null));
             }
         });
     }
 
     // ---------- cai dat ----------
 
-    private Form settingsScreen() {
-        if (settingsForm == null) {
-            settingsForm = new Form("Cài đặt");
-            serverField = new TextField("Địa chỉ máy chủ", Settings.server, 200, TextField.URL);
-            thumbsChoice = new ChoiceGroup("Danh sách", ChoiceGroup.MULTIPLE);
-            thumbsChoice.append("Hiện ảnh thu nhỏ", null);
-            playChoice = new ChoiceGroup("Cách phát", ChoiceGroup.EXCLUSIVE);
-            playChoice.append("Trình phát của máy", null);
-            playChoice.append("Trong app (thử)", null);
-            settingsForm.append(serverField);
-            settingsForm.append(thumbsChoice);
-            settingsForm.append(playChoice);
-            settingsForm.addCommand(cmdOk);
-            settingsForm.addCommand(cmdBack);
-            settingsForm.setCommandListener(this);
-        }
-        serverField.setString(Settings.server);
-        thumbsChoice.setSelectedIndex(0, Settings.thumbs);
-        playChoice.setSelectedIndex(Settings.inApp ? 1 : 0, true);
-        return settingsForm;
-    }
+    private static final String[] TEXT_SIZES = {"Nhỏ", "Vừa", "Lớn"};
 
-    private void saveSettings() {
-        String server = Settings.normalize(serverField.getString());
-        Settings.thumbs = thumbsChoice.isSelected(0);
-        Settings.inApp = playChoice.getSelectedIndex() == 1;
-        boolean moved = !server.equals(Settings.server);
-        if (moved) {
-            // Ma thiet bi do may chu cu phat, may chu moi khong biet no.
-            Settings.server = server;
-            Settings.device = "";
-            home = null;
-        }
-        Settings.save();
-        if (moved || Settings.device.length() == 0) {
-            history.removeAllElements();
-            hello();
+    private void showSettings(Page reuse) {
+        Page page = reuse != null ? reuse : new Page(this, "Cài đặt");
+        page.kind = "settings";
+        page.clear();
+        page.add(Item.of(Item.HEAD, "Máy chủ"));
+        page.add(Item.of(Item.OPTION, "Địa chỉ máy chủ").sub(Settings.server).icon(Ui.ICON_HOME).act("server", null));
+        page.add(Item.of(Item.HEAD, "Hiển thị"));
+        page.add(Item.of(Item.OPTION, "Cỡ chữ").sub(TEXT_SIZES[Math.max(0, Math.min(2, Settings.textSize))])
+                .icon(Ui.ICON_GEAR).act("textsize", null));
+        page.add(Item.of(Item.OPTION, "Ảnh thu nhỏ").sub(Settings.thumbs ? "Bật" : "Tắt — danh sách nhẹ hơn")
+                .icon(Ui.ICON_GEAR).act("thumbs", null));
+        page.add(Item.of(Item.HEAD, "Phát video"));
+        page.add(Item.of(Item.OPTION, "Cách phát")
+                .sub(Settings.inApp ? "Trong app (thử) — 5 dừng, 4/6 tua" : "Trình phát của máy")
+                .icon(Ui.ICON_PLAY).act("playmode", null));
+        page.add(Item.of(Item.TEXT, APP + " " + getAppProperty("MIDlet-Version") + " · " + Settings.server));
+        if (reuse == null) {
+            open(page);
         } else {
-            back();
+            page.changed();
         }
     }
 
-    // ---------- phim ----------
-
-    public void commandAction(Command c, Displayable d) {
-        if (c == cmdExit) {
-            destroyApp(true);
-            notifyDestroyed();
-        } else if (c == cmdBack) {
-            back();
-        } else if (c == cmdHome) {
-            showHome();
-        } else if (c == cmdRefresh) {
-            home = null;
-            loadHome();
-        } else if (c == cmdSearch) {
-            askSearch();
-        } else if (c == cmdLogin) {
-            login(false);
-        } else if (c == cmdNewCode || c == cmdCheck) {
-            // Bo trang dang nhap cu ra khoi duong quay lai roi ve trang moi.
-            back();
-            login(c == cmdNewCode);
-        } else if (c == cmdSettings) {
-            show(settingsScreen());
-        } else if (c == cmdPlay && convertPath != null) {
-            play(convertPath, convertTitle);
-        } else if (c == cmdOk && d == searchBox) {
-            String query = searchBox.getString().trim();
-            if (query.length() > 0) {
-                search(query, null);
-            }
-        } else if (c == cmdOk && d == settingsForm) {
-            saveSettings();
-        } else if (c == List.SELECT_COMMAND && d instanceof VideoList) {
-            select((VideoList) d);
+    private void askServer() {
+        if (serverBox == null) {
+            serverBox = new TextBox("Địa chỉ máy chủ", Settings.server, 200, TextField.URL);
+            serverBox.addCommand(cmdOk);
+            serverBox.addCommand(cmdCancel);
+            serverBox.setCommandListener(this);
         }
+        serverBox.setString(Settings.server);
+        showNative(serverBox);
     }
 
-    private void select(VideoList list) {
-        String[] entry = list.entry(list.getSelectedIndex());
-        if (entry == null) {
+    private void saveServer(String value) {
+        String server = Settings.normalize(value);
+        if (server.equals(Settings.server)) {
+            display.setCurrent(current());
             return;
         }
-        String kind = entry[0];
-        String value = entry[1];
-        if (VIDEO.equals(kind)) {
-            openVideo(value);
-        } else if (NEXT.equals(kind)) {
-            search(lastQuery, value);
-        } else if (PLAY.equals(kind)) {
-            int tab = value.indexOf('\t');
-            play(value.substring(0, tab), value.substring(tab + 1));
-        } else if (CONVERT.equals(kind)) {
-            int a = value.indexOf('\t');
-            int b = value.indexOf('\t', a + 1);
-            startConvert(value.substring(0, a), value.substring(a + 1, b), value.substring(b + 1));
-        } else if (INFO.equals(kind)) {
-            if ("search".equals(value)) {
-                askSearch();
-            } else if (value.length() > 0) {
-                showText(list.getTitle(), value);
+        // Ma thiet bi do may chu cu phat, may chu moi khong biet no.
+        Settings.server = server;
+        Settings.device = "";
+        Settings.save();
+        home.clear();
+        hello();
+    }
+
+    // ---------- Page.Host ----------
+
+    private Item[] menu() {
+        return new Item[] {
+            Item.of(Item.OPTION, "Trang chính").icon(Ui.ICON_HOME).act("home", null),
+            Item.of(Item.OPTION, "Tìm kiếm").icon(Ui.ICON_SEARCH).act("search", null),
+            Item.of(Item.OPTION, "Tải lại trang chính").icon(Ui.ICON_RELOAD).act("reload", null),
+            Item.of(Item.OPTION, "Đăng nhập").icon(Ui.ICON_USER).act("login", null),
+            Item.of(Item.OPTION, "Cài đặt").icon(Ui.ICON_GEAR).act("settings", null),
+            Item.of(Item.OPTION, "Thoát").icon(Ui.ICON_EXIT).act("exit", null),
+        };
+    }
+
+    public void leftSoft(Page page) {
+        page.openMenu(menu());
+    }
+
+    public void rightSoft(Page page) {
+        if (page.isBusy()) {
+            // Huy viec dang cho: ket qua ve sau se bi bo qua.
+            ticket++;
+            page.setBusy(null);
+            if (page != home) {
+                back();
+            }
+            return;
+        }
+        back();
+    }
+
+    public void searchTap(Page page) {
+        askSearch();
+    }
+
+    public void select(Page page, Item item) {
+        String a = item.action;
+        String v = item.value;
+        if ("video".equals(a)) {
+            openVideo(v);
+        } else if ("more".equals(a)) {
+            loadResults(page, page.title, v);
+        } else if ("play".equals(a)) {
+            int tab = v.indexOf('\t');
+            play(v.substring(0, tab), v.substring(tab + 1));
+        } else if ("convert".equals(a)) {
+            int x = v.indexOf('\t');
+            int y = v.indexOf('\t', x + 1);
+            startConvert(v.substring(0, x), v.substring(x + 1, y), v.substring(y + 1));
+        } else if ("about".equals(a)) {
+            showAbout(page.title, v);
+        } else if ("search".equals(a)) {
+            askSearch();
+        } else if ("home".equals(a)) {
+            goHome();
+        } else if ("reload".equals(a)) {
+            goHome();
+            loadHome();
+        } else if ("hello".equals(a)) {
+            hello();
+        } else if ("login".equals(a)) {
+            login(null, false);
+        } else if ("login-check".equals(a)) {
+            login(page, false);
+        } else if ("login-new".equals(a)) {
+            login(page, true);
+        } else if ("settings".equals(a)) {
+            if (!"settings".equals(page.kind)) {
+                showSettings(null);
+            }
+        } else if ("server".equals(a)) {
+            askServer();
+        } else if ("textsize".equals(a)) {
+            Settings.textSize = (Settings.textSize + 1) % 3;
+            Settings.save();
+            Ui.forceSetup();
+            showSettings(page);
+        } else if ("thumbs".equals(a)) {
+            Settings.thumbs = !Settings.thumbs;
+            Settings.save();
+            Ui.forceSetup();
+            showSettings(page);
+        } else if ("playmode".equals(a)) {
+            Settings.inApp = !Settings.inApp;
+            Settings.save();
+            showSettings(page);
+        } else if ("exit".equals(a)) {
+            exit();
+        }
+    }
+
+    // ---------- o nhap chu (TextBox cua may) ----------
+
+    public void commandAction(Command c, Displayable d) {
+        if (d == searchBox) {
+            String query = searchBox.getString().trim();
+            if (c == cmdOk && query.length() > 0) {
+                search(query);
+            } else {
+                display.setCurrent(current());
+            }
+        } else if (d == serverBox) {
+            if (c == cmdOk) {
+                saveServer(serverBox.getString());
+            } else {
+                display.setCurrent(current());
             }
         }
     }
+
+    private Page lastPage;
 }

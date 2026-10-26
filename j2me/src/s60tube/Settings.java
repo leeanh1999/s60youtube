@@ -12,22 +12,28 @@ import javax.microedition.rms.RecordStoreException;
 /** Cai dat cua app, luu trong RMS de giu qua cac lan mo. */
 public final class Settings {
 
-    public static final String DEFAULT_SERVER = "http://s60tube.ddnsfree.com";
+    public static final String BUILT_IN_SERVER = "http://s60tube.ddnsfree.com";
+
+    /** Dia chi khi chua tung luu cai dat; file .jad doi duoc qua thuoc tinh S60Tube-Server. */
+    public static String defaultServer = BUILT_IN_SERVER;
 
     private static final String STORE = "s60tube";
 
-    public static String server = DEFAULT_SERVER;
+    public static String server = BUILT_IN_SERVER;
     /** Ma thiet bi (cookie 'did') may chu phat cho app — ung voi tung may chu. */
     public static String device = "";
     public static boolean thumbs = true;
     /** true: phat trong app bang MMAPI; false: mo trinh phat cua may. */
     public static boolean inApp = false;
+    /** Co chu: 0 nho, 1 vua, 2 lon — giong muc Co chu cua ban web. */
+    public static int textSize = 1;
 
     private Settings() {
     }
 
     public static void load() {
         RecordStore rs = null;
+        server = defaultServer;
         try {
             rs = RecordStore.openRecordStore(STORE, true);
             if (rs.getNumRecords() == 0) {
@@ -38,6 +44,7 @@ public final class Settings {
             device = in.readUTF();
             thumbs = in.readBoolean();
             inApp = in.readBoolean();
+            textSize = in.readInt();
         } catch (RecordStoreException e) {
             // hong thi dung mac dinh
         } catch (IOException e) {
@@ -56,6 +63,7 @@ public final class Settings {
             out.writeUTF(device);
             out.writeBoolean(thumbs);
             out.writeBoolean(inApp);
+            out.writeInt(textSize);
             byte[] data = bytes.toByteArray();
             rs = RecordStore.openRecordStore(STORE, true);
             if (rs.getNumRecords() == 0) {
@@ -76,7 +84,7 @@ public final class Settings {
     public static String normalize(String url) {
         String value = url.trim();
         if (value.length() == 0) {
-            return DEFAULT_SERVER;
+            return defaultServer;
         }
         if (value.indexOf("://") < 0) {
             value = "http://" + value;

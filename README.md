@@ -422,8 +422,17 @@ này làm mọi việc nặng, chỉ thay trang HTML bằng màn hình và phím
 App nói chuyện với máy chủ qua các đường `/api/*`, mỗi dòng trả về là các trường
 cách nhau bằng TAB.
 
+- Giao diện tự vẽ theo bản web: thanh đỏ, thẻ video có ảnh thu nhỏ, mục đang
+  chọn nền vàng viền đỏ. Mọi kích thước tính theo cỡ chữ và bề ngang màn hình,
+  nên vừa với E6 (640×480), N8 (360×640), máy S60v3 240×320, và tự sắp lại khi
+  xoay máy. Màn hẹp dưới 200 điểm thì bỏ ảnh, chỉ còn chữ.
+- Phím: phím mềm trái mở **Menu**, phải là **Quay lại**, phím giữa/5 để mở.
+  Lên/xuống (2/8) chuyển mục, trái/phải (4/6) cuộn cả trang, `*` để tìm kiếm.
+  Máy cảm ứng thì kéo để cuộn, chạm để mở.
 - Địa chỉ mặc định là `http://s60tube.ddnsfree.com`. Đổi trong **Cài đặt** của app.
-  Đổi máy chủ thì app xin mã thiết bị mới, nên phải đăng nhập lại.
+  Đổi máy chủ thì app xin mã thiết bị mới, nên phải đăng nhập lại. Muốn phát
+  sẵn bản trỏ máy chủ khác thì thêm dòng `S60Tube-Server: http://...` vào file
+  `.jad`.
 - **Đăng nhập**: app hiện mã ghép nối, việc nộp cookie làm trên máy tính giống
   như với trang web.
 - **Cách phát**: mặc định mở trình phát của máy (giống bấm link trên trang web).
