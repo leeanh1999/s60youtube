@@ -200,6 +200,31 @@ final class Shapes {
             case Ui.ICON_CHECK:
                 return capsule(u, v, 0.12f, 0.52f, 0.4f, 0.8f, 0.16f)
                         || capsule(u, v, 0.4f, 0.8f, 0.9f, 0.22f, 0.16f);
+            case Ui.ICON_PAUSE:
+                return rect(u, v, 0.18f, 0.1f, 0.4f, 0.9f) || rect(u, v, 0.6f, 0.1f, 0.82f, 0.9f);
+            case Ui.ICON_REWIND:
+                return tri(u, v, 0.5f, 0.18f, 0.5f, 0.82f, 0.08f, 0.5f)
+                        || tri(u, v, 0.92f, 0.18f, 0.92f, 0.82f, 0.5f, 0.5f);
+            case Ui.ICON_FORWARD:
+                return tri(u, v, 0.08f, 0.18f, 0.08f, 0.82f, 0.5f, 0.5f)
+                        || tri(u, v, 0.5f, 0.18f, 0.5f, 0.82f, 0.92f, 0.5f);
+            case Ui.ICON_BROWSER: {
+                // Qua dia cau: vong tron, mot duong xich dao va mot kinh tuyen bau.
+                float dx = u - 0.5f;
+                float dy = v - 0.5f;
+                float d2 = dx * dx + dy * dy;
+                if (d2 > 0.46f * 0.46f) {
+                    return false;
+                }
+                if (d2 >= 0.36f * 0.36f) {
+                    return true;
+                }
+                float ex = dx / 0.2f;
+                float inner = dx / 0.11f;
+                boolean meridian = ex * ex + (dy / 0.4f) * (dy / 0.4f) <= 1f
+                        && inner * inner + (dy / 0.36f) * (dy / 0.36f) >= 1f;
+                return meridian || (dy > -0.05f && dy < 0.05f) || (dx > -0.04f && dx < 0.04f);
+            }
             case Ui.ICON_RELOAD: {
                 float dx = u - 0.5f;
                 float dy = v - 0.53f;

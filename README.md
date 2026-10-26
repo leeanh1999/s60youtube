@@ -435,14 +435,18 @@ cách nhau bằng TAB.
   `.jad`.
 - **Đăng nhập**: app hiện mã ghép nối, việc nộp cookie làm trên máy tính giống
   như với trang web.
-- **Cách phát**: mặc định app mở trang `/app/play` bằng trình duyệt của máy.
-  Trang này có khung `<video>` giống trang web, nên trình duyệt xem online được.
-  Đưa thẳng link `.mp4` cho máy thì Symbian tải hết file về rồi mới mở.
-  "Trong app (thử)" phát bằng MMAPI ngay trong app: phím 5 để tạm dừng, 4/6 để
-  tua 10 giây, lên/xuống để chỉnh âm lượng.
+- **Phát video**: trang video có hai nút. **Xem trong app** phát bằng MMAPI, có
+  thanh điều khiển: nút Quay lại, thanh thời gian (chạm để tua), lùi/tạm
+  dừng/tới. Thanh tự ẩn sau vài giây; bấm phím hay chạm là hiện lại. Phím: mềm
+  phải/C quay lại, mềm trái/5/OK tạm dừng, 4/6 tua 10 giây, 2/8 hoặc lên/xuống
+  chỉnh âm lượng. **Xem bằng trình duyệt** mở trang `/app/play` có khung
+  `<video>` giống trang web, nên xem online được (đưa thẳng link `.mp4` cho máy
+  thì Symbian tải hết file về rồi mới mở).
+- Trang video không chờ yt-dlp: quá `WATCH_WAIT_MS` thì máy chủ trả về luôn đường
+  `/stream/<mã>` chung, lúc phát máy chủ tự chọn bản gộp sẵn.
 - **BlackBerry (vd. Bold 9900)**: phím Menu của máy có **Menu**, **Tìm kiếm** và
   **Quay lại**; phím thoát là Quay lại. Ô tìm kiếm vẽ ngay trên màn hình: gõ bằng
-  bàn phím QWERTY, Enter để tìm, Del để xoá. Đang ở trang khác thì gõ một chữ cái
+  bàn phím QWERTY (phím cách là dấu cách), Enter để tìm, Del để xoá. Đang ở trang khác thì gõ một chữ cái
   là mở luôn ô tìm kiếm. Muốn gõ tiếng Việt có dấu thì chọn **Dùng ô nhập của
   máy**. App tự thử kết nối qua Wi-Fi (`;interface=wifi`), rồi mạng di động
   (`;deviceside=true`), rồi cách mặc định của máy, và nhớ cách đã chạy được.

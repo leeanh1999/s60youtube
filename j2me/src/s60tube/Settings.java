@@ -23,7 +23,7 @@ public final class Settings {
     /** Ma thiet bi (cookie 'did') may chu phat cho app — ung voi tung may chu. */
     public static String device = "";
     public static boolean thumbs = true;
-    /** true: phat trong app bang MMAPI; false: mo trinh phat cua may. */
+    /** Khong con dung (trang video co ca hai nut phat); giu de doc dung RMS cu. */
     public static boolean inApp = false;
     /** Co chu: 0 nho, 1 vua, 2 lon — giong muc Co chu cua ban web. */
     public static int textSize = 1;

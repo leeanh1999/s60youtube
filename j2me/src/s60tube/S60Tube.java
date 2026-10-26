@@ -374,14 +374,16 @@ public class S60Tube extends MIDlet implements Page.Host, CommandListener {
                 for (int i = 0; i < rows.size(); i++) {
                     String[] row = (String[]) rows.elementAt(i);
                     if ("C".equals(row[0])) {
-                        String label = "Xem " + Api.field(row, 1) + "p";
-                        Item play = Item.of(first ? Item.BUTTON : Item.OPTION, label).icon(Ui.ICON_PLAY)
-                                .act("play", Api.field(row, 2) + "\t" + title);
-                        page.add(play);
+                        String height = Api.field(row, 1);
+                        String label = "0".equals(height) || height.length() == 0 ? "Xem" : "Xem " + height + "p";
+                        addPlayButtons(page, label, Api.field(row, 2), title, first);
                         first = false;
                     } else if ("A".equals(row[0])) {
-                        page.add(Item.of(Item.OPTION, "Nghe chỉ tiếng (.m4a)").icon(Ui.ICON_NOTE)
-                                .sub("Nhẹ, nghe nhạc khi tắt màn hình").act("play", Api.field(row, 1) + "\t" + title));
+                        String path = Api.field(row, 1);
+                        page.add(Item.of(Item.OPTION, "Nghe chỉ tiếng trong app").icon(Ui.ICON_NOTE)
+                                .sub("Nhẹ, ít tốn mạng").act("play", "app\t" + path + "\t" + title));
+                        page.add(Item.of(Item.OPTION, "Nghe chỉ tiếng bằng trình duyệt").icon(Ui.ICON_BROWSER)
+                                .sub("Nghe tiếp được khi tắt màn hình").act("play", "web\t" + path + "\t" + title));
                     } else if ("P".equals(row[0])) {
                         profiles.addElement(row);
                     } else if ("E".equals(row[0])) {
@@ -417,17 +419,24 @@ public class S60Tube extends MIDlet implements Page.Host, CommandListener {
 
     // ---------- phat ----------
 
-    private void play(String path, String title) {
-        String url = Settings.server + path;
+    /** Hai nut canh nhau: phat trong app (nut do neu la muc chinh) va mo trinh duyet. */
+    private static void addPlayButtons(Page page, String label, String path, String title, boolean primary) {
+        page.add(Item.of(primary ? Item.BUTTON : Item.OPTION, label + " trong app").icon(Ui.ICON_PLAY)
+                .act("play", "app\t" + path + "\t" + title));
+        page.add(Item.of(Item.OPTION, label + " bằng trình duyệt").icon(Ui.ICON_BROWSER)
+                .sub("Khi phát trong app bị lỗi").act("play", "web\t" + path + "\t" + title));
+    }
+
+    private void play(boolean inApp, String path, String title) {
         Page from = current();
-        if (Settings.inApp) {
+        if (inApp) {
             lastPage = from;
-            display.setCurrent(new PlayerCanvas(this, url, title, from));
+            display.setCurrent(new PlayerCanvas(this, Settings.server + path, title, from));
             return;
         }
         // Dua thang file .mp4 thi Symbian tai het ve roi moi mo; trang co the
         // <video> cua may chu thi trinh duyet xem online duoc (xem /app/play).
-        url = Settings.server + "/app/play?s=" + Api.encode(path) + "&t=" + Api.encode(title);
+        String url = Settings.server + "/app/play?s=" + Api.encode(path) + "&t=" + Api.encode(title);
         try {
             if (platformRequest(url)) {
                 from.showToast("Đóng app để máy mở trình duyệt và phát.", Item.TONE_WARN);
@@ -441,7 +450,7 @@ public class S60Tube extends MIDlet implements Page.Host, CommandListener {
         display.setCurrent(back);
         if (error != null && back instanceof Page) {
             ((Page) back).showToast("Không phát được trong app: " + error
-                    + "\n\nVào Cài đặt → Cách phát, chọn “Trình duyệt của máy”.", Item.TONE_ERR);
+                    + "\n\nThử nút “… bằng trình duyệt”.", Item.TONE_ERR);
         }
     }
 
@@ -473,13 +482,9 @@ public class S60Tube extends MIDlet implements Page.Host, CommandListener {
                         bar.progress = progress;
                         if ("done".equals(state)) {
                             bar.progress = 100;
-                            status.title = "Xong — bấm Phát.";
-                            String path = Api.field(job, 4);
-                            page.add(Item.of(Item.BUTTON, "Phát").icon(Ui.ICON_PLAY).act("play", path + "\t" + title));
+                            status.title = "Xong — chọn cách phát.";
+                            addPlayButtons(page, "Phát", Api.field(job, 4), title, true);
                             page.changed();
-                            if (display.getCurrent() == page) {
-                                play(path, title);
-                            }
                             return;
                         }
                         status.title = "queued".equals(state)
@@ -561,10 +566,6 @@ public class S60Tube extends MIDlet implements Page.Host, CommandListener {
                 .icon(Ui.ICON_GEAR).act("textsize", null));
         page.add(Item.of(Item.OPTION, "Ảnh thu nhỏ").sub(Settings.thumbs ? "Bật" : "Tắt — danh sách nhẹ hơn")
                 .icon(Ui.ICON_GEAR).act("thumbs", null));
-        page.add(Item.of(Item.HEAD, "Phát video"));
-        page.add(Item.of(Item.OPTION, "Cách phát")
-                .sub(Settings.inApp ? "Trong app (thử) — 5 dừng, 4/6 tua" : "Trình duyệt của máy (xem online)")
-                .icon(Ui.ICON_PLAY).act("playmode", null));
         page.add(Item.of(Item.TEXT, APP + " " + getAppProperty("MIDlet-Version") + " · " + Settings.server));
         if (reuse == null) {
             open(page);
@@ -646,8 +647,9 @@ public class S60Tube extends MIDlet implements Page.Host, CommandListener {
         } else if ("more".equals(a)) {
             loadResults(page, page.title, v);
         } else if ("play".equals(a)) {
-            int tab = v.indexOf('\t');
-            play(v.substring(0, tab), v.substring(tab + 1));
+            int x = v.indexOf('\t');
+            int y = v.indexOf('\t', x + 1);
+            play("app".equals(v.substring(0, x)), v.substring(x + 1, y), v.substring(y + 1));
         } else if ("convert".equals(a)) {
             int x = v.indexOf('\t');
             int y = v.indexOf('\t', x + 1);
@@ -695,10 +697,6 @@ public class S60Tube extends MIDlet implements Page.Host, CommandListener {
             Settings.thumbs = !Settings.thumbs;
             Settings.save();
             Ui.forceSetup();
-            showSettings(page);
-        } else if ("playmode".equals(a)) {
-            Settings.inApp = !Settings.inApp;
-            Settings.save();
             showSettings(page);
         } else if ("exit".equals(a)) {
             exit();

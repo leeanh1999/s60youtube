@@ -535,7 +535,9 @@ final class Page extends Canvas implements Runnable, CommandListener {
                     return false;
                 }
                 input.title = input.title.substring(0, input.title.length() - 1);
-            } else if (key >= 32 && key != 127 && act != FIRE) {
+            } else if (key >= 32 && key != 127) {
+                // Ke ca khi may coi phim do la OK (BlackBerry gan FIRE cho phim cach):
+                // dang go thi no la chu. Tim kiem bang Enter hoac nut Tim.
                 if (input.title.length() >= 200) {
                     return true;
                 }

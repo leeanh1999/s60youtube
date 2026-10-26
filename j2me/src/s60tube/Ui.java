@@ -54,6 +54,10 @@ final class Ui {
     static final int ICON_MENU = 11;
     static final int ICON_BACK = 12;
     static final int ICON_CHECK = 13;
+    static final int ICON_PAUSE = 14;
+    static final int ICON_REWIND = 15;
+    static final int ICON_FORWARD = 16;
+    static final int ICON_BROWSER = 17;
 
     static Font font;
     static Font bold;

@@ -1415,11 +1415,12 @@ app.get('/api/search', async (req, res) => {
 });
 
 /**
- * Khac trang /watch: app cho yt-dlp xong roi moi tra loi, vi no hien danh sach
- * muc phat ngay tren man hinh nay chu khong co khung phat de chon sau.
+ * Trang video cua app. Cung khong cho yt-dlp lau, giong trang /watch: chua kip
+ * thi tra ve duong /stream chung de nut phat bam duoc ngay.
  *
  *   M title author views description
- *   C height duong-dan   (chi ban gop san — E6 khong doc duoc ban ghep)
+ *   C height duong-dan   (chi ban gop san — E6 khong doc duoc ban ghep; height 0
+ *                         la yt-dlp chua xong, may chu tu chon luc phat)
  *   A duong-dan          nghe chi tieng (.m4a)
  *   P profileId label    tao ban chuyen ma
  */
@@ -1430,40 +1431,56 @@ app.get('/api/watch', async (req, res) => {
     return;
   }
 
+  // Giong trang /watch: khong cho yt-dlp (vai giay tren NAS) moi tra loi. Chua
+  // kip thi dua duong /stream khong kem ma luong — luc trinh phat keo file ve
+  // thi may chu tu chon ban gop san, va yt-dlp chay tiep vao bo nho dem.
+  const pending = ytdlp.getInfo(videoId, req.auth);
+  pending.catch((err) => console.warn(`[api/watch ${videoId}] ${err?.message || err}`));
   const [infoResult, relatedResult] = await Promise.allSettled([
-    ytdlp.getInfo(videoId, req.auth),
+    waitBriefly(pending, config.WATCH_WAIT_MS),
     innertube.related(videoId),
   ]);
   const meta = relatedResult.status === 'fulfilled' ? relatedResult.value.video : null;
+  // InnerTube hong thi khong co ten video: dang cho yt-dlp con hon la hien chu 'Video'.
+  const outcome =
+    !meta?.title && infoResult.status === 'fulfilled' && infoResult.value === CHUA_KIP
+      ? await pending.then(
+          (value) => ({ status: 'fulfilled', value }),
+          (reason) => ({ status: 'rejected', reason })
+        )
+      : infoResult;
+  const ready = outcome.status === 'fulfilled' && outcome.value !== CHUA_KIP;
+  const key = req.streamKey ? `?k=${encodeURIComponent(req.streamKey)}` : '';
   const lines = [
     apiLine(
       'M',
-      meta?.title || (infoResult.status === 'fulfilled' && infoResult.value.title) || 'Video',
+      meta?.title || (ready && outcome.value.title) || 'Video',
       meta?.author || '',
       meta?.views || '',
       meta?.description || ''
     ),
   ];
 
-  if (infoResult.status === 'fulfilled') {
-    const { formats } = infoResult.value;
+  if (ready) {
+    const { formats } = outcome.value;
     const { choices } = playChoices(videoId, formats, {
       legacy: true,
       streamKey: req.streamKey,
       wanted: 0,
     });
     for (const choice of choices) lines.push(apiLine('C', choice.height, choice.src));
-    if (media.isAvailable()) {
-      const key = req.streamKey ? `?k=${encodeURIComponent(req.streamKey)}` : '';
-      if (ytdlp.isBelleAudio(ytdlp.pickAudioOnly(formats))) {
-        lines.push(apiLine('A', `/audio/${videoId}.m4a${key}`));
-      }
-      for (const [id, profile] of Object.entries(media.PROFILES)) {
-        if (!profile.modernOnly) lines.push(apiLine('P', id, profile.label));
-      }
+    if (media.isAvailable() && ytdlp.isBelleAudio(ytdlp.pickAudioOnly(formats))) {
+      lines.push(apiLine('A', `/audio/${videoId}.m4a${key}`));
     }
+  } else if (outcome.status === 'rejected') {
+    lines.push(apiLine('E', friendlyError(outcome.reason)));
   } else {
-    lines.push(apiLine('E', friendlyError(infoResult.reason)));
+    lines.push(apiLine('C', 0, `/stream/${videoId}${key}`));
+  }
+  if (outcome.status !== 'rejected' && media.isAvailable()) {
+    for (const [id, profile] of Object.entries(media.PROFILES)) {
+      if (!profile.modernOnly) lines.push(apiLine('P', id, profile.label));
+    }
   }
 
   if (relatedResult.status === 'fulfilled') {
@@ -1474,7 +1491,6 @@ app.get('/api/watch', async (req, res) => {
   sendApi(res, lines);
 });
 
-/** J status progress position duong-dan — app hoi lai vai giay mot lan. */
 /**
  * Trang phat cho app: app mo no bang trinh duyet cua may. Chi nhan duong phat
  * cua chinh may chu (/stream, /audio, /file) de khong thanh cho dan lien ket la.
@@ -1495,6 +1511,7 @@ app.get('/app/play', (req, res) => {
     .send(render.appPlayPage({ src, title, videoId: match[2], prefs: req.prefs }));
 });
 
+/** J status progress position duong-dan — app hoi lai vai giay mot lan. */
 app.get('/api/convert', async (req, res) => {
   const videoId = parseVideoId(req.query.v);
   const profileId = String(req.query.p || '');
