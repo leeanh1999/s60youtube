@@ -27,6 +27,8 @@ public final class Settings {
     public static boolean inApp = false;
     /** Co chu: 0 nho, 1 vua, 2 lon — giong muc Co chu cua ban web. */
     public static int textSize = 1;
+    /** Am luong da chinh trong app (0-100); -1 la chua chinh, de muc cua may. */
+    public static int volume = -1;
 
     private Settings() {
     }
@@ -45,6 +47,7 @@ public final class Settings {
             thumbs = in.readBoolean();
             inApp = in.readBoolean();
             textSize = in.readInt();
+            volume = in.readInt();
         } catch (RecordStoreException e) {
             // hong thi dung mac dinh
         } catch (IOException e) {
@@ -64,6 +67,7 @@ public final class Settings {
             out.writeBoolean(thumbs);
             out.writeBoolean(inApp);
             out.writeInt(textSize);
+            out.writeInt(volume);
             byte[] data = bytes.toByteArray();
             rs = RecordStore.openRecordStore(STORE, true);
             if (rs.getNumRecords() == 0) {

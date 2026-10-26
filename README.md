@@ -447,6 +447,15 @@ cách nhau bằng TAB.
   **Ẩn app, vẫn nghe** (trong Menu) thì nhạc vẫn chạy. Trang **Đang nghe** (mục
   đầu tiên của Menu khi có bài) có tạm dừng, tua 10 giây, âm lượng, dừng nghe.
   Xem video trong app thì bài đang nghe dừng lại.
+- **Nghe theo danh sách**: nghe từ trang video thì sau bài đó app tự sang lần lượt
+  các video liên quan. Trang chính và trang tìm kiếm có mục **Nghe lần lượt cả
+  danh sách**. Trang **Đang nghe** có Bài sau / Bài trước và cả danh sách (chọn
+  bài nào là nghe bài đó). Bài nào không nghe được thì tự bỏ qua; hỏng 3 bài
+  liền thì dừng.
+- Âm lượng chỉnh trong app (khi nghe hay xem) được nhớ cho lần phát sau.
+- Phím gác máy trên Nokia chỉ ẩn app (`Nokia-MIDlet-no-exit: true` trong
+  `.jad`/manifest), nhạc vẫn chạy; muốn thoát hẳn thì chọn **Thoát** trong Menu.
+- Menu dài hơn màn hình thì cuộn được (phím lên/xuống hoặc kéo).
 - Trang video không chờ yt-dlp: quá `WATCH_WAIT_MS` thì máy chủ trả về luôn đường
   `/stream/<mã>` chung, lúc phát máy chủ tự chọn bản gộp sẵn.
 - **BlackBerry (vd. Bold 9900)**: phím Menu của máy có **Menu**, **Tìm kiếm** và

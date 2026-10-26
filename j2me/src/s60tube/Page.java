@@ -52,6 +52,8 @@ final class Page extends Canvas implements Runnable, CommandListener {
     /** Ten cua trang dung khi tao lai (vd. tai lai trang chinh). */
     String kind = "";
     final Vector items = new Vector();
+    /** Cac video tren trang (String[] {ma, tieu de}) — de nghe lan luot ca danh sach. */
+    final Vector playlist = new Vector();
     private int focus = -1;
     private int scrollY;
     private int contentH;
@@ -64,6 +66,8 @@ final class Page extends Canvas implements Runnable, CommandListener {
     // Lop phu: menu, hop cho, hop thong bao.
     private Item[] menu;
     private int menuFocus;
+    /** Dong dau tien dang thay cua menu — menu dai hon man hinh thi cuon. */
+    private int menuTop;
     private String busy;
     private int busyPhase;
     private String toast;
@@ -73,6 +77,7 @@ final class Page extends Canvas implements Runnable, CommandListener {
     // Cham va keo.
     private int pressY;
     private int pressScroll;
+    private int pressMenuTop;
     private boolean dragged;
 
     Page(Host host, String title) {
@@ -108,8 +113,21 @@ final class Page extends Canvas implements Runnable, CommandListener {
         return item;
     }
 
+    /** Chen mot khoi vao giua (vd. nut "Nghe ca danh sach" tren dau cac video). */
+    void insert(int index, Item item) {
+        items.insertElementAt(item, index);
+        if (focus >= index) {
+            focus++;
+        }
+        if (item.focusable() && (focus < 0 || focus > index) && scrollY == 0) {
+            focus = index;
+        }
+        layoutW = -1;
+    }
+
     void clear() {
         items.removeAllElements();
+        playlist.removeAllElements();
         focus = -1;
         scrollY = 0;
         layoutW = -1;
@@ -152,6 +170,7 @@ final class Page extends Canvas implements Runnable, CommandListener {
     void openMenu(Item[] entries) {
         menu = entries;
         menuFocus = 0;
+        menuTop = 0;
         repaint();
     }
 
@@ -345,22 +364,47 @@ final class Page extends Canvas implements Runnable, CommandListener {
         return Math.max(12, Ui.bold.getHeight() * 4 / 5);
     }
 
+    private int menuRowH() {
+        return Ui.bold.getHeight() + Ui.pad * 2;
+    }
+
+    /** So dong menu vua khoang giua thanh tren va thanh duoi. */
+    private int menuRows(int h) {
+        int room = h - navH() - barH() - Ui.gap * 2 - 2;
+        return Math.max(1, Math.min(menu.length, room / menuRowH()));
+    }
+
+    /** Keo cua so menu theo dong dang chon. */
+    private void menuReveal(int rows) {
+        if (menuFocus < menuTop) {
+            menuTop = menuFocus;
+        } else if (menuFocus >= menuTop + rows) {
+            menuTop = menuFocus - rows + 1;
+        }
+        menuTop = Math.max(0, Math.min(menuTop, menu.length - rows));
+    }
+
     private void paintMenu(Graphics g, int w, int h) {
         int p = Ui.pad;
-        int rowH = Ui.bold.getHeight() + p * 2;
+        int rowH = menuRowH();
+        int rows = menuRows(h);
+        menuReveal(rows);
         int mw = Math.min(w - Ui.gap * 2, Math.max(w / 2, Ui.em * 10));
-        int mh = rowH * menu.length + 2;
+        int mh = rowH * rows + 2;
         int x = Ui.gap;
         int y = h - navH() - mh - Ui.gap;
         Ui.box(g, x, y, mw, mh, Ui.CARD, Ui.NAV_LINE);
-        for (int i = 0; i < menu.length; i++) {
-            int ry = y + 1 + i * rowH;
+        boolean scroll = rows < menu.length;
+        int barW = scroll ? Math.max(3, p / 2) : 0;
+        for (int r = 0; r < rows; r++) {
+            int i = menuTop + r;
+            int ry = y + 1 + r * rowH;
             if (i == menuFocus) {
                 g.setColor(Ui.FOCUS);
                 g.fillRect(x + 1, ry, mw - 2, rowH);
                 g.setColor(Ui.RED);
                 g.fillRect(x + 1, ry, 3, rowH);
-            } else if (i > 0) {
+            } else if (r > 0) {
                 g.setColor(0xe6eaee);
                 g.drawLine(x + p, ry, x + mw - p, ry);
             }
@@ -368,8 +412,17 @@ final class Page extends Canvas implements Runnable, CommandListener {
             Ui.icon(g, menu[i].icon, x + p + 2, ry + (rowH - s) / 2, s, Ui.RED);
             g.setFont(Ui.bold);
             g.setColor(Ui.TEXT);
-            g.drawString(Ui.ellipsis(menu[i].title, Ui.bold, mw - s - p * 3), x + p * 2 + s + 2,
+            g.drawString(Ui.ellipsis(menu[i].title, Ui.bold, mw - s - p * 3 - barW), x + p * 2 + s + 2,
                     ry + p, Graphics.TOP | Graphics.LEFT);
+        }
+        if (scroll) {
+            // Thanh cuon mong ben phai: con dong an o tren/duoi.
+            int track = mh - 4;
+            int thumb = Math.max(rowH / 2, track * rows / menu.length);
+            int ty = y + 2 + (track - thumb) * menuTop / (menu.length - rows);
+            g.setColor(0xe6eaee);
+            g.fillRect(x + mw - barW - 2, y + 2, barW, track);
+            Ui.round(g, x + mw - barW - 2, ty, barW, thumb, barW / 2, Ui.LINE_SOFT);
         }
     }
 
@@ -642,11 +695,23 @@ final class Page extends Canvas implements Runnable, CommandListener {
     protected void pointerPressed(int x, int y) {
         pressY = y;
         pressScroll = scrollY;
+        pressMenuTop = menuTop;
         dragged = false;
     }
 
     protected void pointerDragged(int x, int y) {
-        if (menu != null || busy != null || toast != null) {
+        if (menu != null) {
+            // Menu dai hon man hinh: keo de cuon tung dong.
+            int rows = menuRows(getHeight());
+            if (rows < menu.length && Math.abs(y - pressY) >= Math.max(6, Ui.em / 2)) {
+                dragged = true;
+                menuTop = Math.max(0, Math.min(menu.length - rows, pressMenuTop - (y - pressY) / menuRowH()));
+                menuFocus = Math.max(menuTop, Math.min(menuTop + rows - 1, menuFocus));
+                repaint();
+            }
+            return;
+        }
+        if (busy != null || toast != null) {
             return;
         }
         if (!dragged && Math.abs(y - pressY) < Math.max(6, Ui.em / 2)) {
@@ -690,12 +755,14 @@ final class Page extends Canvas implements Runnable, CommandListener {
             return;
         }
         if (menu != null) {
-            int rowH = Ui.bold.getHeight() + Ui.pad * 2;
-            int mh = rowH * menu.length + 2;
+            int rowH = menuRowH();
+            int rows = menuRows(h);
+            menuReveal(rows);
+            int mh = rowH * rows + 2;
             int my = h - navH() - mh - Ui.gap;
             int mw = Math.min(w - Ui.gap * 2, Math.max(w / 2, Ui.em * 10));
             if (x >= Ui.gap && x <= Ui.gap + mw && y >= my && y < my + mh - 2) {
-                pickMenu(Math.min(menu.length - 1, (y - my - 1) / rowH));
+                pickMenu(Math.min(menu.length - 1, menuTop + (y - my - 1) / rowH));
             } else {
                 menu = null;
                 repaint();

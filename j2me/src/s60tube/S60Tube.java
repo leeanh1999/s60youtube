@@ -249,12 +249,20 @@ public class S60Tube extends MIDlet
 
     private int addVideos(Page page, Vector rows) {
         int count = 0;
+        int at = page.items.size();
+        boolean firstBatch = page.playlist.isEmpty();
         for (int i = 0; i < rows.size(); i++) {
             String[] row = (String[]) rows.elementAt(i);
             if ("V".equals(row[0])) {
                 addVideo(page, row);
+                page.playlist.addElement(new String[] {Api.field(row, 1), Api.field(row, 2)});
                 count++;
             }
+        }
+        // Trang video da co nut "Nghe nhac trong app" (bai do roi toi video lien quan).
+        if (firstBatch && count >= 2 && !"video".equals(page.kind)) {
+            page.insert(at, Item.of(Item.OPTION, "Nghe lần lượt cả danh sách").icon(Ui.ICON_NOTE)
+                    .sub("Chỉ tiếng, tự sang bài sau").act("listall", null));
         }
         return count;
     }
@@ -381,6 +389,7 @@ public class S60Tube extends MIDlet
 
     private void openVideo(final String id) {
         final Page page = new Page(this, "Video");
+        page.kind = "video";
         open(page);
         work(page, "Đang lấy video… (vài giây)", new Job("/api/watch?v=" + id) {
             void done(Vector rows) {
@@ -403,8 +412,10 @@ public class S60Tube extends MIDlet
                         first = false;
                     } else if ("A".equals(row[0])) {
                         String path = Api.field(row, 1);
+                        Audio.learnKey(path);
                         page.add(Item.of(Item.OPTION, "Nghe nhạc trong app").icon(Ui.ICON_NOTE)
-                                .sub("Chỉ tiếng, tắt màn hình vẫn nghe").act("listen", path + "\t" + title));
+                                .sub("Tắt màn hình vẫn nghe, hết bài tự sang video liên quan")
+                                .act("listen", id + "\t" + title));
                         page.add(Item.of(Item.OPTION, "Nghe bằng trình duyệt").icon(Ui.ICON_BROWSER)
                                 .sub("Khi nghe trong app bị lỗi").act("play", "web\t" + path + "\t" + title));
                     } else if ("P".equals(row[0])) {
@@ -473,29 +484,67 @@ public class S60Tube extends MIDlet
 
     // ---------- nghe nhac nen ----------
 
-    private void listen(String path, String title) {
-        Audio.start(Settings.server + path, title);
+    /** Trang Dang nghe dang mo (dung lai moi khi doi bai), hoac null. */
+    private Page listenPage;
+
+    /** Nghe danh sach tu bai 'from'; mo trang Dang nghe. */
+    private void listen(Vector items, int from) {
+        if (Audio.onTrack == null) {
+            Audio.onTrack = new Runnable() {
+                public void run() {
+                    // Doi bai xay ra tren luong cua trinh phat: dung lai trang tren luong giao dien.
+                    display.callSerially(new Runnable() {
+                        public void run() {
+                            if (listenPage != null) {
+                                buildListening(listenPage);
+                            }
+                        }
+                    });
+                }
+            };
+        }
+        Audio.playList(Settings.server, items, from);
         showListening();
     }
 
-    /** Trang Dang nghe: cac nut dieu khien bai dang phat nen. */
     private void showListening() {
-        Audio audio = Audio.current();
         Page page = current();
-        if ("listen".equals(page.kind)) {
-            back();
+        if (page != listenPage || listenPage == null) {
+            if ("listen".equals(page.kind)) {
+                back();
+            }
+            page = new Page(this, "Đang nghe");
+            page.kind = "listen";
+            listenPage = page;
+            open(page);
         }
-        page = new Page(this, "Đang nghe");
-        page.kind = "listen";
+        buildListening(page);
+    }
+
+    /** Cac nut dieu khien bai dang phat nen va ca danh sach nghe. */
+    private void buildListening(Page page) {
+        Audio audio = Audio.current();
+        page.clear();
         if (audio == null) {
             page.add(Item.of(Item.NOTE, "Không có bài nào đang nghe."));
-            open(page);
+            page.changed();
             return;
         }
-        Item info = page.add(Item.of(Item.INFO, audio.title).sub(audio.status()));
+        int pos = Audio.position();
+        int total = Audio.size();
+        Item info = page.add(Item.of(Item.INFO, audio.title).sub(audio.status())
+                .meta(total > 1 ? "Bài " + (pos + 1) + "/" + total : ""));
         Item bar = page.add(Item.of(Item.PROGRESS, ""));
         Item time = page.add(Item.of(Item.TEXT, "--:-- / --:--"));
         Item toggle = page.add(Item.of(Item.BUTTON, "Tạm dừng").icon(Ui.ICON_PAUSE).act("a-toggle", null));
+        String[] next = Audio.track(pos + 1);
+        if (next != null) {
+            page.add(Item.of(Item.OPTION, "Bài sau").icon(Ui.ICON_FORWARD).sub(next[1]).act("a-next", null));
+        }
+        if (pos > 0) {
+            page.add(Item.of(Item.OPTION, "Bài trước").icon(Ui.ICON_REWIND)
+                    .sub(Audio.track(pos - 1)[1]).act("a-prev", null));
+        }
         page.add(Item.of(Item.OPTION, "Lùi 10 giây").icon(Ui.ICON_REWIND).act("a-rew", null));
         page.add(Item.of(Item.OPTION, "Tới 10 giây").icon(Ui.ICON_FORWARD).act("a-fwd", null));
         page.add(Item.of(Item.OPTION, "To hơn").icon(Ui.ICON_NOTE).act("a-up", null));
@@ -503,8 +552,19 @@ public class S60Tube extends MIDlet
         page.add(Item.of(Item.OPTION, "Ẩn app, vẫn nghe").icon(Ui.ICON_BACK)
                 .sub("Tắt màn hình hay mở app khác vẫn nghe tiếp").act("a-hide", null));
         page.add(Item.of(Item.OPTION, "Dừng nghe").icon(Ui.ICON_EXIT).act("a-stop", null));
-        audio.attach(page, info, bar, time, toggle);
-        open(page);
+        if (total > 1) {
+            page.add(Item.of(Item.HEAD, "Danh sách nghe (" + total + " bài)"));
+            for (int i = 0; i < total; i++) {
+                Item row = Item.of(Item.OPTION, (i + 1) + ". " + Audio.track(i)[1])
+                        .icon(i == pos ? Ui.ICON_PLAY : Ui.ICON_NOTE).act("a-jump", String.valueOf(i));
+                if (i == pos) {
+                    row.badge = "Đang nghe";
+                }
+                page.add(row);
+            }
+        }
+        Audio.attach(page, info, bar, time, toggle);
+        page.changed();
     }
 
     void playerClosed(Displayable back, String error) {
@@ -732,8 +792,16 @@ public class S60Tube extends MIDlet
         } else if ("more".equals(a)) {
             loadResults(page, page.title, v);
         } else if ("listen".equals(a)) {
+            // Bai nay truoc, roi toi cac video lien quan tren trang.
             int tab = v.indexOf('\t');
-            listen(v.substring(0, tab), v.substring(tab + 1));
+            Vector items = new Vector();
+            items.addElement(new String[] {v.substring(0, tab), v.substring(tab + 1)});
+            for (int i = 0; i < page.playlist.size(); i++) {
+                items.addElement(page.playlist.elementAt(i));
+            }
+            listen(items, 0);
+        } else if ("listall".equals(a)) {
+            listen(page.playlist, 0);
         } else if ("listening".equals(a)) {
             showListening();
         } else if (a.startsWith("a-")) {
@@ -808,6 +876,12 @@ public class S60Tube extends MIDlet
         }
         if ("a-toggle".equals(a)) {
             audio.toggle();
+        } else if ("a-next".equals(a)) {
+            Audio.next();
+        } else if ("a-prev".equals(a)) {
+            Audio.previous();
+        } else if ("a-jump".equals(a)) {
+            Audio.jump(parseInt(page.focused() != null ? page.focused().value : "-1"));
         } else if ("a-rew".equals(a)) {
             audio.rewind();
         } else if ("a-fwd".equals(a)) {
@@ -820,6 +894,7 @@ public class S60Tube extends MIDlet
         } else if ("a-stop".equals(a)) {
             Audio.stopAll();
             if ("listen".equals(page.kind)) {
+                listenPage = null;
                 back();
             }
         }

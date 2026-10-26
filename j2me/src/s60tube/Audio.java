@@ -1,37 +1,56 @@
 package s60tube;
 
+import java.util.Vector;
+
 import javax.microedition.media.Manager;
 import javax.microedition.media.Player;
 import javax.microedition.media.PlayerListener;
 import javax.microedition.media.control.VolumeControl;
 
 /**
- * Nghe nhac nen: mot trinh phat chi tieng (.m4a) khong gan voi man hinh nao.
- * Quay ra trang khac, an app hay tat man hinh thi van chay, vi app khong dong
- * no khi man hinh doi (pauseApp de trong) — chi dong khi bam Dung, mo bai khac,
- * xem video hay thoat app.
+ * Nghe nhac nen theo danh sach: moi bai la mot trinh phat chi tieng (.m4a)
+ * khong gan voi man hinh nao. Quay ra trang khac, an app hay tat man hinh thi
+ * van chay, vi app khong dong no khi man hinh doi (pauseApp de trong).
+ *
+ * Het bai thi tu sang bai sau trong danh sach; bai loi (vd. video khong co
+ * luong AAC) thi bo qua, loi lien tiep nhieu bai thi dung han.
  *
  * Trang "Dang nghe" (S60Tube.showListening) gan cac khoi cua no vao day de
- * moi giay cap nhat thoi gian va trang thai.
+ * moi giay cap nhat thoi gian va trang thai; doi bai thi goi onTrack de dung
+ * lai trang.
  */
 final class Audio implements Runnable, PlayerListener {
 
     private static final long STEP_US = 10000000L;
+    private static final int MAX_FAILS = 3;
 
+    // ---------- danh sach dang nghe (chung cho moi bai) ----------
+
+    /** Moi phan tu: String[] {ma video, tieu de}. */
+    private static final Vector queue = new Vector();
+    private static int index = -1;
+    private static int fails;
+    /** Duoi "?k=..." lay tu duong nghe may chu da dua, de dung cho bai khac. */
+    private static String key = "";
+    private static String server = "";
     private static Audio current;
+    /** S60Tube dat vao: chay khi doi bai (de dung lai trang Dang nghe). */
+    static Runnable onTrack;
+
+    // Cac khoi cua trang Dang nghe, null khi chua mo trang do.
+    private static Page page;
+    private static Item info;
+    private static Item bar;
+    private static Item time;
+    private static Item toggle;
+
+    // ---------- mot bai ----------
 
     final String title;
     private final String url;
     private Player player;
     private volatile boolean closed;
     private String status = "Đang mở…";
-
-    // Cac khoi cua trang Dang nghe, null khi chua mo trang do.
-    private Page page;
-    private Item info;
-    private Item bar;
-    private Item time;
-    private Item toggle;
 
     private Audio(String url, String title) {
         this.url = url;
@@ -43,9 +62,71 @@ final class Audio implements Runnable, PlayerListener {
         return current;
     }
 
-    static Audio start(String url, String title) {
+    /** Nho duoi ?k= tu mot duong /audio may chu tra ve. */
+    static void learnKey(String path) {
+        int q = path.indexOf('?');
+        if (q >= 0) {
+            key = path.substring(q);
+        }
+    }
+
+    /**
+     * Nghe ca danh sach tu bai thu 'from'. items la String[] {ma, tieu de};
+     * chep ra ban rieng de trang goc co them bot gi cung khong anh huong.
+     */
+    static void playList(String base, Vector items, int from) {
         stopAll();
-        Audio audio = new Audio(url, title);
+        server = base;
+        queue.removeAllElements();
+        for (int i = 0; i < items.size(); i++) {
+            queue.addElement(items.elementAt(i));
+        }
+        fails = 0;
+        playIndex(from);
+    }
+
+    static int size() {
+        return queue.size();
+    }
+
+    static int position() {
+        return index;
+    }
+
+    static String[] track(int i) {
+        return i >= 0 && i < queue.size() ? (String[]) queue.elementAt(i) : null;
+    }
+
+    static void next() {
+        if (index + 1 < queue.size()) {
+            playIndex(index + 1);
+        }
+    }
+
+    static void previous() {
+        if (index > 0) {
+            playIndex(index - 1);
+        }
+    }
+
+    static void jump(int i) {
+        if (i >= 0 && i < queue.size()) {
+            playIndex(i);
+        }
+    }
+
+    private static void playIndex(int i) {
+        Audio old = current;
+        current = null;
+        if (old != null) {
+            old.close();
+        }
+        String[] t = track(i);
+        if (t == null) {
+            return;
+        }
+        index = i;
+        Audio audio = new Audio(server + "/audio/" + t[0] + ".m4a" + key, t[1]);
         current = audio;
         new Thread(audio).start();
         new Thread(new Runnable() {
@@ -53,10 +134,12 @@ final class Audio implements Runnable, PlayerListener {
                 audioTick();
             }
         }).start();
-        return audio;
+        if (onTrack != null) {
+            onTrack.run();
+        }
     }
 
-    /** Dung han bai dang nghe (truoc khi xem video, thoat app). */
+    /** Dung han va bo danh sach (truoc khi xem video, thoat app). */
     static void stopAll() {
         Audio audio = current;
         current = null;
@@ -65,14 +148,18 @@ final class Audio implements Runnable, PlayerListener {
         }
     }
 
-    void attach(Page page, Item info, Item bar, Item time, Item toggle) {
-        this.page = page;
-        this.info = info;
-        this.bar = bar;
-        this.time = time;
-        this.toggle = toggle;
-        refresh();
+    static void attach(Page p, Item i, Item b, Item t, Item g) {
+        page = p;
+        info = i;
+        bar = b;
+        time = t;
+        toggle = g;
+        if (current != null) {
+            current.refresh();
+        }
     }
+
+    // ---------- trinh phat ----------
 
     public void run() {
         try {
@@ -91,15 +178,10 @@ final class Audio implements Runnable, PlayerListener {
             if (gone()) {
                 return;
             }
+            applyVolume(p);
             p.start();
         } catch (Throwable e) {
-            if (!closed) {
-                setStatus("Lỗi: " + e.toString());
-                closed = true;
-                if (current == this) {
-                    current = null;
-                }
-            }
+            failed("Lỗi: " + e.toString());
         }
     }
 
@@ -114,6 +196,25 @@ final class Audio implements Runnable, PlayerListener {
         return true;
     }
 
+    /** Bai nay khong nghe duoc: sang bai sau, tru khi da hong nhieu bai lien. */
+    private void failed(String text) {
+        if (closed) {
+            return;
+        }
+        setStatus(text);
+        if (current != this) {
+            return;
+        }
+        fails++;
+        if (fails < MAX_FAILS && index + 1 < queue.size()) {
+            next();
+        } else {
+            close();
+            current = null;
+            refresh();
+        }
+    }
+
     private static void audioTick() {
         Audio audio = current;
         while (audio != null && !audio.closed) {
@@ -122,7 +223,7 @@ final class Audio implements Runnable, PlayerListener {
             } catch (InterruptedException e) {
                 return;
             }
-            if (audio.page != null && audio.page.isShown()) {
+            if (page != null && page.isShown() && current == audio) {
                 audio.refresh();
             }
         }
@@ -131,10 +232,6 @@ final class Audio implements Runnable, PlayerListener {
     boolean playing() {
         Player p = player;
         return p != null && !closed && p.getState() == Player.STARTED;
-    }
-
-    boolean ended() {
-        return closed;
     }
 
     String status() {
@@ -191,6 +288,28 @@ final class Audio implements Runnable, PlayerListener {
         seek(STEP_US);
     }
 
+    /** Dat lai muc am luong da nho tu lan truoc. */
+    static void applyVolume(Player p) {
+        if (Settings.volume < 0) {
+            return;
+        }
+        try {
+            VolumeControl control = (VolumeControl) p.getControl("VolumeControl");
+            if (control != null) {
+                control.setLevel(Settings.volume);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** Luu muc am luong moi cho lan phat sau (ca nghe nhac va xem video). */
+    static void rememberVolume(int level) {
+        if (level >= 0 && level != Settings.volume) {
+            Settings.volume = level;
+            Settings.save();
+        }
+    }
+
     /** Doi am luong, tra ve muc moi (0-100) hoac -1 neu may khong cho. */
     int volume(int delta) {
         Player p = player;
@@ -202,18 +321,28 @@ final class Audio implements Runnable, PlayerListener {
             return -1;
         }
         int level = control.setLevel(Math.max(0, Math.min(100, control.getLevel() + delta)));
+        rememberVolume(level);
         setStatus("Âm lượng " + level);
         return level;
     }
 
     public void playerUpdate(Player p, String event, Object data) {
+        if (closed) {
+            return;
+        }
         if (END_OF_MEDIA.equals(event)) {
-            setStatus("Đã nghe hết");
+            fails = 0;
+            if (current == this && index + 1 < queue.size()) {
+                next();
+            } else {
+                setStatus("Đã nghe hết");
+            }
         } else if (ERROR.equals(event)) {
-            setStatus("Lỗi: " + data);
+            failed("Lỗi: " + data);
         } else if ("bufferingStarted".equals(event)) {
             setStatus("Đang đệm…");
         } else if (STARTED.equals(event) || "bufferingStopped".equals(event)) {
+            fails = 0;
             setStatus("Đang phát");
         } else if (STOPPED.equals(event)) {
             setStatus("Tạm dừng");
@@ -228,7 +357,7 @@ final class Audio implements Runnable, PlayerListener {
     /** Ghi lai thoi gian, thanh tien do, chu cua nut phat-dung tren trang Dang nghe. */
     private void refresh() {
         Page pg = page;
-        if (pg == null) {
+        if (pg == null || info == null || current != this) {
             return;
         }
         long now = -1;
@@ -280,7 +409,6 @@ final class Audio implements Runnable, PlayerListener {
                 }
             });
         }
-        refresh();
     }
 
     private static void background(Runnable job) {

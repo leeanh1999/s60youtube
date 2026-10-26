@@ -104,6 +104,7 @@ final class PlayerCanvas extends Canvas implements Runnable, PlayerListener, Com
             }
             // Kich thuoc that cua phim chi biet sau prefetch.
             showVideo();
+            Audio.applyVolume(player);
             player.start();
             showVideo();
             poke();
@@ -478,6 +479,7 @@ final class PlayerCanvas extends Canvas implements Runnable, PlayerListener, Com
         VolumeControl control = (VolumeControl) player.getControl("VolumeControl");
         if (control != null) {
             int level = control.setLevel(Math.max(0, Math.min(100, control.getLevel() + delta)));
+            Audio.rememberVolume(level);
             note("Âm lượng " + level);
         }
     }

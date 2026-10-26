@@ -41,6 +41,7 @@ MicroEdition-Configuration: CLDC-1.1
 MicroEdition-Profile: MIDP-2.0
 Nokia-MIDlet-Category: Application
 Nokia-MIDlet-On-Screen-Keypad: no
+Nokia-MIDlet-no-exit: true
 EOF
 jar cfm "$OUT/raw.jar" "$OUT/MANIFEST.MF" -C "$OUT/classes" . -C "$OUT/res" .
 
