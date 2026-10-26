@@ -42,8 +42,8 @@ final class Page extends Canvas implements Runnable {
     private int layoutW = -1;
     private int layoutVersion = -1;
 
-    String leftLabel = "Menu";
-    String rightLabel = "Quay lại";
+    /** Bieu tuong phim mem phai: mui ten Quay lai, hoac dau X (Thoat) o trang chinh. */
+    int rightIcon = Ui.ICON_BACK;
 
     // Lop phu: menu, hop cho, hop thong bao.
     private Item[] menu;
@@ -145,7 +145,7 @@ final class Page extends Canvas implements Runnable {
     }
 
     private int navH() {
-        return Ui.smallBold.getHeight() + Ui.pad * 2;
+        return navIcon() + Ui.pad * 2;
     }
 
     private int viewH() {
@@ -288,21 +288,29 @@ final class Page extends Canvas implements Runnable {
         g.fillRect(0, y, w, nh);
         g.setColor(Ui.NAV_LINE);
         g.drawLine(0, y, w, y);
-        g.setFont(Ui.smallBold);
-        int ty = y + (nh - Ui.smallBold.getHeight()) / 2;
+        int s = navIcon();
+        int iy = y + (nh - s) / 2;
+        // Ba o nhu .nav ben web, cung la ba vung cham: trai, giua, phai.
+        g.setColor(0xdee3e8);
+        g.drawLine(w / 3, y + Ui.pad / 2, w / 3, h - Ui.pad / 2);
+        g.drawLine(w * 2 / 3, y + Ui.pad / 2, w * 2 / 3, h - Ui.pad / 2);
 
-        String left = busy != null || toast != null ? "" : menu != null ? "Chọn" : leftLabel;
-        String right = busy != null ? "Huỷ" : toast != null ? "OK" : menu != null ? "Đóng" : rightLabel;
-        String center = busy != null || toast != null || menu != null ? ""
-                : focused() != null ? "Mở" : "";
+        // Thanh duoi chi con bieu tuong, dat dung cho ba phim: trai, giua, phai.
+        int left = busy != null || toast != null ? 0 : menu != null ? Ui.ICON_CHECK : Ui.ICON_MENU;
+        int right = toast != null ? Ui.ICON_CHECK : busy != null || menu != null ? Ui.ICON_EXIT : rightIcon;
+        boolean center = busy == null && toast == null && menu == null && focused() != null;
 
-        g.setColor(Ui.NAV_TEXT);
-        g.drawString(left, Ui.pad, ty, Graphics.TOP | Graphics.LEFT);
-        g.drawString(right, w - Ui.pad, ty, Graphics.TOP | Graphics.RIGHT);
-        if (center.length() > 0) {
-            g.setColor(Ui.RED);
-            g.drawString(center, w / 2, ty, Graphics.TOP | Graphics.HCENTER);
+        if (left != 0) {
+            Ui.icon(g, left, (w / 3 - s) / 2, iy, s, Ui.NAV_TEXT);
         }
+        Ui.icon(g, right, w * 2 / 3 + (w / 3 - s) / 2, iy, s, Ui.NAV_TEXT);
+        if (center) {
+            Ui.icon(g, Ui.ICON_CHECK, (w - s) / 2, iy, s, Ui.RED);
+        }
+    }
+
+    private static int navIcon() {
+        return Math.max(12, Ui.bold.getHeight() * 4 / 5);
     }
 
     private void paintMenu(Graphics g, int w, int h) {
@@ -346,8 +354,7 @@ final class Page extends Canvas implements Runnable {
         Ui.lines(g, lines, Ui.font, Ui.TEXT, x + p, y + p);
         int ty = y + p * 2 + lines.length * Ui.font.getHeight();
         int tw = bw - p * 2;
-        g.setColor(0xe6eaee);
-        g.fillRoundRect(x + p, ty, tw, track, track, track);
+        Ui.round(g, x + p, ty, tw, track, track / 2, 0xe6eaee);
         // Mot doan do chay qua lai trong ranh — thay cho Gauge cua LCDUI.
         int seg = tw / 3;
         int span = tw - seg;
@@ -355,17 +362,13 @@ final class Page extends Canvas implements Runnable {
         if (pos > span) {
             pos = span * 2 - pos;
         }
-        g.setColor(Ui.RED);
-        g.fillRoundRect(x + p + Math.max(0, pos), ty, seg, track, track, track);
+        Ui.round(g, x + p + Math.max(0, pos), ty, seg, track, track / 2, Ui.RED);
     }
 
     /** Bong do duoi hop noi — de hop tach khoi trang ben duoi. */
     private static void shadow(Graphics g, int x, int y, int w, int h) {
-        int r = Ui.radius * 2;
-        g.setColor(0x9aa1a8);
-        g.fillRoundRect(x + 2, y + 3, w, h, r, r);
-        g.setColor(0x5c636a);
-        g.fillRoundRect(x + 1, y + 2, w, h, r, r);
+        Ui.round(g, x + 2, y + 3, w, h, Ui.radius, 0x9aa1a8);
+        Ui.round(g, x + 1, y + 2, w, h, Ui.radius, 0x5c636a);
     }
 
     private void paintToast(Graphics g, int w, int h) {

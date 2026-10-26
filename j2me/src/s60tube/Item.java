@@ -184,12 +184,14 @@ final class Item {
                 int tx = x + p;
                 if (thumbW > 0) {
                     int ty = top + p;
-                    g.setColor(Ui.BLACK);
-                    g.fillRoundRect(x + p, ty, thumbW, thumbH, Ui.radius, Ui.radius);
                     Image img = scaledThumb();
                     if (img != null) {
                         g.drawImage(img, x + p, ty, Graphics.TOP | Graphics.LEFT);
+                    } else {
+                        g.setColor(Ui.BLACK);
+                        g.fillRect(x + p, ty, thumbW, thumbH);
                     }
+                    Ui.clipCorners(g, x + p, ty, thumbW, thumbH, Ui.radius, focused ? Ui.FOCUS : Ui.CARD);
                     if (focused) {
                         int s = Math.max(10, thumbH / 3);
                         Ui.icon(g, Ui.ICON_PLAY, x + p + (thumbW - s) / 2, ty + (thumbH - s) / 2, s, Ui.WHITE);
@@ -199,8 +201,7 @@ final class Item {
                         int bh = Ui.smallBold.getHeight();
                         int bx = x + p + thumbW - bw - 3;
                         int by = ty + thumbH - bh - 3;
-                        g.setColor(Ui.BLACK);
-                        g.fillRoundRect(bx, by, bw, bh, 6, 6);
+                        Ui.round(g, bx, by, bw, bh, Math.max(2, Ui.radius / 2), Ui.BLACK);
                         g.setColor(Ui.WHITE);
                         g.setFont(Ui.smallBold);
                         g.drawString(badge, bx + 3, by, Graphics.TOP | Graphics.LEFT);
@@ -236,10 +237,10 @@ final class Item {
                 break;
             }
             case BUTTON: {
-                Ui.box(g, x, top, w, h, focused ? Ui.RED_PRESS : Ui.RED, focused ? Ui.WHITE : Ui.RED_DARK);
+                // Dang chon: vien do sam, mot vong trang mong ben trong, nen do dam hon.
+                Ui.box(g, x, top, w, h, focused ? Ui.WHITE : Ui.RED, Ui.RED_DARK);
                 if (focused) {
-                    g.setColor(Ui.RED_DARK);
-                    g.drawRoundRect(x, top, w - 1, h - 1, Ui.radius * 2, Ui.radius * 2);
+                    Ui.round(g, x + 2, top + 2, w - 4, h - 4, Ui.radius - 2, Ui.RED_PRESS);
                 }
                 centered(g, x, top, w, Ui.WHITE, Ui.WHITE);
                 break;
@@ -267,9 +268,8 @@ final class Item {
                 Ui.lines(g, titleLines, Ui.small, Ui.MUTED, x + p / 2, top);
                 break;
             case CODE: {
-                Ui.box(g, x, top, w, h, Ui.RED, Ui.RED);
-                g.setColor(Ui.CARD);
-                g.fillRoundRect(x + 2, top + 2, w - 4, h - 4, Ui.radius * 2 - 2, Ui.radius * 2 - 2);
+                Ui.round(g, x, top, w, h, Ui.radius, Ui.RED);
+                Ui.round(g, x + 2, top + 2, w - 4, h - 4, Ui.radius - 2, Ui.CARD);
                 g.setFont(Ui.big);
                 g.setColor(Ui.TEXT);
                 g.drawString(title, x + w / 2, top + (h - Ui.big.getHeight()) / 2, Graphics.TOP | Graphics.HCENTER);
@@ -283,8 +283,7 @@ final class Item {
                 Ui.box(g, x, top, w, h, Ui.CARD, Ui.LINE_SOFT);
                 int fill = (w - 2) * Math.max(0, Math.min(100, progress)) / 100;
                 if (fill > 0) {
-                    g.setColor(Ui.RED);
-                    g.fillRoundRect(x + 1, top + 1, fill, h - 2, Ui.radius, Ui.radius);
+                    Ui.round(g, x + 1, top + 1, fill, h - 2, Ui.radius - 1, Ui.RED);
                 }
                 break;
             }
@@ -334,7 +333,10 @@ final class Item {
         return scaled;
     }
 
-    /** Lay diem gan nhat, cat giua cho dung ty le khung (anh YouTube co the co vien den). */
+    /**
+     * Noi suy hai chieu (bilinear), cat giua cho dung ty le khung — anh YouTube
+     * co the co vien den. Lay diem gan nhat thi duong xien trong anh rang cua.
+     */
     static Image scale(Image src, int w, int h) {
         int sw = src.getWidth();
         int sh = src.getHeight();
@@ -350,20 +352,33 @@ final class Item {
         }
         int cx = (sw - cw) / 2;
         int cy = (sh - ch) / 2;
-        int[] row = new int[cw];
+        int[] in = new int[cw * ch];
+        src.getRGB(in, 0, cw, cx, cy, cw, ch);
         int[] out = new int[w * h];
-        int lastSy = -1;
+        // Toa do diem nguon theo don vi 1/256 diem.
         for (int y = 0; y < h; y++) {
-            int sy = cy + y * ch / h;
-            if (sy != lastSy) {
-                src.getRGB(row, 0, cw, cx, sy, cw, 1);
-                lastSy = sy;
-            }
-            int base = y * w;
+            int fy = Math.max(0, (y * 2 + 1) * ch * 128 / h - 128);
+            int y0 = Math.min(ch - 1, fy >> 8);
+            int y1 = Math.min(ch - 1, y0 + 1);
+            int ay = fy & 255;
             for (int x = 0; x < w; x++) {
-                out[base + x] = row[x * cw / w];
+                int fx = Math.max(0, (x * 2 + 1) * cw * 128 / w - 128);
+                int x0 = Math.min(cw - 1, fx >> 8);
+                int x1 = Math.min(cw - 1, x0 + 1);
+                int ax = fx & 255;
+                out[y * w + x] = mix(mix(in[y0 * cw + x0], in[y0 * cw + x1], ax),
+                        mix(in[y1 * cw + x0], in[y1 * cw + x1], ax), ay);
             }
         }
         return Image.createRGBImage(out, w, h, false);
+    }
+
+    /** Tron hai mau theo ty le t/256. */
+    private static int mix(int a, int b, int t) {
+        int s = 256 - t;
+        int r = (((a >> 16) & 255) * s + ((b >> 16) & 255) * t) >> 8;
+        int g = (((a >> 8) & 255) * s + ((b >> 8) & 255) * t) >> 8;
+        int bl = ((a & 255) * s + (b & 255) * t) >> 8;
+        return 0xff000000 | (r << 16) | (g << 8) | bl;
     }
 }

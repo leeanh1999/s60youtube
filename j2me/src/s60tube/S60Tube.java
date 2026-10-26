@@ -52,7 +52,7 @@ public class S60Tube extends MIDlet implements Page.Host, CommandListener {
         thumbs.start();
         home = new Page(this, APP);
         home.kind = "home";
-        home.rightLabel = "Thoát";
+        home.rightIcon = Ui.ICON_EXIT;
         display.setCurrent(home);
         hello();
     }
