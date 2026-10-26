@@ -18,9 +18,9 @@ import javax.microedition.lcdui.Graphics;
  */
 final class Page extends Canvas implements Runnable, CommandListener {
 
-    /** Ma phim mem: Nokia/Sony Ericsson -6/-7, Motorola -21/-22, Siemens. */
-    private static final int[] LEFT_SOFT = {-6, -21, 21, -202, 105};
-    private static final int[] RIGHT_SOFT = {-7, -22, 22, -203, 106};
+    /** Phim mem (xem Device.soft); Command cua BlackBerry goi lai bang hai ma nay. */
+    private static final int LEFT_SOFT = -6;
+    private static final int RIGHT_SOFT = -7;
     private static final int KEY_CLEAR = -8;
     private static final int KEY_CENTER = -5;
     /** Ban phim QWERTY (BlackBerry, E6): Enter, Esc, xoa lui. */
@@ -94,7 +94,7 @@ final class Page extends Canvas implements Runnable, CommandListener {
             }
             return;
         }
-        handleKey(c == CMD_MENU ? LEFT_SOFT[0] : RIGHT_SOFT[0], false);
+        handleKey(c == CMD_MENU ? LEFT_SOFT : RIGHT_SOFT, false);
     }
 
     // ---------- noi dung ----------
@@ -422,14 +422,6 @@ final class Page extends Canvas implements Runnable, CommandListener {
 
     // ---------- phim ----------
 
-    private static boolean isIn(int key, int[] codes) {
-        for (int i = 0; i < codes.length; i++) {
-            if (codes[i] == key) {
-                return true;
-            }
-        }
-        return false;
-    }
 
     private int action(int key) {
         try {
@@ -450,9 +442,13 @@ final class Page extends Canvas implements Runnable, CommandListener {
     private void handleKey(int key, boolean repeat) {
         // Phim co the den truoc lan ve dau tien — bo cuc phai co truoc khi tinh o chon.
         layout();
-        boolean left = isIn(key, LEFT_SOFT);
-        boolean right = isIn(key, RIGHT_SOFT) || key == KEY_CLEAR || key == KEY_ESC;
-        int act = left || right ? 0 : action(key);
+        int act = key == LEFT_SOFT || key == RIGHT_SOFT ? 0 : action(key);
+        int soft = Device.soft(key, act);
+        boolean left = soft < 0;
+        boolean right = soft > 0;
+        if (left || right) {
+            act = 0;
+        }
         boolean fire = key == KEY_CENTER || key == KEY_ENTER || key == KEY_RETURN || act == FIRE
                 || (key == KEY_NUM5 && menu == null);
 
@@ -530,7 +526,7 @@ final class Page extends Canvas implements Runnable, CommandListener {
             }
         }
         if (input != null) {
-            if (key == KEY_BACKSPACE || key == KEY_CLEAR) {
+            if (key == KEY_BACKSPACE || (key == KEY_CLEAR && !Device.BLACKBERRY)) {
                 if (input.title.length() == 0) {
                     return false;
                 }

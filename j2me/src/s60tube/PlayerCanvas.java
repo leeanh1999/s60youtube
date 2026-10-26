@@ -29,8 +29,6 @@ final class PlayerCanvas extends Canvas implements Runnable, PlayerListener, Com
 
     private static final long STEP_US = 10000000L;
     private static final long HIDE_MS = 4000;
-    private static final int[] LEFT_SOFT = {-6, -21, 21, -202, 105};
-    private static final int[] RIGHT_SOFT = {-7, -22, 22, -203, 106, -8, 27};
     private static final int BAR = 0x1b1d21;
 
     private final S60Tube app;
@@ -345,14 +343,6 @@ final class PlayerCanvas extends Canvas implements Runnable, PlayerListener, Com
 
     // ---------- phim va cham ----------
 
-    private static boolean isIn(int key, int[] codes) {
-        for (int i = 0; i < codes.length; i++) {
-            if (codes[i] == key) {
-                return true;
-            }
-        }
-        return false;
-    }
 
     protected void keyPressed(int key) {
         handleKey(key, false);
@@ -363,20 +353,21 @@ final class PlayerCanvas extends Canvas implements Runnable, PlayerListener, Com
     }
 
     private void handleKey(int key, boolean repeat) {
-        if (isIn(key, RIGHT_SOFT)) {
-            if (!repeat) {
-                close(null);
-            }
-            return;
-        }
         int action = 0;
         try {
             action = getGameAction(key);
         } catch (Exception ignored) {
         }
+        int soft = Device.soft(key, action);
+        if (soft > 0) {
+            if (!repeat) {
+                close(null);
+            }
+            return;
+        }
         boolean wasHidden = !controls;
         poke();
-        if (isIn(key, LEFT_SOFT) || key == KEY_NUM5 || key == -5 || key == 10 || action == FIRE) {
+        if (soft < 0 || key == KEY_NUM5 || key == -5 || key == 10 || action == FIRE) {
             if (!repeat && !wasHidden) {
                 togglePause();
             }
