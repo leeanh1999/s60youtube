@@ -51,6 +51,10 @@ public class S60Tube extends MIDlet
 
     protected void startApp() throws MIDletStateChangeException {
         if (display != null) {
+            // Quay lai sau khi an app (nghe nhac nen): hien lai trang dang xem.
+            if (display.getCurrent() == null) {
+                display.setCurrent(current());
+            }
             return;
         }
         display = Display.getDisplay(this);
@@ -73,6 +77,7 @@ public class S60Tube extends MIDlet
     }
 
     protected void destroyApp(boolean unconditional) {
+        Audio.stopAll();
         if (thumbs != null) {
             thumbs.stop();
         }
@@ -398,10 +403,10 @@ public class S60Tube extends MIDlet
                         first = false;
                     } else if ("A".equals(row[0])) {
                         String path = Api.field(row, 1);
-                        page.add(Item.of(Item.OPTION, "Nghe chỉ tiếng trong app").icon(Ui.ICON_NOTE)
-                                .sub("Nhẹ, ít tốn mạng").act("play", "app\t" + path + "\t" + title));
-                        page.add(Item.of(Item.OPTION, "Nghe chỉ tiếng bằng trình duyệt").icon(Ui.ICON_BROWSER)
-                                .sub("Nghe tiếp được khi tắt màn hình").act("play", "web\t" + path + "\t" + title));
+                        page.add(Item.of(Item.OPTION, "Nghe nhạc trong app").icon(Ui.ICON_NOTE)
+                                .sub("Chỉ tiếng, tắt màn hình vẫn nghe").act("listen", path + "\t" + title));
+                        page.add(Item.of(Item.OPTION, "Nghe bằng trình duyệt").icon(Ui.ICON_BROWSER)
+                                .sub("Khi nghe trong app bị lỗi").act("play", "web\t" + path + "\t" + title));
                     } else if ("P".equals(row[0])) {
                         profiles.addElement(row);
                     } else if ("E".equals(row[0])) {
@@ -448,6 +453,8 @@ public class S60Tube extends MIDlet
     private void play(boolean inApp, String path, String title) {
         Page from = current();
         if (inApp) {
+            // Hai trinh phat cung luc thi may thuong khong mo noi cai thu hai.
+            Audio.stopAll();
             lastPage = from;
             display.setCurrent(new PlayerCanvas(this, Settings.server + path, title, from));
             return;
@@ -462,6 +469,42 @@ public class S60Tube extends MIDlet
         } catch (Exception e) {
             from.showToast("Máy không mở được địa chỉ này:\n" + url + "\n" + e, Item.TONE_ERR);
         }
+    }
+
+    // ---------- nghe nhac nen ----------
+
+    private void listen(String path, String title) {
+        Audio.start(Settings.server + path, title);
+        showListening();
+    }
+
+    /** Trang Dang nghe: cac nut dieu khien bai dang phat nen. */
+    private void showListening() {
+        Audio audio = Audio.current();
+        Page page = current();
+        if ("listen".equals(page.kind)) {
+            back();
+        }
+        page = new Page(this, "Đang nghe");
+        page.kind = "listen";
+        if (audio == null) {
+            page.add(Item.of(Item.NOTE, "Không có bài nào đang nghe."));
+            open(page);
+            return;
+        }
+        Item info = page.add(Item.of(Item.INFO, audio.title).sub(audio.status()));
+        Item bar = page.add(Item.of(Item.PROGRESS, ""));
+        Item time = page.add(Item.of(Item.TEXT, "--:-- / --:--"));
+        Item toggle = page.add(Item.of(Item.BUTTON, "Tạm dừng").icon(Ui.ICON_PAUSE).act("a-toggle", null));
+        page.add(Item.of(Item.OPTION, "Lùi 10 giây").icon(Ui.ICON_REWIND).act("a-rew", null));
+        page.add(Item.of(Item.OPTION, "Tới 10 giây").icon(Ui.ICON_FORWARD).act("a-fwd", null));
+        page.add(Item.of(Item.OPTION, "To hơn").icon(Ui.ICON_NOTE).act("a-up", null));
+        page.add(Item.of(Item.OPTION, "Nhỏ hơn").icon(Ui.ICON_NOTE).act("a-down", null));
+        page.add(Item.of(Item.OPTION, "Ẩn app, vẫn nghe").icon(Ui.ICON_BACK)
+                .sub("Tắt màn hình hay mở app khác vẫn nghe tiếp").act("a-hide", null));
+        page.add(Item.of(Item.OPTION, "Dừng nghe").icon(Ui.ICON_EXIT).act("a-stop", null));
+        audio.attach(page, info, bar, time, toggle);
+        open(page);
     }
 
     void playerClosed(Displayable back, String error) {
@@ -631,6 +674,19 @@ public class S60Tube extends MIDlet
     // ---------- Page.Host ----------
 
     private Item[] menu() {
+        Audio audio = Audio.current();
+        Item[] base = baseMenu();
+        if (audio == null) {
+            return base;
+        }
+        Item[] items = new Item[base.length + 2];
+        items[0] = Item.of(Item.OPTION, "Đang nghe: " + audio.title).icon(Ui.ICON_NOTE).act("listening", null);
+        items[1] = Item.of(Item.OPTION, "Ẩn app, vẫn nghe").icon(Ui.ICON_BACK).act("a-hide", null);
+        System.arraycopy(base, 0, items, 2, base.length);
+        return items;
+    }
+
+    private Item[] baseMenu() {
         return new Item[] {
             Item.of(Item.OPTION, "Trang chính").icon(Ui.ICON_HOME).act("home", null),
             Item.of(Item.OPTION, "Tìm kiếm").icon(Ui.ICON_SEARCH).act("search", null),
@@ -675,6 +731,13 @@ public class S60Tube extends MIDlet
             openVideo(v);
         } else if ("more".equals(a)) {
             loadResults(page, page.title, v);
+        } else if ("listen".equals(a)) {
+            int tab = v.indexOf('\t');
+            listen(v.substring(0, tab), v.substring(tab + 1));
+        } else if ("listening".equals(a)) {
+            showListening();
+        } else if (a.startsWith("a-")) {
+            audioAction(page, a);
         } else if ("play".equals(a)) {
             int x = v.indexOf('\t');
             int y = v.indexOf('\t', x + 1);
@@ -729,6 +792,36 @@ public class S60Tube extends MIDlet
             showSettings(page);
         } else if ("exit".equals(a)) {
             exit();
+        }
+    }
+
+    private void audioAction(Page page, String a) {
+        Audio audio = Audio.current();
+        if ("a-hide".equals(a)) {
+            // MIDP: setCurrent(null) xin may dua app ra nen; nhac van chay.
+            display.setCurrent(null);
+            return;
+        }
+        if (audio == null) {
+            page.showToast("Không có bài nào đang nghe.", Item.TONE_WARN);
+            return;
+        }
+        if ("a-toggle".equals(a)) {
+            audio.toggle();
+        } else if ("a-rew".equals(a)) {
+            audio.rewind();
+        } else if ("a-fwd".equals(a)) {
+            audio.forward();
+        } else if ("a-up".equals(a) || "a-down".equals(a)) {
+            if (audio.volume("a-up".equals(a) ? 10 : -10) < 0) {
+                page.showToast("Máy không cho chỉnh âm lượng trong app — dùng phím âm lượng của máy.",
+                        Item.TONE_WARN);
+            }
+        } else if ("a-stop".equals(a)) {
+            Audio.stopAll();
+            if ("listen".equals(page.kind)) {
+                back();
+            }
         }
     }
 

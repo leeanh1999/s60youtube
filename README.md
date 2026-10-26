@@ -442,6 +442,11 @@ cách nhau bằng TAB.
   chỉnh âm lượng. **Xem bằng trình duyệt** mở trang `/app/play` có khung
   `<video>` giống trang web, nên xem online được (đưa thẳng link `.mp4` cho máy
   thì Symbian tải hết file về rồi mới mở).
+- **Nghe nhạc trong app**: mục **Nghe nhạc trong app** ở trang video phát bản
+  chỉ tiếng (`/audio/<mã>.m4a`) ở nền. Quay ra trang khác, tắt màn hình, hay chọn
+  **Ẩn app, vẫn nghe** (trong Menu) thì nhạc vẫn chạy. Trang **Đang nghe** (mục
+  đầu tiên của Menu khi có bài) có tạm dừng, tua 10 giây, âm lượng, dừng nghe.
+  Xem video trong app thì bài đang nghe dừng lại.
 - Trang video không chờ yt-dlp: quá `WATCH_WAIT_MS` thì máy chủ trả về luôn đường
   `/stream/<mã>` chung, lúc phát máy chủ tự chọn bản gộp sẵn.
 - **BlackBerry (vd. Bold 9900)**: phím Menu của máy có **Menu**, **Tìm kiếm** và

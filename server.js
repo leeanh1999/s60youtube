@@ -1476,6 +1476,9 @@ app.get('/api/watch', async (req, res) => {
     lines.push(apiLine('E', friendlyError(outcome.reason)));
   } else {
     lines.push(apiLine('C', 0, `/stream/${videoId}${key}`));
+    // Gan nhu video nao cung co luong AAC; khong co thi /audio tu chuyen sang
+    // trang chuyen ma — app se bao loi va con nut nghe bang trinh duyet.
+    if (media.isAvailable()) lines.push(apiLine('A', `/audio/${videoId}.m4a${key}`));
   }
   if (outcome.status !== 'rejected' && media.isAvailable()) {
     for (const [id, profile] of Object.entries(media.PROFILES)) {
