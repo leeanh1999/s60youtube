@@ -225,6 +225,15 @@ final class Shapes {
                         && inner * inner + (dy / 0.36f) * (dy / 0.36f) >= 1f;
                 return meridian || (dy > -0.05f && dy < 0.05f) || (dx > -0.04f && dx < 0.04f);
             }
+            case Ui.ICON_HISTORY: {
+                // Mat dong ho: vong tron va hai kim chi 3 gio kem 10.
+                float dx = u - 0.5f;
+                float dy = v - 0.5f;
+                float d2 = dx * dx + dy * dy;
+                boolean ring = d2 <= 0.46f * 0.46f && d2 >= 0.34f * 0.34f;
+                return ring || capsule(u, v, 0.5f, 0.5f, 0.5f, 0.24f, 0.11f)
+                        || capsule(u, v, 0.5f, 0.5f, 0.7f, 0.58f, 0.11f);
+            }
             case Ui.ICON_RELOAD: {
                 float dx = u - 0.5f;
                 float dy = v - 0.53f;

@@ -1514,6 +1514,28 @@ app.get('/app/play', (req, res) => {
     .send(render.appPlayPage({ src, title, videoId: match[2], prefs: req.prefs }));
 });
 
+/**
+ * App sap nghe het bai thi goi day cho bai sau: chay truoc yt-dlp va buoc chep
+ * tieng sang .m4a, de luc trinh phat mo /audio cua bai do la co file ngay.
+ * Khong cho xong — tra loi luon:  J status
+ */
+app.get('/api/prepare', (req, res) => {
+  const videoId = parseVideoId(req.query.v);
+  if (!videoId) {
+    sendApi(res, [apiLine('E', 'Thiếu mã video hợp lệ.')], 400);
+    return;
+  }
+  if (!media.isAvailable()) {
+    sendApi(res, [apiLine('E', 'Máy chủ chưa có ffmpeg.')], 503);
+    return;
+  }
+  const existing = media.getJob(videoId, 'audio');
+  startAudioJob(videoId, req.auth).catch((err) =>
+    console.warn(`[api/prepare ${videoId}] ${err?.message || err}`)
+  );
+  sendApi(res, [apiLine('J', existing ? existing.status : 'queued')]);
+});
+
 /** J status progress position duong-dan — app hoi lai vai giay mot lan. */
 app.get('/api/convert', async (req, res) => {
   const videoId = parseVideoId(req.query.v);

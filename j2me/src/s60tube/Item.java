@@ -24,6 +24,8 @@ final class Item {
     static final int INFO = 11;
     /** O nhap chu tu ve (BlackBerry): title la chu da go, sub la chu mo khi trong. */
     static final int INPUT = 12;
+    /** Thanh tim tren trang chinh: trong giong INPUT nhung chi de bam vao. */
+    static final int SEARCHBAR = 13;
 
     static final int TONE_DESC = 0;
     static final int TONE_WARN = 1;
@@ -95,7 +97,8 @@ final class Item {
     }
 
     boolean focusable() {
-        return action != null && (type == CARD || type == OPTION || type == BUTTON || type == MORE || type == INPUT);
+        return action != null && (type == CARD || type == OPTION || type == BUTTON || type == MORE || type == INPUT
+                || type == SEARCHBAR);
     }
 
     void setThumb(Image image) {
@@ -166,7 +169,8 @@ final class Item {
                 h = Math.max(10, Ui.em * 2 / 3);
                 break;
             case INPUT:
-                h = Ui.font.getHeight() + p * 2 + 2;
+            case SEARCHBAR:
+                h = Ui.font.getHeight() + p * 2 + 4;
                 break;
             case INFO:
                 titleLines = Ui.wrap(title, Ui.bold, w - p * 2, 4);
@@ -284,34 +288,10 @@ final class Item {
                 Ui.box(g, x, top, w, h, Ui.CARD, Ui.LINE);
                 Ui.lines(g, titleLines, Ui.mono, Ui.TEXT, x + p, top + p);
                 break;
-            case INPUT: {
-                Ui.box(g, x, top, w, h, Ui.CARD, focused ? Ui.RED : Ui.LINE_SOFT);
-                if (focused) {
-                    Ui.box(g, x + 1, top + 1, w - 2, h - 2, Ui.CARD, Ui.RED);
-                }
-                int room = w - p * 2 - 3;
-                int ty = top + (h - Ui.font.getHeight()) / 2;
-                g.setFont(Ui.font);
-                if (title.length() == 0) {
-                    g.setColor(Ui.MUTED);
-                    g.drawString(Ui.ellipsis(sub, Ui.font, room), x + p + 4, ty, Graphics.TOP | Graphics.LEFT);
-                }
-                // Chu dai qua thi chi hien phan cuoi, cho dang go.
-                int start = 0;
-                while (start < title.length()
-                        && Ui.font.substringWidth(title, start, title.length() - start) > room) {
-                    start++;
-                }
-                String shown = title.substring(start);
-                g.setColor(Ui.TEXT);
-                g.drawString(shown, x + p, ty, Graphics.TOP | Graphics.LEFT);
-                if (focused) {
-                    int cx = x + p + Ui.font.stringWidth(shown) + 1;
-                    g.setColor(Ui.TEXT);
-                    g.fillRect(cx, ty, 2, Ui.font.getHeight());
-                }
+            case INPUT:
+            case SEARCHBAR:
+                pill(g, x, top, w, focused);
                 break;
-            }
             case PROGRESS: {
                 Ui.box(g, x, top, w, h, Ui.CARD, Ui.LINE_SOFT);
                 int fill = (w - 2) * Math.max(0, Math.min(100, progress)) / 100;
@@ -332,6 +312,41 @@ final class Item {
             }
             default:
                 break;
+        }
+    }
+
+    /**
+     * O tim kieu vien thuoc (bo tron hai dau, nhu o tim cua YouTube): kinh lup
+     * ben trai, chu dang go hoac chu mo goi y, con tro khi dang chon o INPUT.
+     */
+    private void pill(Graphics g, int x, int top, int w, boolean focused) {
+        int r = h / 2;
+        int border = focused ? 2 : 1;
+        Ui.round(g, x, top, w, h, r, focused ? Ui.RED : Ui.LINE_SOFT);
+        Ui.round(g, x + border, top + border, w - border * 2, h - border * 2, r - border, Ui.CARD);
+        int s = Ui.font.getHeight() * 3 / 4;
+        int ix = x + r / 2 + 2;
+        Ui.icon(g, Ui.ICON_SEARCH, ix, top + (h - s) / 2, s, focused ? Ui.RED : Ui.MUTED);
+        int tx = ix + s + Ui.pad;
+        int room = x + w - r / 2 - tx - 3;
+        int ty = top + (h - Ui.font.getHeight()) / 2;
+        g.setFont(Ui.font);
+        if (title.length() == 0) {
+            g.setColor(Ui.MUTED);
+            g.drawString(Ui.ellipsis(sub, Ui.font, room), tx, ty, Graphics.TOP | Graphics.LEFT);
+        }
+        // Chu dai qua thi chi hien phan cuoi, cho dang go.
+        int start = 0;
+        while (start < title.length() && Ui.font.substringWidth(title, start, title.length() - start) > room) {
+            start++;
+        }
+        String shown = title.substring(start);
+        g.setColor(Ui.TEXT);
+        g.drawString(shown, tx, ty, Graphics.TOP | Graphics.LEFT);
+        if (focused && type == INPUT) {
+            int cx = tx + Ui.font.stringWidth(shown) + 1;
+            g.setColor(Ui.RED);
+            g.fillRect(cx, ty + 1, 2, Ui.font.getHeight() - 2);
         }
     }
 

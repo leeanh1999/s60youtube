@@ -284,7 +284,7 @@ public class S60Tube extends MIDlet
                 if (!linked) {
                     home.add(Item.of(Item.BUTTON, "Đăng nhập").icon(Ui.ICON_USER).act("login", null));
                 }
-                home.add(Item.of(Item.OPTION, "Tìm kiếm video").icon(Ui.ICON_SEARCH).act("search", null));
+                home.add(Item.of(Item.SEARCHBAR, "").sub("Tìm video hoặc dán link").act("search", null));
                 int start = home.items.size();
                 home.add(Item.of(Item.HEAD, "Gợi ý cho bạn"));
                 if (addVideos(home, rows) == 0) {
@@ -300,38 +300,53 @@ public class S60Tube extends MIDlet
      * TextBox de go duoc tieng Viet. initial: chu cai vua go o trang khac.
      */
     private void askSearch(String initial) {
-        if (Device.BLACKBERRY) {
-            showSearchPage(initial);
-        } else {
-            askNativeSearch(initial != null ? initial : lastQuery);
-        }
+        showSearchPage(initial);
     }
 
     private void askNativeSearch(String text) {
         if (searchBox == null) {
-            searchField = new TextField("Từ khoá hoặc link YouTube", "", 200, TextField.ANY);
-            searchBox = inputForm("Tìm trên YouTube", searchField, cmdSearch);
+            // Khong dat nhan: BlackBerry ve nhan ngay trong o, trong nhu chu da go ma khong xoa duoc.
+            searchField = new TextField(null, "", 200, TextField.ANY);
+            searchBox = inputForm("Từ khoá hoặc link YouTube", searchField, cmdSearch);
         }
         searchField.setString(text);
         showNative(searchBox);
     }
 
+    /**
+     * Trang tim kiem tu ve: o tim bo tron, nut Tim, cac lan tim gan day. May co
+     * ban phim QWERTY (E6, BlackBerry) go thang vao o; may ban phim so, may cam
+     * ung, hay can go tieng Viet co dau thi bam vao o de mo o nhap cua may.
+     */
     private void showSearchPage(String initial) {
         Page page = current();
         Item input = searchInput(page);
-        if (input == null) {
+        if (input == null || !"search".equals(page.kind)) {
             page = new Page(this, "Tìm kiếm");
             page.kind = "search";
-            input = page.add(Item.of(Item.INPUT, lastQuery).act("search-go", null)
-                    .sub("Gõ từ khoá hoặc dán link YouTube"));
-            page.add(Item.of(Item.BUTTON, "Tìm").icon(Ui.ICON_SEARCH).act("search-go", null));
-            page.add(Item.of(Item.TEXT, "Gõ bằng bàn phím, bấm Enter để tìm, phím Del để xoá chữ."));
-            page.add(Item.of(Item.OPTION, "Dùng ô nhập của máy").icon(Ui.ICON_INFO).act("search-native", null)
-                    .sub("Khi cần gõ tiếng Việt có dấu"));
             open(page);
+            input = null;
         }
-        if (initial != null) {
-            input.title = initial;
+        String text = initial != null ? initial : input != null ? input.title : lastQuery;
+        buildSearchPage(page, text);
+    }
+
+    private void buildSearchPage(Page page, String text) {
+        page.clear();
+        page.add(Item.of(Item.INPUT, text).act("search-go", null).sub("Tìm video hoặc dán link YouTube"));
+        page.add(Item.of(Item.BUTTON, "Tìm").icon(Ui.ICON_SEARCH).act("search-go", null));
+        page.add(Item.of(Item.OPTION, "Gõ tiếng Việt có dấu").icon(Ui.ICON_INFO).act("search-native", null)
+                .sub("Mở ô nhập của máy"));
+        page.add(Item.of(Item.TEXT, Page.qwerty
+                ? "Gõ bằng bàn phím, Enter để tìm, phím xoá để xoá chữ."
+                : "Bấm vào ô tìm để gõ chữ."));
+        if (!Settings.history.isEmpty()) {
+            page.add(Item.of(Item.HEAD, "Tìm gần đây"));
+            for (int i = 0; i < Settings.history.size(); i++) {
+                String q = (String) Settings.history.elementAt(i);
+                page.add(Item.of(Item.OPTION, q).icon(Ui.ICON_HISTORY).act("search-q", q));
+            }
+            page.add(Item.of(Item.OPTION, "Xoá lịch sử tìm").icon(Ui.ICON_EXIT).act("search-clear", null));
         }
         page.changed();
     }
@@ -348,6 +363,7 @@ public class S60Tube extends MIDlet
 
     private void search(final String query) {
         lastQuery = query;
+        Settings.remember(query);
         final Page page = new Page(this, query);
         open(page);
         loadResults(page, query, null);
@@ -680,6 +696,9 @@ public class S60Tube extends MIDlet
         Page page = reuse != null ? reuse : new Page(this, "Cài đặt");
         page.kind = "settings";
         page.clear();
+        page.add(Item.of(Item.HEAD, "Tài khoản"));
+        page.add(Item.of(Item.OPTION, "Đăng nhập YouTube").sub("Nối tài khoản để xem video cần đăng nhập")
+                .icon(Ui.ICON_USER).act("login", null));
         page.add(Item.of(Item.HEAD, "Máy chủ"));
         page.add(Item.of(Item.OPTION, "Địa chỉ máy chủ").sub(Settings.server).icon(Ui.ICON_HOME).act("server", null));
         page.add(Item.of(Item.HEAD, "Hiển thị"));
@@ -698,8 +717,8 @@ public class S60Tube extends MIDlet
 
     private void askServer() {
         if (serverBox == null) {
-            serverField = new TextField("Địa chỉ máy chủ", "", 200, TextField.URL);
-            serverBox = inputForm("Máy chủ", serverField, cmdOk);
+            serverField = new TextField(null, "", 200, TextField.URL);
+            serverBox = inputForm("Địa chỉ máy chủ", serverField, cmdOk);
         }
         serverField.setString(Settings.server);
         showNative(serverBox);
@@ -750,8 +769,6 @@ public class S60Tube extends MIDlet
         return new Item[] {
             Item.of(Item.OPTION, "Trang chính").icon(Ui.ICON_HOME).act("home", null),
             Item.of(Item.OPTION, "Tìm kiếm").icon(Ui.ICON_SEARCH).act("search", null),
-            Item.of(Item.OPTION, "Tải lại trang chính").icon(Ui.ICON_RELOAD).act("reload", null),
-            Item.of(Item.OPTION, "Đăng nhập").icon(Ui.ICON_USER).act("login", null),
             Item.of(Item.OPTION, "Cài đặt").icon(Ui.ICON_GEAR).act("settings", null),
             Item.of(Item.OPTION, "Thoát").icon(Ui.ICON_EXIT).act("exit", null),
         };
@@ -821,11 +838,18 @@ public class S60Tube extends MIDlet
         } else if ("search-go".equals(a)) {
             Item input = searchInput(page);
             String query = input != null ? input.title.trim() : "";
-            if (query.length() > 0) {
+            // Bam vao chinh o tim (hoac o con trong): mo o nhap cua may de go.
+            boolean onInput = item.type == Item.INPUT;
+            if (query.length() > 0 && !(onInput && !Page.qwerty)) {
                 search(query);
             } else {
-                askNativeSearch("");
+                askNativeSearch(input != null ? input.title : "");
             }
+        } else if ("search-q".equals(a)) {
+            search(v);
+        } else if ("search-clear".equals(a)) {
+            Settings.clearHistory();
+            buildSearchPage(page, searchInput(page) != null ? searchInput(page).title : "");
         } else if ("search-native".equals(a)) {
             Item input = searchInput(page);
             askNativeSearch(input != null ? input.title : lastQuery);
@@ -910,7 +934,13 @@ public class S60Tube extends MIDlet
             if (c != cmdCancel && query.length() > 0) {
                 search(query);
             } else {
-                display.setCurrent(current());
+                Page page = current();
+                Item input = searchInput(page);
+                if (input != null) {
+                    input.title = searchField.getString();
+                    page.changed();
+                }
+                display.setCurrent(page);
             }
         } else if (d == serverBox) {
             if (c != cmdCancel) {

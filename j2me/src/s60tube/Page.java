@@ -567,6 +567,12 @@ final class Page extends Canvas implements Runnable, CommandListener {
      * o do; trang khac thi go chu cai la mo o tim kiem. So, '*' va '#' van la
      * phim dieu khien cua may ban phim so.
      */
+    /**
+     * Da go chu cai lan nao chua: may ban phim so (S60v3) bam 2/8 de di chuyen,
+     * chi khi da thay chu cai moi coi so la chu go vao o.
+     */
+    static boolean qwerty;
+
     private boolean typing(int key, int act) {
         Item input = null;
         int at = -1;
@@ -578,7 +584,17 @@ final class Page extends Canvas implements Runnable, CommandListener {
                 break;
             }
         }
+        if (key < 65536 && key > 32) {
+            char letter = (char) key;
+            if (Character.isLowerCase(letter) || Character.isUpperCase(letter)) {
+                qwerty = true;
+            }
+        }
         if (input != null) {
+            boolean digitKey = (key >= KEY_NUM0 && key <= KEY_NUM0 + 9) || key == KEY_STAR || key == KEY_POUND;
+            if (digitKey && !qwerty) {
+                return false;
+            }
             if (key == KEY_BACKSPACE || (key == KEY_CLEAR && !Device.BLACKBERRY)) {
                 if (input.title.length() == 0) {
                     return false;

@@ -29,6 +29,9 @@ public final class Settings {
     public static int textSize = 1;
     /** Am luong da chinh trong app (0-100); -1 la chua chinh, de muc cua may. */
     public static int volume = -1;
+    /** Cac lan tim gan day, moi nhat truoc. */
+    public static final java.util.Vector history = new java.util.Vector();
+    private static final int HISTORY_MAX = 8;
 
     private Settings() {
     }
@@ -48,6 +51,17 @@ public final class Settings {
             inApp = in.readBoolean();
             textSize = in.readInt();
             volume = in.readInt();
+            String saved = in.readUTF();
+            history.removeAllElements();
+            int start = 0;
+            while (start < saved.length()) {
+                int nl = saved.indexOf('\n', start);
+                int end = nl < 0 ? saved.length() : nl;
+                if (end > start) {
+                    history.addElement(saved.substring(start, end));
+                }
+                start = end + 1;
+            }
         } catch (RecordStoreException e) {
             // hong thi dung mac dinh
         } catch (IOException e) {
@@ -55,6 +69,25 @@ public final class Settings {
         } finally {
             close(rs);
         }
+    }
+
+    /** Dua lan tim nay len dau lich su (bo ban trung cu). */
+    public static void remember(String query) {
+        query = query.replace('\n', ' ').trim();
+        if (query.length() == 0) {
+            return;
+        }
+        history.removeElement(query);
+        history.insertElementAt(query, 0);
+        if (history.size() > HISTORY_MAX) {
+            history.setSize(HISTORY_MAX);
+        }
+        save();
+    }
+
+    public static void clearHistory() {
+        history.removeAllElements();
+        save();
     }
 
     public static void save() {
@@ -68,6 +101,14 @@ public final class Settings {
             out.writeBoolean(inApp);
             out.writeInt(textSize);
             out.writeInt(volume);
+            StringBuffer saved = new StringBuffer();
+            for (int i = 0; i < history.size(); i++) {
+                if (i > 0) {
+                    saved.append('\n');
+                }
+                saved.append((String) history.elementAt(i));
+            }
+            out.writeUTF(saved.toString());
             byte[] data = bytes.toByteArray();
             rs = RecordStore.openRecordStore(STORE, true);
             if (rs.getNumRecords() == 0) {

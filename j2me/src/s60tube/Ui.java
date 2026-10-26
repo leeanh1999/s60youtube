@@ -58,6 +58,7 @@ final class Ui {
     static final int ICON_REWIND = 15;
     static final int ICON_FORWARD = 16;
     static final int ICON_BROWSER = 17;
+    static final int ICON_HISTORY = 18;
 
     static Font font;
     static Font bold;

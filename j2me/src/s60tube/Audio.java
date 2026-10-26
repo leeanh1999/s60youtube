@@ -51,6 +51,9 @@ final class Audio implements Runnable, PlayerListener {
     private Player player;
     private volatile boolean closed;
     private String status = "Đang mở…";
+    /** Da nho may chu chuan bi bai sau chua (moi bai mot lan). */
+    private boolean prepared;
+    private long playedMs;
 
     private Audio(String url, String title) {
         this.url = url;
@@ -223,10 +226,54 @@ final class Audio implements Runnable, PlayerListener {
             } catch (InterruptedException e) {
                 return;
             }
-            if (page != null && page.isShown() && current == audio) {
+            if (current != audio) {
+                return;
+            }
+            audio.maybePrepareNext();
+            if (page != null && page.isShown()) {
                 audio.refresh();
             }
         }
+    }
+
+    /**
+     * Gan het bai (con duoi 60 giay hoac qua nua bai; khong biet do dai thi sau
+     * 30 giay nghe) thi nho may chu chuan bi bai sau: yt-dlp va chep .m4a mat
+     * vai giay, lam truoc thi het bai la sang bai moi ngay.
+     */
+    private void maybePrepareNext() {
+        if (prepared || !playing()) {
+            return;
+        }
+        playedMs += 1000;
+        final String[] next = track(index + 1);
+        if (next == null) {
+            prepared = true;
+            return;
+        }
+        long now = -1;
+        long total = -1;
+        try {
+            now = player.getMediaTime();
+            total = player.getDuration();
+        } catch (Exception ignored) {
+        }
+        boolean near = total > 0 && now >= 0
+                ? total - now <= 60000000L || now * 2 >= total
+                : playedMs >= 30000;
+        if (!near) {
+            return;
+        }
+        prepared = true;
+        background(new Runnable() {
+            public void run() {
+                try {
+                    Api.fetch("/api/prepare?v=" + Api.encode(next[0]));
+                } catch (Exception ignored) {
+                    // khong chuan bi duoc thi luc sang bai cho lau hon thoi
+                }
+            }
+        });
     }
 
     boolean playing() {
