@@ -844,6 +844,45 @@ async function proxyFormat(req, res, id, format) {
   }
 }
 
+// ---------- log thoi gian phat ----------
+
+/**
+ * Moi lan trinh phat cua may xin /stream hay /audio thi ghi mot dong: xin
+ * khoang byte nao, may chu gui bao nhieu, byte dau ra sau bao lau va xong sau
+ * bao lau. Nghe/xem cham thi doc may dong nay (docker logs) la biet cham o dau:
+ * may chu cho YouTube, hay dien thoai tai tu tu / tai het file truoc khi phat.
+ */
+app.use(['/stream', '/audio'], (req, res, next) => {
+  const started = Date.now();
+  let firstByte = 0;
+  let bytes = 0;
+  const write = res.write.bind(res);
+  const end = res.end.bind(res);
+  res.write = (chunk, ...rest) => {
+    if (chunk) {
+      if (!firstByte) firstByte = Date.now();
+      bytes += chunk.length;
+    }
+    return write(chunk, ...rest);
+  };
+  res.end = (chunk, ...rest) => {
+    if (chunk && typeof chunk !== 'function') {
+      if (!firstByte) firstByte = Date.now();
+      bytes += chunk.length;
+    }
+    return end(chunk, ...rest);
+  };
+  res.on('close', () => {
+    const ua = String(req.headers['user-agent'] || '-').slice(0, 60);
+    console.log(
+      `[phat] ${req.method} ${req.baseUrl}${req.path} range=${req.headers.range || '-'} -> ${res.statusCode} ` +
+        `${bytes}B dau ${firstByte ? firstByte - started : '-'}ms xong ${Date.now() - started}ms` +
+        `${res.writableFinished ? '' : ' (may ngat)'} ua=${ua}`
+    );
+  });
+  next();
+});
+
 // ---------- luong tieng DASH -> file .m4a ao (xem lib/fmp4.js) ----------
 
 const remuxIndex = new TtlCache(60);
@@ -1591,11 +1630,17 @@ app.get('/api/hello', (req, res) => {
     return;
   }
   const status = cookies.status(req.device);
-  sendApi(res, [
+  const lines = [
     apiLine('D', req.device),
     apiLine('S', status.ready ? '1' : '0', status.own ? '1' : '0'),
     apiLine('B', config.BUILD_VERSION),
-  ]);
+  ];
+  // Khoa phat (?k=) cua may: trinh phat cua app khong gui cookie, nen app tu
+  // gan khoa vao duong nghe. Thieu no thi may chu coi trinh phat la may la, ket
+  // qua yt-dlp da chay san (/api/prepare) cho may nay khong dung lai duoc. Chi
+  // tra cho chinh may dang cam cookie — xem dong kiem tra khoa o tren.
+  if (req.streamKey) lines.push(apiLine('Q', req.streamKey));
+  sendApi(res, lines);
 });
 
 app.get('/api/home', async (req, res) => {

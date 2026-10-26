@@ -212,6 +212,10 @@ public class S60Tube extends MIDlet
                     Settings.device = Api.field(d, 1);
                     Settings.save();
                 }
+                String[] q = Api.first(rows, 'Q');
+                if (q != null) {
+                    Audio.learnKey("?k=" + Api.encode(Api.field(q, 1)));
+                }
                 loadHome();
             }
         });

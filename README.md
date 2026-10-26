@@ -458,7 +458,7 @@ cách nhau bằng TAB.
   danh sách**. Trang **Đang nghe** có Bài sau / Bài trước và cả danh sách (chọn
   bài nào là nghe bài đó). Bài nào không nghe được thì tự bỏ qua; hỏng 3 bài
   liền thì dừng.
-- Gần hết bài (còn dưới 60 giây hoặc đã qua nửa bài) app gọi `/api/prepare?v=<bài sau>`
+- Còn 60 giây nữa hết bài thì app gọi `/api/prepare?v=<bài sau>`
   để máy chủ chạy trước yt-dlp và dựng sẵn mục lục file `.m4a` ảo, nên sang bài mới ít phải chờ.
 - **Tìm kiếm**: ô tìm bo tròn tự vẽ, có lịch sử 8 lần tìm gần nhất (lưu trong máy).
   Máy có bàn phím QWERTY gõ thẳng vào ô; máy bàn phím số / cảm ứng, hoặc cần gõ

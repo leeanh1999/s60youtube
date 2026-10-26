@@ -22,6 +22,7 @@ final class Audio implements Runnable, PlayerListener {
 
     private static final long STEP_US = 10000000L;
     private static final int MAX_FAILS = 3;
+    private static final long PREPARE_BEFORE_END_US = 60000000L;
 
     // ---------- danh sach dang nghe (chung cho moi bai) ----------
 
@@ -250,9 +251,9 @@ final class Audio implements Runnable, PlayerListener {
     }
 
     /**
-     * Gan het bai (con duoi 60 giay hoac qua nua bai; khong biet do dai thi sau
-     * 30 giay nghe) thi nho may chu chuan bi bai sau: yt-dlp mat vai
-     * giay tren NAS, lam truoc thi het bai la sang bai moi ngay.
+     * Con 60 giay nua het bai (khong biet do dai thi sau 30 giay nghe) thi nho
+     * may chu chuan bi bai sau (yt-dlp va muc luc file .m4a ao), de het bai la
+     * sang bai moi ngay.
      */
     private void maybePrepareNext() {
         if (prepared || !playing()) {
@@ -271,9 +272,7 @@ final class Audio implements Runnable, PlayerListener {
             total = player.getDuration();
         } catch (Exception ignored) {
         }
-        boolean near = total > 0 && now >= 0
-                ? total - now <= 60000000L || now * 2 >= total
-                : playedMs >= 30000;
+        boolean near = total > 0 && now >= 0 ? total - now <= PREPARE_BEFORE_END_US : playedMs >= 30000;
         if (!near) {
             return;
         }
