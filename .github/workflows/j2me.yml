@@ -1,0 +1,68 @@
+name: Build app J2ME
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths:
+      - 'j2me/**'
+      - '.github/workflows/j2me.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'j2me/**'
+      - '.github/workflows/j2me.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ECJ 3.26 va ProGuard 7 chay tren JDK 11 tro len; Maven chi de tai cong cu.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: j2me/tools/pom.xml
+
+      # MIDlet-Version chi nhan so dang a.b.c, nen lay so lan chay lam so cuoi.
+      - name: So phien ban
+        id: info
+        run: |
+          echo "version=1.0.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Build jar + jad
+        run: VERSION=${{ steps.info.outputs.version }} bash j2me/build.sh
+
+      # May S60 chi chay class CLDC: ban 45 va co StackMap (da kiem truoc).
+      # Lot class doi moi vao la may bao "loi cai dat" ma khong noi vi sao.
+      - name: Kiem tra class dung chuan CLDC
+        run: |
+          mkdir -p /tmp/check && cd /tmp/check && unzip -oq "$GITHUB_WORKSPACE/j2me/build/S60Tube.jar"
+          for f in $(find . -name '*.class'); do
+            javap -v "$f" | grep -q 'major version: 45' || { echo "sai ban class: $f"; exit 1; }
+          done
+          javap -v s60tube/Api.class | grep -q StackMap || { echo "chua kiem truoc"; exit 1; }
+          echo "Moi class deu la ban 45, co StackMap"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: S60Tube-${{ steps.info.outputs.version }}-${{ steps.info.outputs.sha }}
+          path: |
+            j2me/build/S60Tube.jar
+            j2me/build/S60Tube.jad
+
+      - name: Dinh vao ban phat hanh (khi day tag v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            j2me/build/S60Tube.jar
+            j2me/build/S60Tube.jad

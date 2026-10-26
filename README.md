@@ -415,6 +415,32 @@ và hiện phần trăm; video dài thì chờ lâu, cứ để trang đó tự 
 File đã ghép nằm trong thư mục `cache/` **trên máy chủ**, tự xoá sau 6 tiếng
 không đụng tới.
 
+## App Java (J2ME) cho Nokia E6
+
+Thay vì mở trang web, có thể cài app `S60Tube.jar` lên máy. App vẫn nhờ máy chủ
+này làm mọi việc nặng, chỉ thay trang HTML bằng màn hình và phím mềm của máy.
+App nói chuyện với máy chủ qua các đường `/api/*`, mỗi dòng trả về là các trường
+cách nhau bằng TAB.
+
+- Địa chỉ mặc định là `http://s60tube.ddnsfree.com`. Đổi trong **Cài đặt** của app.
+  Đổi máy chủ thì app xin mã thiết bị mới, nên phải đăng nhập lại.
+- **Đăng nhập**: app hiện mã ghép nối, việc nộp cookie làm trên máy tính giống
+  như với trang web.
+- **Cách phát**: mặc định mở trình phát của máy (giống bấm link trên trang web).
+  "Trong app (thử)" phát bằng MMAPI ngay trong app: phím 5 để tạm dừng, 4/6 để
+  tua 10 giây, lên/xuống để chỉnh âm lượng.
+
+Lấy file `.jar`/`.jad`:
+
+- **GitHub Actions** tự build mỗi khi có commit đụng tới `j2me/`. File nằm ở mục
+  *Artifacts* của lần chạy **Build app J2ME**. Đẩy tag `v*` thì file còn được
+  đính vào bản Release.
+- **Tự build**: cần JDK 11+ và Maven. Chạy `bash j2me/build.sh`, ra file
+  `j2me/build/S60Tube.jar` và `.jad`.
+
+Chép `S60Tube.jar` sang máy qua cáp hoặc Bluetooth rồi mở để cài. App không ký
+nên lần đầu máy sẽ hỏi quyền truy cập mạng.
+
 ## Gợi ý cho bạn
 
 Máy đã đăng nhập thì trang chính là trang gợi ý của chính tài khoản đó, giống

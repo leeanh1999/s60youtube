@@ -67,6 +67,17 @@ jobs:
           BASE=http://127.0.0.1:8080 node tools/smoke.js
           BASE=http://127.0.0.1:8080 node tools/test-login.js
 
+      # App J2ME doc ma thiet bi tu /api/hello roi gui lai bang Cookie; khoa
+      # phat (?k=) khong duoc doi lay ma thiet bi hay ma dang nhap.
+      - name: Kiem thu API cua app J2ME
+        run: |
+          D=$(curl -fsS http://127.0.0.1:8080/api/hello | awk -F'\t' '$1=="D"{print $2}')
+          echo "$D" | grep -Eq '^[0-9a-f]{32}$'
+          curl -fsS -H "Cookie: did=$D" http://127.0.0.1:8080/api/login | grep -q '^K'
+          test "$(curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:8080/api/hello?k=x')" = 400
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/login)" = 400
+          curl -fsS 'http://127.0.0.1:8080/api/search?q=https://youtu.be/dQw4w9WgXcQ' | grep -q '^G'
+
       # Trang video khong duoc cho yt-dlp cho xong moi ve. Bai thu dung mot
       # yt-dlp gia cham de do dung cho do. Chay trong container vi no dung san
       # ca may chu (can express) — may chay CI khong cai goi nao.

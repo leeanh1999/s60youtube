@@ -37,3 +37,6 @@ npm-debug.log*
 # Bien moi truong
 .env
 .env.local
+
+# Ban build cua app J2ME (bash j2me/build.sh)
+j2me/build/

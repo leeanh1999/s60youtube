@@ -987,6 +987,55 @@ app.all('/audio/:id', async (req, res) => {
 
 // ---------- chuyen ma cho may yeu ----------
 
+/**
+ * Lay lai viec dang chay cho video + muc nay, khong co (hoac lan truoc hong) thi
+ * khoi dong viec moi. Dung chung cho trang /convert va /api/convert cua app.
+ */
+async function startConvertJob(videoId, profileId, auth) {
+  const existing = media.getJob(videoId, profileId);
+  const info = await ytdlp.getInfo(videoId, auth);
+  if (existing && existing.status !== 'error') return { info, job: existing };
+
+  const profile = media.PROFILES[profileId];
+  const sources = [];
+  // Ghep vo chua chi la chep du lieu, nhanh gap boi so voi ma hoa lai.
+  // Chi khi YouTube khong con ban H.264/AAC nao moi phai ma hoa that.
+  let copy = false;
+
+  if (profile.audioOnly) {
+    const audio = ytdlp.pickAudioOnly(info.formats) ||
+      ytdlp.pickProgressive(info.formats, 720);
+    if (!audio) throw new Error('Không tìm thấy luồng tiếng phù hợp.');
+    sources.push(audio.url);
+    copy = ytdlp.isBelleAudio(audio);
+  } else {
+    const pair = ytdlp.pickForRemux(info.formats, profile.maxHeight);
+    if (pair) {
+      sources.push(pair.video.url, pair.audio.url);
+      copy = true;
+    } else {
+      const progressive = ytdlp.pickProgressive(info.formats, profile.maxHeight);
+      if (progressive) {
+        sources.push(progressive.url);
+      } else {
+        const video = ytdlp.pickVideoOnly(info.formats, profile.maxHeight);
+        const audio = ytdlp.pickAudioOnly(info.formats);
+        if (!video || !audio) throw new Error('Không tìm thấy luồng hình/tiếng phù hợp.');
+        sources.push(video.url, audio.url);
+      }
+    }
+  }
+
+  const job = media.startJob({
+    videoId,
+    profileId,
+    sources,
+    duration: info.duration,
+    copy,
+  });
+  return { info, job };
+}
+
 app.get('/convert', async (req, res) => {
   const videoId = parseVideoId(req.query.v);
   const profileId = String(req.query.p || '');
@@ -1020,49 +1069,7 @@ app.get('/convert', async (req, res) => {
   }
 
   try {
-    const existing = media.getJob(videoId, profileId);
-    const info = await ytdlp.getInfo(videoId, req.auth);
-
-    let job = existing;
-    if (!job || job.status === 'error') {
-      const profile = media.PROFILES[profileId];
-      const sources = [];
-      // Ghep vo chua chi la chep du lieu, nhanh gap boi so voi ma hoa lai.
-      // Chi khi YouTube khong con ban H.264/AAC nao moi phai ma hoa that.
-      let copy = false;
-
-      if (profile.audioOnly) {
-        const audio = ytdlp.pickAudioOnly(info.formats) ||
-          ytdlp.pickProgressive(info.formats, 720);
-        if (!audio) throw new Error('Không tìm thấy luồng tiếng phù hợp.');
-        sources.push(audio.url);
-        copy = ytdlp.isBelleAudio(audio);
-      } else {
-        const pair = ytdlp.pickForRemux(info.formats, profile.maxHeight);
-        if (pair) {
-          sources.push(pair.video.url, pair.audio.url);
-          copy = true;
-        } else {
-          const progressive = ytdlp.pickProgressive(info.formats, profile.maxHeight);
-          if (progressive) {
-            sources.push(progressive.url);
-          } else {
-            const video = ytdlp.pickVideoOnly(info.formats, profile.maxHeight);
-            const audio = ytdlp.pickAudioOnly(info.formats);
-            if (!video || !audio) throw new Error('Không tìm thấy luồng hình/tiếng phù hợp.');
-            sources.push(video.url, audio.url);
-          }
-        }
-      }
-
-      job = media.startJob({
-        videoId,
-        profileId,
-        sources,
-        duration: info.duration,
-        copy,
-      });
-    }
+    const { info, job } = await startConvertJob(videoId, profileId, req.auth);
 
     sendPage(
       res,
@@ -1318,6 +1325,204 @@ app.get('/about', (req, res) => {
       prefs: req.prefs,
     })
   );
+});
+
+// ---------- API cho app J2ME (thu muc j2me/) ----------
+
+/**
+ * MIDlet khong co bo doc JSON, nen tra ve chu thuong: moi dong mot ban ghi, mo
+ * dau bang mot chu cai cho biet loai, cac truong cach nhau bang TAB. Xuong
+ * dong, TAB va dau '\' trong noi dung duoc viet lai kieu '\n' de dong khong vo.
+ *
+ *   V id title author durationText views   mot video trong danh sach
+ *   N token                                 trang ket qua tiep theo
+ *   W cau | E cau                           canh bao | loi
+ */
+function apiField(value) {
+  return String(value ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/\t/g, '\\t')
+    .replace(/\r?\n/g, '\\n')
+    .replace(/\r/g, '');
+}
+
+function apiLine(tag, ...fields) {
+  return [tag, ...fields.map(apiField)].join('\t');
+}
+
+function apiVideo(video) {
+  return apiLine('V', video.id, video.title, video.author, video.durationText, video.views);
+}
+
+function sendApi(res, lines, status = 200) {
+  const body = Buffer.from(`${lines.join('\n')}\n`, 'utf8');
+  res
+    .status(status)
+    .set('Content-Type', 'text/plain; charset=utf-8')
+    .set('Cache-Control', 'no-store')
+    .set('Content-Length', String(body.length))
+    .send(body);
+}
+
+/**
+ * App nho ma thiet bi trong bo nho may (RMS) va gui lai bang header Cookie.
+ * Lan dau no chua co gi: may chu phat ma moi va noi ma do ra o day. Chi tra
+ * ma khi may goi DANG cam cookie that hoac vua duoc phat — khoa phat (?k=) yeu
+ * hon ma thiet bi, khong duoc doi khoa lay ma.
+ */
+app.get('/api/hello', (req, res) => {
+  if (!cookies.read(req) && req.query.k) {
+    sendApi(res, [apiLine('E', 'Không dùng khoá phát ở đây.')], 400);
+    return;
+  }
+  const status = cookies.status(req.device);
+  sendApi(res, [
+    apiLine('D', req.device),
+    apiLine('S', status.ready ? '1' : '0', status.own ? '1' : '0'),
+    apiLine('B', config.BUILD_VERSION),
+  ]);
+});
+
+app.get('/api/home', async (req, res) => {
+  const { videos = [], note } = await homeFeed(req);
+  const lines = videos.map(apiVideo);
+  if (!cookies.status(req.device).ready) {
+    lines.push(apiLine('W', 'Máy này chưa nối tài khoản YouTube — tìm kiếm vẫn chạy nhưng chưa phát được video.'));
+  }
+  if (note) lines.push(apiLine('W', note));
+  sendApi(res, lines);
+});
+
+app.get('/api/search', async (req, res) => {
+  const query = String(req.query.q || '').trim();
+  if (!query) {
+    sendApi(res, []);
+    return;
+  }
+  const pastedId = parseVideoId(query);
+  if (pastedId && /https?:|youtu/i.test(query)) {
+    sendApi(res, [apiLine('G', pastedId)]);
+    return;
+  }
+  try {
+    const { videos, nextPage } = await innertube.search(query, String(req.query.p || ''));
+    const lines = videos.slice(0, req.prefs.pageSize).map(apiVideo);
+    if (nextPage) lines.push(apiLine('N', nextPage));
+    sendApi(res, lines);
+  } catch (err) {
+    sendApi(res, [apiLine('E', friendlyError(err))], 502);
+  }
+});
+
+/**
+ * Khac trang /watch: app cho yt-dlp xong roi moi tra loi, vi no hien danh sach
+ * muc phat ngay tren man hinh nay chu khong co khung phat de chon sau.
+ *
+ *   M title author views description
+ *   C height duong-dan   (chi ban gop san — E6 khong doc duoc ban ghep)
+ *   A duong-dan          nghe chi tieng (.m4a)
+ *   P profileId label    tao ban chuyen ma
+ */
+app.get('/api/watch', async (req, res) => {
+  const videoId = parseVideoId(req.query.v);
+  if (!videoId) {
+    sendApi(res, [apiLine('E', 'Thiếu mã video hợp lệ.')], 400);
+    return;
+  }
+
+  const [infoResult, relatedResult] = await Promise.allSettled([
+    ytdlp.getInfo(videoId, req.auth),
+    innertube.related(videoId),
+  ]);
+  const meta = relatedResult.status === 'fulfilled' ? relatedResult.value.video : null;
+  const lines = [
+    apiLine(
+      'M',
+      meta?.title || (infoResult.status === 'fulfilled' && infoResult.value.title) || 'Video',
+      meta?.author || '',
+      meta?.views || '',
+      meta?.description || ''
+    ),
+  ];
+
+  if (infoResult.status === 'fulfilled') {
+    const { formats } = infoResult.value;
+    const { choices } = playChoices(videoId, formats, {
+      legacy: true,
+      streamKey: req.streamKey,
+      wanted: 0,
+    });
+    for (const choice of choices) lines.push(apiLine('C', choice.height, choice.src));
+    if (media.isAvailable()) {
+      const key = req.streamKey ? `?k=${encodeURIComponent(req.streamKey)}` : '';
+      if (ytdlp.isBelleAudio(ytdlp.pickAudioOnly(formats))) {
+        lines.push(apiLine('A', `/audio/${videoId}.m4a${key}`));
+      }
+      for (const [id, profile] of Object.entries(media.PROFILES)) {
+        if (!profile.modernOnly) lines.push(apiLine('P', id, profile.label));
+      }
+    }
+  } else {
+    lines.push(apiLine('E', friendlyError(infoResult.reason)));
+  }
+
+  if (relatedResult.status === 'fulfilled') {
+    for (const video of relatedResult.value.videos.slice(0, req.prefs.pageSize)) {
+      lines.push(apiVideo(video));
+    }
+  }
+  sendApi(res, lines);
+});
+
+/** J status progress position duong-dan — app hoi lai vai giay mot lan. */
+app.get('/api/convert', async (req, res) => {
+  const videoId = parseVideoId(req.query.v);
+  const profileId = String(req.query.p || '');
+  if (!videoId || !media.PROFILES[profileId]) {
+    sendApi(res, [apiLine('E', 'Thiếu mã video hoặc chất lượng không hợp lệ.')], 400);
+    return;
+  }
+  if (!media.isAvailable()) {
+    sendApi(res, [apiLine('E', 'Máy chủ chưa có ffmpeg nên không chuyển mã được.')], 503);
+    return;
+  }
+  try {
+    const { job } = await startConvertJob(videoId, profileId, req.auth);
+    const key = req.streamKey ? `?k=${encodeURIComponent(req.streamKey)}` : '';
+    const lines = [
+      apiLine(
+        'J',
+        job.status,
+        job.progress || 0,
+        media.queuePosition(job),
+        `/file/${videoId}/${profileId}${key}`
+      ),
+    ];
+    if (job.status === 'error') lines.push(apiLine('E', friendlyError(job.error)));
+    sendApi(res, lines);
+  } catch (err) {
+    sendApi(res, [apiLine('E', friendlyError(err))], 502);
+  }
+});
+
+/** K ma phut | U dia-chi-nop-cookie | S ready own */
+app.get('/api/login', (req, res) => {
+  // Ma ghep noi cho phep nop cookie moi vao may nay — chi phat cho may cam
+  // ma thiet bi that, khong phat cho ai chi biet khoa phat.
+  if (!cookies.read(req)) {
+    sendApi(res, [apiLine('E', 'Chưa có mã thiết bị. Mở lại app.')], 400);
+    return;
+  }
+  let code = pairing.normalize(req.query.c);
+  if (req.query.new === '1' || !pairing.isValid(code, req.device)) {
+    code = pairing.issue(req.device);
+  }
+  const status = cookies.status(req.device);
+  sendApi(res, [
+    apiLine('K', pairing.format(code), pairing.remainingMinutes(code)),
+    apiLine('U', `${publicBase(req)}/link?c=${code}`),
+    apiLine('S', status.ready ? '1' : '0', status.own ? '1' : '0'),
+  ]);
 });
 
 app.use((req, res) => {
