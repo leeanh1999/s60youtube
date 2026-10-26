@@ -717,52 +717,125 @@ app.get('/thumb/:id', async (req, res) => {
 // ---------- xem online (proxy MP4 co san, khong luu gi tren dia) ----------
 
 /**
- * Trinh phat cua Belle keo file theo tung doan bang header Range, nen chi can
- * chuyen tiep Range len YouTube la may phat duoc ngay ma khong tai het file.
- * Bat buoc de "inline": co "attachment" la trinh duyet Symbian chuyen sang tai ve.
+ * Trinh phat cua Belle keo file theo tung doan bang header Range, con trinh phat
+ * cua app J2ME (MMAPI) thi xin ca file mot lan. Bat buoc de "inline": co
+ * "attachment" la trinh duyet Symbian chuyen sang tai ve.
+ *
+ * May chu luon xin YouTube theo tung doan co Range ro rang (UPSTREAM_CHUNK), roi
+ * noi lai thanh mot luong cho may:
+ *  - Xin ca file khong kem Range thi googlevideo bop con ~32 KB/s (do thu: 20
+ *    giay moi duoc 640 KB, xin theo doan thi 5-7 MB/s). Muc do chi nhinh hon
+ *    toc do phat chut it, nen may cu "dang dem" roi "dang phat" luan phien.
+ *  - Lo dia chi bi khoa (chi phat duoc mot phut dau, xem lib/ytdlp.js) tra 403
+ *    o doan dau tien vuot qua cho do: hoi lai yt-dlp mot lan roi xin tiep tu
+ *    dung byte do, may khong biet gi.
  */
+const UPSTREAM_CHUNK = 4 * 1024 * 1024;
+
+function parseRange(header) {
+  const m = /^bytes=(\d*)-(\d*)$/.exec(String(header || '').trim());
+  if (!m || (m[1] === '' && m[2] === '')) return null;
+  if (m[1] === '') return { suffix: Number(m[2]) };
+  return { start: Number(m[1]), end: m[2] === '' ? null : Number(m[2]) };
+}
+
 async function proxyFormat(req, res, id, format) {
-  const headers = { 'User-Agent': config.DESKTOP_UA };
-  if (req.headers.range) headers.Range = req.headers.range;
-
   const audioOnly = Boolean(format.acodec && !format.vcodec);
-  let upstream = await fetch(format.url, { headers });
+  const clientRange = parseRange(req.headers.range);
+  let url = format.url;
+  let refreshed = false;
+  let aborted = false;
+  let current = null;
+  res.on('close', () => {
+    aborted = true;
+    current?.body?.cancel?.().catch(() => {});
+  });
 
-  // YouTube thinh thoang dua ra dia chi chet ngay tu dau (xem lib/ytdlp.js).
+  // YouTube thinh thoang dua ra dia chi chet ngay tu dau, hoac chet giua chung.
   // Ban dang giu trong bo nho dem con han nhung khong dung duoc nua, nen hoi
-  // lai mot lan roi phat tiep — de trinh phat cua may cu bao "khong mo duoc"
+  // lai mot lan roi xin tiep — de trinh phat cua may cu bao "khong mo duoc"
   // thi nguoi dung khong con cach nao khac ngoai bam lai va hy vong.
-  if (upstream.status === 403) {
-    upstream.body?.cancel?.();
-    const fresh = await ytdlp.refreshInfo(id, req.auth).catch(() => null);
-    const again = fresh && ytdlp.findFormat(fresh, format.id);
-    if (!again) {
-      res.status(502).end();
-      return;
+  async function fetchPart(range) {
+    for (;;) {
+      const upstream = await fetch(url, { headers: { 'User-Agent': config.DESKTOP_UA, Range: range } });
+      if (upstream.status !== 403 || refreshed) return upstream;
+      upstream.body?.cancel?.().catch(() => {});
+      refreshed = true;
+      const fresh = await ytdlp.refreshInfo(id, req.auth).catch(() => null);
+      const again = fresh && ytdlp.findFormat(fresh, format.id);
+      if (!again) return upstream;
+      url = again.url;
     }
-    upstream = await fetch(again.url, { headers });
   }
 
-  res.status(upstream.status === 206 ? 206 : upstream.status);
+  // Doan dau: biet duoc tong do dai, roi moi tra header cho may.
+  let start;
+  let end;
+  if (clientRange?.suffix !== undefined) {
+    // "bytes=-N" (N byte cuoi): hiem gap, chuyen nguyen cho YouTube.
+    current = await fetchPart(req.headers.range);
+  } else {
+    start = clientRange ? clientRange.start : 0;
+    const want = clientRange?.end ?? start + UPSTREAM_CHUNK - 1;
+    current = await fetchPart(`bytes=${start}-${Math.min(want, start + UPSTREAM_CHUNK - 1)}`);
+  }
+
+  const total = Number(/\/(\d+)$/.exec(current.headers.get('content-range') || '')?.[1]) || 0;
   res.set('Content-Type', audioOnly ? 'audio/mp4' : 'video/mp4');
   res.set('Content-Disposition', `inline; filename="${id}.${audioOnly ? 'm4a' : 'mp4'}"`);
   res.set('Accept-Ranges', 'bytes');
   res.set('Cache-Control', 'no-store');
-  for (const key of ['content-length', 'content-range']) {
-    const value = upstream.headers.get(key);
-    if (value) res.set(key, value);
+
+  // YouTube khong tra doan (loi, hoac khong hieu Range): chuyen nguyen nhu cu.
+  if (current.status !== 206 || !total || start === undefined) {
+    res.status(current.status);
+    for (const key of ['content-length', 'content-range']) {
+      const value = current.headers.get(key);
+      if (value) res.set(key, value);
+    }
+    if (req.method === 'HEAD') {
+      current.body?.cancel?.().catch(() => {});
+      res.end();
+      return;
+    }
+    const stream = Readable.fromWeb(current.body);
+    res.on('close', () => stream.destroy());
+    stream.on('error', () => res.destroy());
+    stream.pipe(res);
+    return;
   }
 
+  end = Math.min(clientRange?.end ?? total - 1, total - 1);
+  res.status(clientRange ? 206 : 200);
+  res.set('Content-Length', String(end - start + 1));
+  if (clientRange) res.set('Content-Range', `bytes ${start}-${end}/${total}`);
   if (req.method === 'HEAD') {
-    upstream.body?.cancel?.();
+    current.body?.cancel?.().catch(() => {});
     res.end();
     return;
   }
 
-  const stream = Readable.fromWeb(upstream.body);
-  res.on('close', () => stream.destroy());
-  stream.on('error', () => res.destroy());
-  stream.pipe(res);
+  // Noi cac doan: doan nao YouTube tra ngan hon thi xin tiep tu cho da nhan.
+  let offset = start;
+  try {
+    while (!aborted) {
+      for await (const piece of current.body) {
+        if (aborted) break;
+        const room = end - offset + 1;
+        const bytes = piece.length > room ? piece.subarray(0, room) : piece;
+        offset += bytes.length;
+        if (!res.write(bytes)) await new Promise((r) => res.once('drain', r));
+        if (offset > end) break;
+      }
+      if (aborted || offset > end) break;
+      current = await fetchPart(`bytes=${offset}-${Math.min(end, offset + UPSTREAM_CHUNK - 1)}`);
+      if (current.status !== 206) throw new Error(`googlevideo ${current.status}`);
+    }
+    res.end();
+  } catch (err) {
+    console.warn(`[stream ${id}/${format.id}] ${err?.message || err}`);
+    res.destroy();
+  }
 }
 
 // Trang video dinh san ma luong (itag) vao dia chi cho tung muc do phan giai;
