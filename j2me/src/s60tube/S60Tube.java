@@ -7,7 +7,9 @@ import javax.microedition.lcdui.Command;
 import javax.microedition.lcdui.CommandListener;
 import javax.microedition.lcdui.Display;
 import javax.microedition.lcdui.Displayable;
-import javax.microedition.lcdui.TextBox;
+import javax.microedition.lcdui.Form;
+import javax.microedition.lcdui.ItemCommandListener;
+import javax.microedition.lcdui.ItemStateListener;
 import javax.microedition.lcdui.TextField;
 import javax.microedition.midlet.MIDlet;
 import javax.microedition.midlet.MIDletStateChangeException;
@@ -17,12 +19,14 @@ import javax.microedition.midlet.MIDletStateChangeException;
  * do may chu lam; app ve giao dien giong ban web (xem Page, Item, Ui) va dung
  * phim mem cua may.
  */
-public class S60Tube extends MIDlet implements Page.Host, CommandListener {
+public class S60Tube extends MIDlet
+        implements Page.Host, CommandListener, ItemStateListener, ItemCommandListener {
 
     private static final String APP = "S60Tube";
 
     private final Command cmdOk = new Command("OK", Command.OK, 1);
-    private final Command cmdCancel = new Command("Huỷ", Command.BACK, 1);
+    private final Command cmdSearch = new Command("Tìm", Command.OK, 1);
+    private final Command cmdCancel = new Command("Quay lại", Command.BACK, 1);
 
     private Display display;
     private ThumbLoader thumbs;
@@ -32,8 +36,16 @@ public class S60Tube extends MIDlet implements Page.Host, CommandListener {
     private int ticket;
 
     private Page home;
-    private TextBox searchBox;
-    private TextBox serverBox;
+    /**
+     * O nhap cua may la Form co mot TextField chu khong phai TextBox: BlackBerry
+     * giau nut OK cua TextBox trong menu va phim Enter thi xuong dong. Form cho
+     * dat nut mac dinh tren o chu (bam trackpad/OK la chay) va bat duoc luc
+     * Enter chen dau xuong dong de chay thay.
+     */
+    private Form searchBox;
+    private TextField searchField;
+    private Form serverBox;
+    private TextField serverField;
     private String lastQuery = "";
     private String loginCode = "";
 
@@ -96,6 +108,14 @@ public class S60Tube extends MIDlet implements Page.Host, CommandListener {
     }
 
     private void back() {
+        Item input = null;
+        Page now = current();
+        if ("search".equals(now.kind)) {
+            input = searchInput(now);
+        }
+        if (input != null) {
+            lastQuery = input.title;
+        }
         if (history.isEmpty()) {
             if (current() == home) {
                 exit();
@@ -276,12 +296,10 @@ public class S60Tube extends MIDlet implements Page.Host, CommandListener {
 
     private void askNativeSearch(String text) {
         if (searchBox == null) {
-            searchBox = new TextBox("Tìm trên YouTube", "", 200, TextField.ANY);
-            searchBox.addCommand(cmdOk);
-            searchBox.addCommand(cmdCancel);
-            searchBox.setCommandListener(this);
+            searchField = new TextField("Từ khoá hoặc link YouTube", "", 200, TextField.ANY);
+            searchBox = inputForm("Tìm trên YouTube", searchField, cmdSearch);
         }
-        searchBox.setString(text);
+        searchField.setString(text);
         showNative(searchBox);
     }
 
@@ -566,7 +584,8 @@ public class S60Tube extends MIDlet implements Page.Host, CommandListener {
                 .icon(Ui.ICON_GEAR).act("textsize", null));
         page.add(Item.of(Item.OPTION, "Ảnh thu nhỏ").sub(Settings.thumbs ? "Bật" : "Tắt — danh sách nhẹ hơn")
                 .icon(Ui.ICON_GEAR).act("thumbs", null));
-        page.add(Item.of(Item.TEXT, APP + " " + getAppProperty("MIDlet-Version") + " · " + Settings.server));
+        page.add(Item.of(Item.TEXT, APP + " " + getAppProperty("MIDlet-Version") + " · " + Settings.server
+                + (Device.BLACKBERRY ? " · BlackBerry" : "")));
         if (reuse == null) {
             open(page);
         } else {
@@ -576,13 +595,23 @@ public class S60Tube extends MIDlet implements Page.Host, CommandListener {
 
     private void askServer() {
         if (serverBox == null) {
-            serverBox = new TextBox("Địa chỉ máy chủ", Settings.server, 200, TextField.URL);
-            serverBox.addCommand(cmdOk);
-            serverBox.addCommand(cmdCancel);
-            serverBox.setCommandListener(this);
+            serverField = new TextField("Địa chỉ máy chủ", "", 200, TextField.URL);
+            serverBox = inputForm("Máy chủ", serverField, cmdOk);
         }
-        serverBox.setString(Settings.server);
+        serverField.setString(Settings.server);
         showNative(serverBox);
+    }
+
+    private Form inputForm(String title, TextField field, Command ok) {
+        Form form = new Form(title);
+        form.append(field);
+        field.setDefaultCommand(ok);
+        field.setItemCommandListener(this);
+        form.addCommand(ok);
+        form.addCommand(cmdCancel);
+        form.setCommandListener(this);
+        form.setItemStateListener(this);
+        return form;
     }
 
     private void saveServer(String value) {
@@ -707,18 +736,50 @@ public class S60Tube extends MIDlet implements Page.Host, CommandListener {
 
     public void commandAction(Command c, Displayable d) {
         if (d == searchBox) {
-            String query = searchBox.getString().trim();
-            if (c == cmdOk && query.length() > 0) {
+            String query = searchField.getString().trim();
+            // Quay lai cung giu chu da go cho lan mo sau.
+            lastQuery = query;
+            if (c != cmdCancel && query.length() > 0) {
                 search(query);
             } else {
                 display.setCurrent(current());
             }
         } else if (d == serverBox) {
-            if (c == cmdOk) {
-                saveServer(serverBox.getString());
+            if (c != cmdCancel) {
+                saveServer(serverField.getString());
             } else {
                 display.setCurrent(current());
             }
+        }
+    }
+
+    /** Bam trackpad/OK tren o chu: nut mac dinh cua no. */
+    public void commandAction(Command c, javax.microedition.lcdui.Item item) {
+        commandAction(c, item == searchField ? (Displayable) searchBox : serverBox);
+    }
+
+    /** Enter chen dau xuong dong: bo di roi chay nhu bam Tim/OK. */
+    public void itemStateChanged(javax.microedition.lcdui.Item item) {
+        if (!(item instanceof TextField)) {
+            return;
+        }
+        TextField field = (TextField) item;
+        String text = field.getString();
+        if (text.indexOf('\n') < 0 && text.indexOf('\r') < 0) {
+            return;
+        }
+        StringBuffer clean = new StringBuffer(text.length());
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (ch != '\n' && ch != '\r') {
+                clean.append(ch);
+            }
+        }
+        field.setString(clean.toString());
+        if (field == searchField) {
+            commandAction(cmdSearch, searchBox);
+        } else if (field == serverField) {
+            commandAction(cmdOk, serverBox);
         }
     }
 

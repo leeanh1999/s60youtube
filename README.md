@@ -448,7 +448,9 @@ cách nhau bằng TAB.
   **Quay lại**; phím thoát là Quay lại. Ô tìm kiếm vẽ ngay trên màn hình: gõ bằng
   bàn phím QWERTY (phím cách là dấu cách), Enter để tìm, Del để xoá. Đang ở trang khác thì gõ một chữ cái
   là mở luôn ô tìm kiếm. Muốn gõ tiếng Việt có dấu thì chọn **Dùng ô nhập của
-  máy**. App tự thử kết nối qua Wi-Fi (`;interface=wifi`), rồi mạng di động
+  máy**: ô này có nút **Tìm** (bấm trackpad trên ô chữ cũng được), Enter là tìm
+  chứ không xuống dòng, bấm Quay lại vẫn giữ chữ đã gõ cho lần sau. Cuối trang
+  **Cài đặt** có chữ `BlackBerry` khi app nhận ra máy. App tự thử kết nối qua Wi-Fi (`;interface=wifi`), rồi mạng di động
   (`;deviceside=true`), rồi cách mặc định của máy, và nhớ cách đã chạy được.
 
 Lấy file `.jar`/`.jad`:
